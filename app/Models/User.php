@@ -5,7 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasMany; // 👈 TAMBAHKAN INI
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
@@ -23,7 +23,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'jabatan_id', // <-- PASTIKAN INI ADA
+        'jabatan_id',
     ];
 
     /**
@@ -49,15 +49,56 @@ class User extends Authenticatable
         ];
     }
 
+    // RELASI YANG SUDAH ADA
     public function kehadiran(): HasMany
     {
         return $this->hasMany(Kehadiran::class);
     }
     
-    // --- PERBAIKAN UTAMA DI SINI ---
-    // Tambahkan relasi ini untuk menghubungkan User ke Jabatan
     public function jabatan(): BelongsTo
     {
         return $this->belongsTo(Jabatan::class);
+    }
+
+    // 👇 TAMBAHKAN RELASI PROJECT MANAGEMENT INI
+    
+    /**
+     * Projects yang di-manage oleh user ini
+     */
+    public function managedProjects(): HasMany
+    {
+        return $this->hasMany(Project::class, 'project_manager_id');
+    }
+
+    /**
+     * Tasks yang di-assign ke user ini
+     */
+    public function assignedTasks(): HasMany
+    {
+        return $this->hasMany(Task::class, 'assigned_to');
+    }
+
+    /**
+     * Tasks yang dibuat oleh user ini
+     */
+    public function createdTasks(): HasMany
+    {
+        return $this->hasMany(Task::class, 'created_by');
+    }
+
+    /**
+     * Comments yang dibuat oleh user ini
+     */
+    public function taskComments(): HasMany
+    {
+        return $this->hasMany(TaskComment::class);
+    }
+
+    /**
+     * Progress updates yang dibuat oleh user ini
+     */
+    public function taskProgress(): HasMany
+    {
+        return $this->hasMany(TaskProgress::class);
     }
 }
