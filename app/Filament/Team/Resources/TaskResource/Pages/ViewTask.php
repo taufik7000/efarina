@@ -6,13 +6,18 @@ use App\Filament\Team\Resources\TaskResource;
 use App\Models\TaskComment;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
-use Filament\Infolists;
-use Filament\Infolists\Infolist;
 use Filament\Forms;
+use Filament\Notifications\Notification;
 
 class ViewTask extends ViewRecord
 {
     protected static string $resource = TaskResource::class;
+    
+    // Gunakan custom view
+    protected static string $view = 'filament.team.pages.view-task';
+
+    // Property untuk form comment
+    public $newComment = '';
 
     protected function getHeaderActions(): array
     {
@@ -27,75 +32,43 @@ class ViewTask extends ViewRecord
                         ->label('Comment')
                         ->required()
                         ->rows(3),
-                    Forms\Components\FileUpload::make('attachments')
-                        ->label('Attachments')
-                        ->multiple()
-                        ->directory('comment-attachments'),
                 ])
                 ->action(function (array $data): void {
-                    $this->record->addComment($data['comment'], $data['attachments'] ?? null);
+                    // Add comment
+                    $this->record->addComment($data['comment']);
                     
-                    $this->refreshFormData([]);
+                    // Show success notification
+                    Notification::make()
+                        ->title('Comment added successfully!')
+                        ->success()
+                        ->send();
+                    
+                    // Refresh data
+                    $this->record = $this->record->fresh(['comments.user']);
                 }),
         ];
     }
 
-    public function infolist(Infolist $infolist): Infolist
+    // Livewire method untuk add comment dari blade
+    public function addCommentFromBlade()
     {
-        return $infolist
-            ->schema([
-                Infolists\Components\Section::make('Task Details')
-                    ->schema([
-                        Infolists\Components\TextEntry::make('nama_task')
-                            ->label('Task Name'),
-                        Infolists\Components\TextEntry::make('deskripsi')
-                            ->label('Description'),
-                        Infolists\Components\TextEntry::make('project.nama_project')
-                            ->label('Project'),
-                        Infolists\Components\TextEntry::make('status')
-                            ->badge()
-                            ->color(fn ($record) => $record->status_color),
-                        Infolists\Components\TextEntry::make('prioritas')
-                            ->badge()
-                            ->color(fn ($record) => $record->prioritas_color),
-                        Infolists\Components\TextEntry::make('progress_percentage')
-                            ->label('Progress')
-                            ->suffix('%'),
-                    ])
-                    ->columns(2),
+        $this->validate([
+            'newComment' => 'required|string|min:1',
+        ]);
 
-                Infolists\Components\Section::make('Assignment & Timeline')
-                    ->schema([
-                        Infolists\Components\TextEntry::make('assignedTo.name')
-                            ->label('Assigned To'),
-                        Infolists\Components\TextEntry::make('createdBy.name')
-                            ->label('Created By'),
-                        Infolists\Components\TextEntry::make('tanggal_mulai')
-                            ->label('Start Date')
-                            ->date(),
-                        Infolists\Components\TextEntry::make('tanggal_deadline')
-                            ->label('Deadline')
-                            ->date(),
-                        Infolists\Components\TextEntry::make('estimated_hours')
-                            ->label('Estimated Hours')
-                            ->suffix(' jam'),
-                        Infolists\Components\TextEntry::make('actual_hours')
-                            ->label('Actual Hours')
-                            ->suffix(' jam'),
-                    ])
-                    ->columns(2),
+        // Add comment
+        $this->record->addComment($this->newComment);
 
-                Infolists\Components\Section::make('Progress Updates')
-                    ->schema([
-                        Infolists\Components\ViewEntry::make('progressUpdates')
-                            ->view('filament.team.components.task-progress-updates'),
-                    ]),
+        // Clear form
+        $this->newComment = '';
 
-                Infolists\Components\Section::make('Comments')
-                    ->schema([
-                        Infolists\Components\ViewEntry::make('comments')
-                            ->view('filament.team.components.task-comments'),
-                    ]),
-            ]);
+        // Show success notification
+        Notification::make()
+            ->title('Comment added successfully!')
+            ->success()
+            ->send();
+
+        // Refresh data
+        $this->record = $this->record->fresh(['comments.user']);
     }
 }

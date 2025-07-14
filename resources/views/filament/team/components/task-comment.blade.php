@@ -5,12 +5,12 @@
             {{-- Comment Header --}}
             <div class="flex items-center justify-between mb-2">
                 <div class="flex items-center space-x-2">
-                    <div class="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                    <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
                         {{ substr($comment->user->name, 0, 1) }}
                     </div>
                     <div>
                         <span class="font-medium text-gray-900 dark:text-gray-100">{{ $comment->user->name }}</span>
-                        <span class="text-sm text-gray-500 dark:text-gray-400 ml-2">{{ $comment->formatted_created_at }}</span>
+                        <span class="text-sm text-gray-500 dark:text-gray-400 ml-2">{{ $comment->created_at->diffForHumans() }}</span>
                     </div>
                 </div>
                 <div class="text-xs text-gray-500 dark:text-gray-400">
@@ -43,7 +43,7 @@
             @endif
 
             {{-- Reply Section --}}
-            @if($comment->replies->count() > 0)
+            @if($comment->replies && $comment->replies->count() > 0)
                 <div class="mt-3 ml-4 space-y-2 border-l-2 border-gray-200 dark:border-gray-600 pl-4">
                     @foreach($comment->replies as $reply)
                         <div class="bg-white dark:bg-gray-700 rounded p-3 text-sm">
@@ -52,7 +52,7 @@
                                     {{ substr($reply->user->name, 0, 1) }}
                                 </div>
                                 <span class="font-medium text-gray-800 dark:text-gray-200">{{ $reply->user->name }}</span>
-                                <span class="text-xs text-gray-500">{{ $reply->formatted_created_at }}</span>
+                                <span class="text-xs text-gray-500">{{ $reply->created_at->diffForHumans() }}</span>
                             </div>
                             <div class="text-gray-600 dark:text-gray-300">
                                 {!! nl2br(e($reply->comment)) !!}

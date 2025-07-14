@@ -1,4 +1,8 @@
 {{-- resources/views/filament/team/components/task-progress-updates.blade.php --}}
+@php
+    use Illuminate\Support\Facades\Storage;
+@endphp
+
 <div class="space-y-4">
     @forelse($getRecord()->progressUpdates as $progress)
         <div class="relative">
@@ -20,43 +24,12 @@
                                     default => 'bg-gray-500'
                                 } }}
                             @else
-                                bg-primary-500
+                                bg-indigo-500
                             @endif
                             text-white">
-                    @if($progress->status_change)
-                        @switch($progress->status_change)
-                            @case('todo')
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"></path>
-                                </svg>
-                                @break
-                            @case('in_progress')
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path>
-                                </svg>
-                                @break
-                            @case('review')
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path>
-                                    <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"></path>
-                                </svg>
-                                @break
-                            @case('done')
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-                                </svg>
-                                @break
-                            @case('blocked')
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd"></path>
-                                </svg>
-                                @break
-                        @endswitch
-                    @else
-                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
-                        </svg>
-                    @endif
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
+                    </svg>
                 </div>
 
                 {{-- Progress Content --}}
