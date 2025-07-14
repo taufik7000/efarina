@@ -126,7 +126,7 @@
                             @endif
 
                             <a href="{{ \App\Filament\Team\Resources\TaskResource::getUrl('view', ['record' => $task]) }}" 
-                               class="text-primary-600 hover:text-primary-800 text-sm font-medium">
+                               class="text-amber-600 hover:text-amber-800 text-sm font-medium">
                                 View
                             </a>
                         </div>
@@ -146,7 +146,7 @@
         @if($tasks->count() > 5)
             <div class="px-4 py-3 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
                 <a href="{{ \App\Filament\Team\Resources\TaskResource::getUrl('index', ['tableFilters[project_id][value]' => $getRecord()->id]) }}" 
-                   class="text-sm text-primary-600 hover:text-primary-800 font-medium">
+                   class="text-sm text-amber-600 hover:text-amber-800 font-medium">
                     View all {{ $tasks->count() }} tasks →
                 </a>
             </div>

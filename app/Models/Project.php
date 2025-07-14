@@ -25,6 +25,7 @@ class Project extends Model
         'progress_percentage',
         'team_members',
         'catatan',
+        'created_by', // 👈 TAMBAHKAN INI
     ];
 
     protected $casts = [
@@ -43,6 +44,11 @@ class Project extends Model
     public function divisi(): BelongsTo
     {
         return $this->belongsTo(Divisi::class);
+    }
+
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function tasks(): HasMany

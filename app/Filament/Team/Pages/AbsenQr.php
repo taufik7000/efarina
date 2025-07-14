@@ -15,5 +15,5 @@ class AbsenQr extends Page
     //    filament -> team -> pages -> absen-qr
     protected static string $view = 'filament.team.pages.absen-qr';
     
-    protected static ?int $navigationSort = -2;
+    protected static ?int $navigationSort = 99;
 }
