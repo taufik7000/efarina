@@ -22,8 +22,7 @@ class ViewTask extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\EditAction::make(),
-            
+
             Actions\Action::make('add_comment')
                 ->label('Add Comment')
                 ->icon('heroicon-o-chat-bubble-left')
