@@ -18,7 +18,7 @@ class BudgetAllocationResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-chart-pie';
     protected static ?string $navigationGroup = 'Budget Management';
-    protected static ?string $navigationLabel = 'Budget Allocations';
+    protected static ?string $navigationLabel = 'Alokasi';
     protected static ?int $navigationSort = 5;
 
     public static function form(Form $form): Form
@@ -141,32 +141,28 @@ class BudgetAllocationResource extends Resource
                 Tables\Columns\TextColumn::make('remaining_amount')
                     ->label('Sisa')
                     ->money('IDR')
-                    ->color(fn ($state) => $state <= 0 ? 'danger' : 'success'),
+                    ->color(fn ($state) => $state <= 0 ? 'danger' : 'success')
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('usage_percentage')
-                    ->label('% Penggunaan')
+                    ->label('Persentase')
                     ->suffix('%')
+                    ->color(function ($state) {
+                        if ($state >= 100) return 'danger';
+                        if ($state >= 90) return 'warning';
+                        if ($state >= 70) return 'info';
+                        return 'success';
+                    })
                     ->badge()
-                    ->color(fn ($record) => $record->usage_status_color),
+                    ->sortable(),
 
-                Tables\Columns\IconColumn::make('is_nearly_exhausted')
-                    ->label('Hampir Habis')
-                    ->getStateUsing(fn ($record) => $record->isNearlyExhausted())
-                    ->boolean()
-                    ->trueIcon('heroicon-o-exclamation-triangle')
-                    ->falseIcon('heroicon-o-check-circle')
-                    ->trueColor('warning')
-                    ->falseColor('success'),
-
-                Tables\Columns\TextColumn::make('budgetPlan.period.nama_periode')
-                    ->label('Periode')
-                    ->badge()
-                    ->color('info')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('createdBy.name')
+                    ->label('Dibuat Oleh')
+                    ->placeholder('Tidak ada'),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat')
-                    ->dateTime('d M Y')
+                    ->dateTime('d M Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -183,8 +179,8 @@ class BudgetAllocationResource extends Resource
                     ->searchable()
                     ->preload(),
 
-                Tables\Filters\Filter::make('nearly_exhausted')
-                    ->label('Hampir Habis (≥90%)')
+                Tables\Filters\Filter::make('high_usage')
+                    ->label('Penggunaan Tinggi (>90%)')
                     ->query(fn ($query) => $query->whereRaw('(used_amount / allocated_amount) * 100 >= 90')),
 
                 Tables\Filters\Filter::make('over_budget')
@@ -192,38 +188,6 @@ class BudgetAllocationResource extends Resource
                     ->query(fn ($query) => $query->whereRaw('used_amount > allocated_amount')),
             ])
             ->actions([
-                Tables\Actions\Action::make('use_budget')
-                    ->label('Gunakan Budget')
-                    ->icon('heroicon-o-minus-circle')
-                    ->color('warning')
-                    ->visible(fn ($record) => auth()->user()->hasRole(['admin', 'super-admin', 'keuangan']) &&
-                             $record->remaining_amount > 0)
-                    ->form([
-                        Forms\Components\TextInput::make('amount')
-                            ->label('Jumlah Penggunaan')
-                            ->required()
-                            ->numeric()
-                            ->prefix('Rp')
-                            ->step(1000)
-                            ->rules(['min:0']),
-                        Forms\Components\Textarea::make('description')
-                            ->label('Keterangan')
-                            ->required()
-                            ->rows(3),
-                    ])
-                    ->action(function ($record, array $data) {
-                        if ($record->useBudget($data['amount'], $data['description'])) {
-                            \Filament\Notifications\Notification::make()
-                                ->title('Budget berhasil digunakan')
-                                ->success()
-                                ->send();
-                        } else {
-                            \Filament\Notifications\Notification::make()
-                                ->title('Budget tidak mencukupi')
-                                ->danger()
-                                ->send();
-                        }
-                    }),
 
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make()
@@ -247,6 +211,13 @@ class BudgetAllocationResource extends Resource
             ]);
     }
 
+    public static function getRelations(): array
+    {
+        return [
+            \App\Filament\Resources\BudgetAllocationResource\RelationManagers\TransaksisRelationManager::class,
+        ];
+    }
+
     public static function getPages(): array
     {
         return [
@@ -255,15 +226,5 @@ class BudgetAllocationResource extends Resource
             'view' => Pages\ViewBudgetAllocation::route('/{record}'),
             'edit' => Pages\EditBudgetAllocation::route('/{record}/edit'),
         ];
-    }
-
-    public static function canCreate(): bool
-    {
-        return auth()->user()->hasRole(['admin', 'super-admin', 'direktur', 'keuangan']);
-    }
-
-    public static function canViewAny(): bool
-    {
-        return auth()->user()->hasRole(['admin', 'super-admin', 'direktur', 'keuangan']);
     }
 }

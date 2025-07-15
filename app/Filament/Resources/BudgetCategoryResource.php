@@ -16,9 +16,9 @@ class BudgetCategoryResource extends Resource
     protected static ?string $model = BudgetCategory::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-tag';
-    protected static ?string $navigationGroup = 'Budget Management';
-    protected static ?string $navigationLabel = 'Budget Categories';
-    protected static ?int $navigationSort = 1;
+    protected static ?string $navigationGroup = 'Setting Budget';
+    protected static ?string $navigationLabel = 'Kategori';
+    protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form
     {
@@ -116,13 +116,4 @@ class BudgetCategoryResource extends Resource
         ];
     }
 
-    public static function canCreate(): bool
-    {
-        return auth()->user()->hasRole(['admin', 'super-admin', 'direktur', 'keuangan']);
-    }
-
-    public static function canViewAny(): bool
-    {
-        return auth()->user()->hasRole(['admin', 'super-admin', 'direktur', 'keuangan']);
-    }
 }

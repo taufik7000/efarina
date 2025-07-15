@@ -18,8 +18,8 @@ class BudgetPeriodResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
     protected static ?string $navigationGroup = 'Budget Management';
-    protected static ?string $navigationLabel = 'Budget Periods';
-    protected static ?int $navigationSort = 3;
+    protected static ?string $navigationLabel = 'Periode';
+    protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
     {
@@ -188,9 +188,9 @@ class BudgetPeriodResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make()
-                    ->visible(fn () => auth()->user()->hasRole(['admin', 'super-admin', 'direktur', 'keuangan'])),
+                    ->visible(fn () => auth()->user()->hasRole([ 'direktur', 'keuangan'])),
                 Tables\Actions\DeleteAction::make()
-                    ->visible(fn () => auth()->user()->hasRole(['admin', 'super-admin', 'direktur']))
+                    ->visible(fn () => auth()->user()->hasRole([ 'direktur']))
                     ->requiresConfirmation(),
             ])
             ->bulkActions([
@@ -209,15 +209,5 @@ class BudgetPeriodResource extends Resource
             'create' => Pages\CreateBudgetPeriod::route('/create'),
             'edit' => Pages\EditBudgetPeriod::route('/{record}/edit'),
         ];
-    }
-
-    public static function canCreate(): bool
-    {
-        return auth()->user()->hasRole(['admin', 'super-admin', 'direktur']);
-    }
-
-    public static function canViewAny(): bool
-    {
-        return auth()->user()->hasRole(['admin', 'super-admin', 'direktur', 'keuangan']);
     }
 }

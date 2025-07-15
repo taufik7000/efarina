@@ -39,6 +39,10 @@ class Transaksi extends Model
         'approved_at' => 'datetime',
     ];
 
+    protected $attributes = [
+    'total_amount' => 0,
+    ];
+
     // Relasi
     public function budgetAllocation(): BelongsTo
     {
@@ -139,34 +143,42 @@ class Transaksi extends Model
 
     public function approve(int $userId, string $catatan = null): void
     {
-        $this->update([
-            'status' => 'approved',
-            'approved_by' => $userId,
-            'approved_at' => now(),
-            'catatan_approval' => $catatan,
-        ]);
+    $oldStatus = $this->status;
+    
+    $this->update([
+        'status' => 'approved',
+        'approved_by' => $userId,
+        'approved_at' => now(),
+        'catatan_approval' => $catatan,
+    ]);
+    
+    $this->logStatusChange('approved', $userId, $catatan);
     }
 
     public function complete(): void
     {
-        if ($this->status === 'approved') {
-            $this->update(['status' => 'completed']);
-            
-            // Update budget allocation jika pengeluaran
-            if ($this->jenis_transaksi === 'pengeluaran' && $this->budget_allocation_id) {
-                $this->budgetAllocation->increment('used_amount', $this->total_amount);
-            }
+    if ($this->status === 'approved') {
+        $this->update(['status' => 'completed']);
+        
+        // Update budget allocation jika pengeluaran
+        if ($this->jenis_transaksi === 'pengeluaran' && $this->budget_allocation_id) {
+            $this->budgetAllocation->increment('used_amount', $this->total_amount);
         }
+    }
     }
 
     public function reject(int $userId, string $catatan): void
     {
+        $oldStatus = $this->status;
+
         $this->update([
             'status' => 'rejected',
             'approved_by' => $userId,
             'approved_at' => now(),
             'catatan_approval' => $catatan,
         ]);
+
+        $this->logStatusChange('rejected', $userId, $catatan);
     }
 
     // Update total amount dari items
@@ -177,14 +189,53 @@ class Transaksi extends Model
     }
 
     // Boot method
-    protected static function boot()
-    {
-        parent::boot();
+protected static function boot()
+{
+    parent::boot();
 
-        static::creating(function ($transaksi) {
-            if (empty($transaksi->nomor_transaksi)) {
-                $transaksi->nomor_transaksi = $transaksi->generateNomorTransaksi();
-            }
-        });
+    static::creating(function ($transaksi) {
+        if (empty($transaksi->nomor_transaksi)) {
+            $transaksi->nomor_transaksi = $transaksi->generateNomorTransaksi();
+        }
+        
+        if (empty($transaksi->total_amount)) {
+            $transaksi->total_amount = 0;
+        }
+    });
+    
+    static::created(function ($transaksi) {
+        // Log pembuatan transaksi
+        $transaksi->logStatusChange($transaksi->status, $transaksi->created_by, 'Transaksi dibuat');
+    });
+    
+    static::updating(function ($transaksi) {
+        // Log perubahan status jika status berubah
+        if ($transaksi->isDirty('status')) {
+            $transaksi->logStatusChange(
+                $transaksi->status, 
+                auth()->id(), 
+                'Status diperbarui'
+            );
+        }
+    });
+}
+
+
+    public function histories(): HasMany
+    {
+    return $this->hasMany(TransaksiHistory::class)->orderBy('action_at', 'desc');
     }
+
+    public function logStatusChange(string $statusTo, int $actionBy, string $notes = null): void
+{
+    $this->histories()->create([
+        'status_from' => $this->getOriginal('status'),
+        'status_to' => $statusTo,
+        'action_by' => $actionBy,
+        'action_at' => now(),
+        'notes' => $notes,
+        'ip_address' => request()->ip(),
+        'user_agent' => request()->userAgent(),
+    ]);
+}
 }

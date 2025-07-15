@@ -16,10 +16,10 @@ class BudgetSubcategoryResource extends Resource
 {
     protected static ?string $model = BudgetSubcategory::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-tag';
-    protected static ?string $navigationGroup = 'Budget Management';
-    protected static ?string $navigationLabel = 'Budget Subcategories';
-    protected static ?int $navigationSort = 2;
+    protected static ?string $navigationIcon = 'heroicon-o-bookmark';
+    protected static ?string $navigationGroup = 'Setting Budget';
+    protected static ?string $navigationLabel = 'Item Budget';
+    protected static ?int $navigationSort = 3;
 
     public static function form(Form $form): Form
     {
@@ -129,15 +129,5 @@ class BudgetSubcategoryResource extends Resource
             'create' => Pages\CreateBudgetSubcategory::route('/create'),
             'edit' => Pages\EditBudgetSubcategory::route('/{record}/edit'),
         ];
-    }
-
-    public static function canCreate(): bool
-    {
-        return auth()->user()->hasRole(['admin', 'super-admin', 'direktur', 'keuangan']);
-    }
-
-    public static function canViewAny(): bool
-    {
-        return auth()->user()->hasRole(['admin', 'super-admin', 'direktur', 'keuangan']);
     }
 }

@@ -18,7 +18,7 @@ class BudgetPlanResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-currency-dollar';
     protected static ?string $navigationGroup = 'Budget Management';
-    protected static ?string $navigationLabel = 'Budget Plans';
+    protected static ?string $navigationLabel = 'Rencana';
     protected static ?int $navigationSort = 4;
 
     public static function form(Form $form): Form
@@ -250,15 +250,5 @@ class BudgetPlanResource extends Resource
             'create' => Pages\CreateBudgetPlan::route('/create'),
             'edit' => Pages\EditBudgetPlan::route('/{record}/edit'),
         ];
-    }
-
-    public static function canCreate(): bool
-    {
-        return auth()->user()->hasRole(['admin', 'super-admin', 'direktur', 'keuangan']);
-    }
-
-    public static function canViewAny(): bool
-    {
-        return auth()->user()->hasRole(['admin', 'super-admin', 'direktur', 'keuangan']);
     }
 }

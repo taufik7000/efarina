@@ -19,8 +19,7 @@ class TransaksiResource extends Resource
     protected static ?string $model = Transaksi::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
-    protected static ?string $navigationGroup = 'Budget Management';
-    protected static ?string $navigationLabel = 'Transaksi';
+    protected static ?string $navigationLabel = 'Semua Transaksi';
     protected static ?string $pluralModelLabel = 'Transaksi';
     protected static ?int $navigationSort = 6;
 
@@ -418,15 +417,5 @@ class TransaksiResource extends Resource
             'view' => Pages\ViewTransaksi::route('/{record}'),
             'edit' => Pages\EditTransaksi::route('/{record}/edit'),
         ];
-    }
-
-    public static function canCreate(): bool
-    {
-        return auth()->user()->hasRole(['admin', 'super-admin', 'direktur', 'keuangan']);
-    }
-
-    public static function canViewAny(): bool
-    {
-        return auth()->user()->hasRole(['admin', 'super-admin', 'direktur', 'keuangan']);
     }
 }
