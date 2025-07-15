@@ -29,7 +29,7 @@ class Task extends Model
         'order_index',
         'tags',
         'attachments',
-        'todo_items', // 👈 TAMBAHAN BARU
+        'todo_items',
     ];
 
     protected $casts = [
@@ -38,7 +38,7 @@ class Task extends Model
         'tanggal_selesai' => 'date',
         'tags' => 'array',
         'attachments' => 'array',
-        'todo_items' => 'array', // 👈 TAMBAHAN BARU
+        'todo_items' => 'array', 
     ];
 
     public function project(): BelongsTo

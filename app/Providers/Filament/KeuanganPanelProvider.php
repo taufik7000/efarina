@@ -29,6 +29,15 @@ class KeuanganPanelProvider extends PanelProvider
                 'primary' => Color::Amber,
             ])
             ->discoverResources(in: app_path('Filament/Keuangan/Resources'), for: 'App\\Filament\\Keuangan\\Resources')
+            ->resources([
+                // Shared Budget Resources untuk Direktur
+                \App\Filament\Resources\BudgetPeriodResource::class,
+                \App\Filament\Resources\BudgetPlanResource::class,
+                \App\Filament\Resources\BudgetCategoryResource::class,
+                \App\Filament\Resources\BudgetSubcategoryResource::class,
+                \App\Filament\Resources\BudgetAllocationResource::class,
+                \App\Filament\Resources\TransaksiResource::class,
+            ])
             ->discoverPages(in: app_path('Filament/Keuangan/Pages'), for: 'App\\Filament\\Keuangan\\Pages')
             ->pages([
                 Pages\Dashboard::class,

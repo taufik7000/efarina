@@ -101,4 +101,47 @@ class User extends Authenticatable
     {
         return $this->hasMany(TaskProgress::class);
     }
+
+    /**
+ * Budget plans yang dibuat oleh user ini
+ */
+public function createdBudgetPlans(): HasMany
+{
+    return $this->hasMany(BudgetPlan::class, 'created_by');
+}
+
+/**
+ * Budget plans yang di-approve oleh user ini
+ */
+public function approvedBudgetPlans(): HasMany
+{
+    return $this->hasMany(BudgetPlan::class, 'approved_by');
+}
+
+/**
+ * Budget categories yang dibuat oleh user ini
+ */
+public function createdBudgetCategories(): HasMany
+{
+    return $this->hasMany(BudgetCategory::class, 'created_by');
+}
+
+/**
+ * Transaksi yang dibuat oleh user ini
+ */
+public function createdTransaksis(): HasMany
+{
+    return $this->hasMany(Transaksi::class, 'created_by');
+}
+
+/**
+ * Transaksi yang di-approve oleh user ini
+ */
+public function approvedTransaksis(): HasMany
+{
+    return $this->hasMany(Transaksi::class, 'approved_by');
+}
+
+
+
 }
