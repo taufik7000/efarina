@@ -31,6 +31,30 @@ class Dashboard extends Page
             'overdue' => $myTasks->clone()->where('tanggal_deadline', '<', now())->where('status', '!=', 'done')->count(),
         ];
 
+        // Todo Items Statistics
+        $tasksWithTodos = Task::where('assigned_to', $user->id)
+            ->where('status', '!=', 'done')
+            ->whereNotNull('todo_items')
+            ->get();
+        
+        $todoStats = [
+            'total_items' => 0,
+            'completed_items' => 0,
+            'pending_items' => 0,
+            'tasks_with_todos' => 0,
+        ];
+
+        foreach ($tasksWithTodos as $task) {
+            $todoItems = $task->todo_items ?? [];
+            if (count($todoItems) > 0) {
+                $todoStats['tasks_with_todos']++;
+                $todoStats['total_items'] += count($todoItems);
+                $todoStats['completed_items'] += count(array_filter($todoItems, fn($item) => $item['completed']));
+            }
+        }
+        
+        $todoStats['pending_items'] = $todoStats['total_items'] - $todoStats['completed_items'];
+
         // My Projects Statistics
         $myProjects = Project::where(function ($query) use ($user) {
             $query->where('project_manager_id', $user->id)
@@ -101,11 +125,19 @@ class Dashboard extends Page
 
         return [
             'myTasksStats' => $myTasksStats,
+            'todoStats' => $todoStats,
             'myProjectsStats' => $myProjectsStats,
             'recentTasks' => $recentTasks,
             'upcomingDeadlines' => $upcomingDeadlines,
             'managedProjects' => $managedProjects,
             'recentActivity' => $recentActivity,
+        ];
+    }
+
+    public function getWidgets(): array
+    {
+        return [
+            \App\Filament\Team\Widgets\TodoItemsWidget::class,
         ];
     }
 }

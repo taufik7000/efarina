@@ -29,6 +29,7 @@ class Task extends Model
         'order_index',
         'tags',
         'attachments',
+        'todo_items', // 👈 TAMBAHAN BARU
     ];
 
     protected $casts = [
@@ -37,6 +38,7 @@ class Task extends Model
         'tanggal_selesai' => 'date',
         'tags' => 'array',
         'attachments' => 'array',
+        'todo_items' => 'array', // 👈 TAMBAHAN BARU
     ];
 
     public function project(): BelongsTo
@@ -135,5 +137,135 @@ class Task extends Model
         return $this->tanggal_deadline && 
                $this->tanggal_deadline->isPast() && 
                $this->status !== 'done';
+    }
+
+    // 👇 METHODS BARU UNTUK TODO ITEMS
+
+    /**
+     * Get todo items dengan format yang konsisten
+     */
+    public function getTodoItemsAttribute($value): array
+    {
+        if (!$value) {
+            return [];
+        }
+
+        $items = json_decode($value, true) ?? [];
+        
+        // Pastikan setiap item memiliki struktur yang benar
+        return array_map(function ($item, $index) {
+            return [
+                'id' => $item['id'] ?? $index,
+                'text' => $item['text'] ?? '',
+                'completed' => $item['completed'] ?? false,
+                'created_at' => $item['created_at'] ?? now()->toISOString(),
+                'completed_at' => $item['completed_at'] ?? null,
+                'completed_by' => $item['completed_by'] ?? null,
+            ];
+        }, $items, array_keys($items));
+    }
+
+    /**
+     * Update single todo item
+     */
+    public function updateTodoItem(int $itemId, bool $completed, ?string $note = null): void
+    {
+        $todoItems = $this->todo_items ?? [];
+        
+        // Cari item berdasarkan ID
+        $itemIndex = array_search($itemId, array_column($todoItems, 'id'));
+        
+        if ($itemIndex !== false) {
+            $todoItems[$itemIndex]['completed'] = $completed;
+            $todoItems[$itemIndex]['completed_at'] = $completed ? now()->toISOString() : null;
+            $todoItems[$itemIndex]['completed_by'] = $completed ? auth()->id() : null;
+            
+            $this->update(['todo_items' => $todoItems]);
+            
+            // Auto-update progress percentage
+            $this->updateProgressFromTodoItems();
+            
+            // Log progress update
+            if ($note) {
+                TaskProgress::create([
+                    'task_id' => $this->id,
+                    'user_id' => auth()->id(),
+                    'progress_note' => $note,
+                    'progress_percentage' => $this->progress_percentage,
+                    'status_change' => null,
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Add new todo item
+     */
+    public function addTodoItem(string $text): void
+    {
+        $todoItems = $this->todo_items ?? [];
+        $newId = empty($todoItems) ? 1 : max(array_column($todoItems, 'id')) + 1;
+        
+        $todoItems[] = [
+            'id' => $newId,
+            'text' => $text,
+            'completed' => false,
+            'created_at' => now()->toISOString(),
+            'completed_at' => null,
+            'completed_by' => null,
+        ];
+        
+        $this->update(['todo_items' => $todoItems]);
+    }
+
+    /**
+     * Remove todo item
+     */
+    public function removeTodoItem(int $itemId): void
+    {
+        $todoItems = $this->todo_items ?? [];
+        $todoItems = array_filter($todoItems, fn($item) => $item['id'] !== $itemId);
+        
+        $this->update(['todo_items' => array_values($todoItems)]);
+        $this->updateProgressFromTodoItems();
+    }
+
+    /**
+     * Update progress percentage berdasarkan todo items
+     */
+    public function updateProgressFromTodoItems(): void
+    {
+        $todoItems = $this->todo_items ?? [];
+        
+        if (empty($todoItems)) {
+            return;
+        }
+        
+        $totalItems = count($todoItems);
+        $completedItems = count(array_filter($todoItems, fn($item) => $item['completed']));
+        
+        $progressPercentage = $totalItems > 0 ? round(($completedItems / $totalItems) * 100) : 0;
+        
+        $this->update(['progress_percentage' => $progressPercentage]);
+        
+        // Update project progress
+        $this->project->updateProgress();
+    }
+
+    /**
+     * Get todo completion statistics
+     */
+    public function getTodoStatsAttribute(): array
+    {
+        $todoItems = $this->todo_items ?? [];
+        $total = count($todoItems);
+        $completed = count(array_filter($todoItems, fn($item) => $item['completed']));
+        
+        return [
+            'total' => $total,
+            'completed' => $completed,
+            'remaining' => $total - $completed,
+            'percentage' => $total > 0 ? round(($completed / $total) * 100) : 0,
+        ];
     }
 }

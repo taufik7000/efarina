@@ -70,6 +70,60 @@
                 </div>
             </div>
 
+            {{-- Tambahkan bagian ini setelah existing statistics cards di dashboard --}}
+
+{{-- Todo Items Stats Card --}}
+<div class="group p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-xl hover:-translate-y-2 hover:border-purple-200 dark:hover:border-purple-600">
+    <div class="flex items-start justify-between mb-4">
+        <div class="flex-1">
+            <p class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Todo Items</p>
+            <div class="flex items-baseline space-x-2">
+                <p class="text-4xl font-bold text-gray-900 dark:text-white">{{ $todoStats['total_items'] }}</p>
+                <span class="text-sm text-gray-500 dark:text-gray-400">items</span>
+            </div>
+        </div>
+        <div class="p-4 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg transform group-hover:scale-110 transition-transform duration-300">
+            <x-heroicon-o-clipboard-document-list class="w-7 h-7 text-white" />
+        </div>
+    </div>
+    
+    <div class="space-y-3">
+        <div class="flex items-center justify-between">
+            <span class="flex items-center text-sm font-medium text-green-600 dark:text-green-400">
+                <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                Completed
+            </span>
+            <span class="text-sm font-bold text-green-700 dark:text-green-300">{{ $todoStats['completed_items'] }}</span>
+        </div>
+        <div class="flex items-center justify-between">
+            <span class="flex items-center text-sm font-medium text-orange-600 dark:text-orange-400">
+                <div class="w-2 h-2 bg-orange-500 rounded-full mr-2"></div>
+                Pending
+            </span>
+            <span class="text-sm font-bold text-orange-700 dark:text-orange-300">{{ $todoStats['pending_items'] }}</span>
+        </div>
+        <div class="flex items-center justify-between">
+            <span class="flex items-center text-sm font-medium text-blue-600 dark:text-blue-400">
+                <div class="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                Tasks with Todos
+            </span>
+            <span class="text-sm font-bold text-blue-700 dark:text-blue-300">{{ $todoStats['tasks_with_todos'] }}</span>
+        </div>
+        @if($todoStats['total_items'] > 0)
+            <div class="pt-2">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-xs text-gray-500 dark:text-gray-400">Progress</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ $todoStats['total_items'] > 0 ? round(($todoStats['completed_items'] / $todoStats['total_items']) * 100) : 0 }}%</span>
+                </div>
+                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                    <div class="bg-purple-500 h-2 rounded-full transition-all duration-1000 ease-out" 
+                         style="width: {{ $todoStats['total_items'] > 0 ? round(($todoStats['completed_items'] / $todoStats['total_items']) * 100) : 0 }}%"></div>
+                </div>
+            </div>
+        @endif
+    </div>
+</div>
+
             {{-- My Projects Stats --}}
             <div class="group p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-xl hover:-translate-y-2 hover:border-emerald-200 dark:hover:border-emerald-600">
                 <div class="flex items-start justify-between mb-4">

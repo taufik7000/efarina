@@ -110,6 +110,34 @@ class TaskResource extends Resource
                     ])
                     ->columns(2),
 
+                Forms\Components\Section::make('Todo Items')
+                    ->schema([
+                        Forms\Components\Repeater::make('todo_items')
+                            ->label('Todo Checklist')
+                            ->schema([
+                                Forms\Components\TextInput::make('text')
+                                    ->label('Todo Item')
+                                    ->required()
+                                    ->maxLength(255),
+                                Forms\Components\Checkbox::make('completed')
+                                    ->label('Completed')
+                                    ->default(false),
+                            ])
+                            ->columns(2)
+                            ->addActionLabel('Add Todo Item')
+                            ->defaultItems(0)
+                            ->collapsible()
+                            ->reorderable()
+                            ->mutateRelationshipDataBeforeCreateUsing(function (array $data): array {
+                                $data['id'] = time() + rand(1, 1000);
+                                $data['created_at'] = now()->toISOString();
+                                $data['completed_at'] = null;
+                                $data['completed_by'] = null;
+                                return $data;
+                            }),
+                    ])
+                    ->collapsible(),
+
                 Forms\Components\Section::make('Additional Info')
                     ->schema([
                         Forms\Components\TagsInput::make('tags')
@@ -121,7 +149,8 @@ class TaskResource extends Resource
                             ->multiple()
                             ->directory('task-attachments')
                             ->preserveFilenames(),
-                    ]),
+                    ])
+                    ->collapsible(),
             ]);
     }
 
@@ -163,6 +192,11 @@ class TaskResource extends Resource
                 Tables\Columns\ViewColumn::make('progress_percentage')
                     ->label('Progress')
                     ->view('filament.team.components.progress-bar'),
+
+                // 👇 KOLOM BARU UNTUK TODO STATS
+                Tables\Columns\ViewColumn::make('todo_stats')
+                    ->label('Todo')
+                    ->view('filament.team.components.todo-stats'),
 
                 Tables\Columns\TextColumn::make('tanggal_deadline')
                     ->label('Deadline')
@@ -245,7 +279,7 @@ class TaskResource extends Resource
                         $record->updateStatus($data['status'], $data['note']);
                         
                         if (isset($data['hours_worked'])) {
-                            $record->taskProgress()->create([
+                            $record->progressUpdates()->create([
                                 'user_id' => auth()->id(),
                                 'progress_note' => $data['note'],
                                 'progress_percentage' => $record->progress_percentage,
