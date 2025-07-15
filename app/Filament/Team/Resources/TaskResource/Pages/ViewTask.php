@@ -3,106 +3,91 @@
 namespace App\Filament\Team\Resources\TaskResource\Pages;
 
 use App\Filament\Team\Resources\TaskResource;
-use App\Models\TaskComment;
 use Filament\Actions;
-use Filament\Resources\Pages\ViewRecord;
 use Filament\Forms;
 use Filament\Notifications\Notification;
+use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Support\Facades\Schema;
 
 class ViewTask extends ViewRecord
 {
     protected static string $resource = TaskResource::class;
     
-    // Gunakan custom view
+    // Gunakan custom view yang telah Anda buat
     protected static string $view = 'filament.team.pages.view-task';
 
-    // Properties untuk forms
+    // Properti untuk forms yang di-binding dari view
     public $newComment = '';
     public $newTodoItem = '';
 
-    // Check if current user can edit todos
-    public function canEditTodos(): bool
+    /**
+     * Helper method untuk memeriksa apakah pengguna saat ini dapat menambahkan komentar.
+     * Method ini memanggil 'addComment' dari TaskPolicy.
+     */
+    public function canAddComment(): bool
     {
-        return $this->record->assigned_to === auth()->id() || 
-               $this->record->created_by === auth()->id() ||
-               $this->record->project->project_manager_id === auth()->id();
+        // Menggunakan gate Laravel untuk memeriksa policy 'addComment' pada record (tugas) saat ini.
+        return auth()->user()->can('addComment', $this->record);
     }
 
-    // Check if todo items feature is available
+    /**
+     * Helper method untuk memeriksa apakah pengguna dapat mengedit to-do item.
+     * Logika ini bisa disesuaikan atau dipindahkan ke TaskPolicy jika diperlukan.
+     */
+    public function canEditTodos(): bool
+    {
+        // Menggunakan policy 'update' sebagai acuan, karena yang bisa mengedit tugas
+        // seharusnya juga bisa mengedit to-do list di dalamnya.
+        return auth()->user()->can('update', $this->record);
+    }
+
+    /**
+     * Helper method untuk memeriksa apakah fitur to-do list (kolom 'todo_items')
+     * sudah ada di tabel tasks.
+     */
     public function hasTodoFeature(): bool
     {
         return Schema::hasColumn('tasks', 'todo_items');
     }
 
+    /**
+     * Mendefinisikan action yang muncul di header halaman.
+     * Kita akan biarkan kosong agar semua aksi berada di dalam view (tombol, dll).
+     */
     protected function getHeaderActions(): array
     {
-        $actions = [
-            Actions\Action::make('add_comment')
-                ->label('Add Comment')
-                ->icon('heroicon-o-chat-bubble-left')
-                ->form([
-                    Forms\Components\Textarea::make('comment')
-                        ->label('Comment')
-                        ->required()
-                        ->rows(3),
-                ])
-                ->action(function (array $data): void {
-                    $this->record->addComment($data['comment']);
-                    
-                    Notification::make()
-                        ->title('Comment added successfully!')
-                        ->success()
-                        ->send();
-                    
-                    $this->record = $this->record->fresh(['comments.user']);
-                }),
+        return [
+            // Kosongkan array ini agar tidak ada tombol duplikat di header.
+            // Sebagai alternatif, Anda bisa menaruh Actions\EditAction::make() di sini.
+            // Actions\EditAction::make()->visible(fn() => auth()->user()->can('update', $this->record)),
         ];
-
-        // Only add todo action if feature is available
-        if ($this->hasTodoFeature() && $this->canEditTodos()) {
-            $actions[] = Actions\Action::make('add_todo_item')
-                ->label('Add Todo Item')
-                ->icon('heroicon-o-plus-circle')
-                ->form([
-                    Forms\Components\TextInput::make('text')
-                        ->label('Todo Item')
-                        ->required()
-                        ->maxLength(255),
-                ])
-                ->action(function (array $data): void {
-                    $this->record->addTodoItem($data['text']);
-                    
-                    Notification::make()
-                        ->title('Todo item added successfully!')
-                        ->success()
-                        ->send();
-                    
-                    $this->record = $this->record->fresh();
-                });
-        }
-
-        return $actions;
     }
 
-    // Livewire methods untuk todo management
-    public function toggleTodoItem($itemId)
+    // --- Livewire methods untuk To-do Management ---
+
+    public function addTodoItemFromBlade()
     {
-        if (!$this->hasTodoFeature()) {
-            Notification::make()
-                ->title('Feature Not Available')
-                ->body('Todo items feature is not available yet.')
-                ->warning()
-                ->send();
+        if (!$this->canEditTodos()) {
+            Notification::make()->title('Access Denied')->body('You are not authorized to add to-do items.')->danger()->send();
             return;
         }
 
+        $this->validate(['newTodoItem' => 'required|string|max:255']);
+
+        try {
+            $this->record->addTodoItem($this->newTodoItem);
+            $this->newTodoItem = ''; // Reset input field
+            Notification::make()->title('To-do item added!')->success()->send();
+            $this->record = $this->record->fresh(); // Refresh data
+        } catch (\Exception $e) {
+            Notification::make()->title('Error')->body('Failed to add to-do item: ' . $e->getMessage())->danger()->send();
+        }
+    }
+
+    public function toggleTodoItem($itemId)
+    {
         if (!$this->canEditTodos()) {
-            Notification::make()
-                ->title('Access Denied')
-                ->body('You are not authorized to edit todo items for this task.')
-                ->danger()
-                ->send();
+            Notification::make()->title('Access Denied')->body('You are not authorized to edit to-do items.')->danger()->send();
             return;
         }
 
@@ -112,121 +97,59 @@ class ViewTask extends ViewRecord
             
             if ($itemIndex !== false) {
                 $currentStatus = $todoItems[$itemIndex]['completed'] ?? false;
-                $this->record->updateTodoItem($itemId, !$currentStatus, 'Todo item ' . ($currentStatus ? 'unchecked' : 'checked'));
-                
-                Notification::make()
-                    ->title('Todo item updated!')
-                    ->success()
-                    ->send();
-                
+                $this->record->updateTodoItem($itemId, !$currentStatus, 'To-do item ' . ($currentStatus ? 'unchecked' : 'checked'));
+                Notification::make()->title('To-do item updated!')->success()->send();
                 $this->record = $this->record->fresh();
             }
         } catch (\Exception $e) {
-            Notification::make()
-                ->title('Error')
-                ->body('Failed to update todo item: ' . $e->getMessage())
-                ->danger()
-                ->send();
+            Notification::make()->title('Error')->body('Failed to update to-do item: ' . $e->getMessage())->danger()->send();
         }
     }
 
     public function removeTodoItem($itemId)
     {
-        if (!$this->hasTodoFeature()) {
-            Notification::make()
-                ->title('Feature Not Available')
-                ->body('Todo items feature is not available yet.')
-                ->warning()
-                ->send();
-            return;
-        }
-
         if (!$this->canEditTodos()) {
-            Notification::make()
-                ->title('Access Denied')
-                ->body('You are not authorized to remove todo items for this task.')
-                ->danger()
-                ->send();
+            Notification::make()->title('Access Denied')->body('You are not authorized to remove to-do items.')->danger()->send();
             return;
         }
 
         try {
             $this->record->removeTodoItem($itemId);
-            
-            Notification::make()
-                ->title('Todo item removed!')
-                ->success()
-                ->send();
-            
+            Notification::make()->title('To-do item removed!')->success()->send();
             $this->record = $this->record->fresh();
         } catch (\Exception $e) {
-            Notification::make()
-                ->title('Error')
-                ->body('Failed to remove todo item: ' . $e->getMessage())
-                ->danger()
-                ->send();
+            Notification::make()->title('Error')->body('Failed to remove to-do item: ' . $e->getMessage())->danger()->send();
         }
     }
 
-    public function addTodoItemFromBlade()
-    {
-        if (!$this->hasTodoFeature()) {
-            Notification::make()
-                ->title('Feature Not Available')
-                ->body('Todo items feature is not available yet.')
-                ->warning()
-                ->send();
-            return;
-        }
+    // --- Livewire method untuk Add Comment dari Blade ---
 
-        if (!$this->canEditTodos()) {
-            Notification::make()
-                ->title('Access Denied')
-                ->body('You are not authorized to add todo items to this task.')
-                ->danger()
-                ->send();
-            return;
-        }
-
-        $this->validate([
-            'newTodoItem' => 'required|string|max:255',
-        ]);
-
-        try {
-            $this->record->addTodoItem($this->newTodoItem);
-            $this->newTodoItem = '';
-
-            Notification::make()
-                ->title('Todo item added!')
-                ->success()
-                ->send();
-
-            $this->record = $this->record->fresh();
-        } catch (\Exception $e) {
-            Notification::make()
-                ->title('Error')
-                ->body('Failed to add todo item: ' . $e->getMessage())
-                ->danger()
-                ->send();
-        }
-    }
-
-    // Livewire method untuk add comment dari blade
     public function addCommentFromBlade()
     {
+        // PENTING: Pengecekan izin sesuai policy yang telah kita buat.
+        if (!$this->canAddComment()) {
+            Notification::make()
+                ->title('Access Denied')
+                ->body('You are not authorized to add comments to this task.')
+                ->danger()
+                ->send();
+            return;
+        }
+
         $this->validate([
             'newComment' => 'required|string|min:1',
         ]);
 
         try {
             $this->record->addComment($this->newComment);
-            $this->newComment = '';
+            $this->newComment = ''; // Reset textarea
 
             Notification::make()
                 ->title('Comment added successfully!')
                 ->success()
                 ->send();
 
+            // Refresh data tugas beserta relasi comments dan user yang berkomentar.
             $this->record = $this->record->fresh(['comments.user']);
         } catch (\Exception $e) {
             Notification::make()

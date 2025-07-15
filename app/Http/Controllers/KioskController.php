@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\AbsensiBerhasil; // <-- Penting: Import event yang akan disiarkan
 use App\Models\Kehadiran;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,11 +17,16 @@ class KioskController extends Controller
 {
     /**
      * Menampilkan halaman Kiosk utama.
-     * Tidak ada data yang perlu dikirim karena daftar kehadiran dihapus.
+     * Mengirimkan data kehadiran hari ini agar daftar tidak kosong saat halaman pertama kali dimuat.
      */
     public function tampilkanKiosk()
     {
-        return view('kiosk.tampilan');
+        $kehadiranHariIni = Kehadiran::whereDate('tanggal', today('Asia/Jakarta'))
+                                    ->with('pengguna') // Eager load untuk performa
+                                    ->orderBy('jam_masuk', 'asc')
+                                    ->get();
+
+        return view('kiosk.tampilan', ['kehadiranHariIni' => $kehadiranHariIni]);
     }
 
     /**
@@ -51,7 +58,7 @@ class KioskController extends Controller
 
     /**
      * Memvalidasi token QR dan mencatat absensi karyawan.
-     * Logika event untuk real-time update telah dihapus.
+     * Setelah absensi berhasil, fungsi ini akan menyiarkan event ke channel 'kiosk'.
      */
     public function validasiAbsensi(Request $request)
     {
@@ -89,6 +96,10 @@ class KioskController extends Controller
                     'status' => $this->tentukanStatusKehadiran($now),
                     'metode_absen' => 'qrcode',
                 ]);
+
+                // Menyiarkan event 'AbsensiBerhasil' ke channel publik 'kiosk'
+                broadcast(new AbsensiBerhasil($pengguna, $jamMasuk))->toOthers();
+
                 return response()->json(['status' => 'success', 'pesan' => "Absen Masuk Berhasil pada {$jamMasuk}!"]);
             }
             
@@ -114,18 +125,35 @@ class KioskController extends Controller
     
     /**
      * Tentukan status kehadiran berdasarkan jam masuk.
-     * Fungsi helper ini tetap diperlukan untuk logika absensi.
      */
     private function tentukanStatusKehadiran(Carbon $jamMasuk): string
     {
-        // Jam masuk kantor ditetapkan pukul 08:00
+        // Jam masuk kantor ditetapkan pukul 08:15
         $jamKerja = Carbon::createFromTime(8, 15, 0, 'Asia/Jakarta');
 
         if ($jamMasuk->lte($jamKerja)) {
             return 'Tepat Waktu';
         } else {
-            // Jika lebih dari jam 08:00, dianggap Terlambat
             return 'Terlambat';
         }
+    }
+
+    /**
+     * Endpoint opsional untuk me-refresh daftar kehadiran via HTTP request jika diperlukan.
+     */
+    public function getKehadiranJson()
+    {
+        $kehadiran = Kehadiran::whereDate('tanggal', today('Asia/Jakarta'))
+            ->with('pengguna:id,name') // Hanya ambil ID dan nama untuk efisiensi
+            ->orderBy('jam_masuk', 'desc')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'nama' => $item->pengguna->name,
+                    'jam_masuk' => Carbon::parse($item->jam_masuk)->format('H:i:s'),
+                ];
+            });
+
+        return response()->json($kehadiran);
     }
 }

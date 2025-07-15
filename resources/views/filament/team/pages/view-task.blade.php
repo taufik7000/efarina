@@ -3,7 +3,8 @@
     <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
         {{-- Left Column: Task & Todo Details --}}
-        <div class="lg:col-span-3 space-y-6">
+        {{-- DIUBAH: dari lg:col-span-3 menjadi lg:col-span-2 --}}
+        <div class="lg:col-span-2 space-y-6"> 
             {{-- Task Details Card --}}
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -212,7 +213,8 @@
         </div>
 
         {{-- Right Column: Comments --}}
-        <div class="lg:col-span-2">
+        {{-- DIUBAH: dari lg:col-span-2 menjadi lg:col-span-3 --}}
+        <div class="lg:col-span-3"> 
             <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
                 {{-- Header --}}
                 <div class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
@@ -227,18 +229,20 @@
                                     {{ $record->comments->count() }} {{ Str::plural('comment', $record->comments->count()) }}
                                 </p>
                             </div>
-                        </div>
-
+                            </div>
+                        @if($this->canAddComment())
                         <button type="button"
                                 onclick="toggleCommentForm()"
                                 class="group inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition-all duration-200 hover:scale-105 shadow-lg">
                             <x-heroicon-o-plus class="w-4 h-4 mr-2 group-hover:rotate-90 transition-transform duration-200"/>
                             Add Comment
                         </button>
+                        @endif
                     </div>
                 </div>
 
                 {{-- Add Comment Form --}}
+                @if($this->canAddComment())
                 <div id="comment-form" style="display: none;" class="p-6 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600">
                     <div class="space-y-4">
                         <div>
@@ -283,7 +287,7 @@
                         </div>
                     </div>
                 </div>
-
+                 @endif
                 {{-- Comments List --}}
                 <div class="divide-y divide-gray-100 dark:divide-gray-700">
                     @forelse($record->comments as $comment)

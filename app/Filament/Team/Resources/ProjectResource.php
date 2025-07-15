@@ -204,26 +204,73 @@ class ProjectResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
+                
+                // Edit action hanya untuk project manager
+                Tables\Actions\EditAction::make()
+                    ->visible(fn ($record) => self::canEdit($record)),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->visible(fn () => auth()->user()->hasRole(['admin', 'super-admin'])), // Hanya admin yang bisa bulk delete
                 ]),
             ])
             ->defaultSort('created_at', 'desc');
     }
 
-    public static function getEloquentQuery(): Builder
+    // HAPUS METHOD getEloquentQuery() AGAR SEMUA USER BISA MELIHAT SEMUA PROJECT
+    // public static function getEloquentQuery(): Builder
+    // {
+    //     // Method ini dihapus agar semua user bisa melihat semua project
+    // }
+
+    /**
+     * Method untuk mengecek apakah user bisa mengedit project
+     */
+    public static function canEdit($record): bool
     {
         $user = auth()->user();
         
-        return parent::getEloquentQuery()
-            ->where(function ($query) use ($user) {
-                $query->where('project_manager_id', $user->id)
-                      ->orWhereJsonContains('team_members', $user->id)
-                      ->orWhere('created_by', $user->id ?? 0);
-            });
+        // Admin dan super-admin bisa edit semua
+        if ($user->hasRole(['admin', 'super-admin'])) {
+            return true;
+        }
+        
+        // Project manager bisa edit project mereka
+        if ($record->project_manager_id === $user->id) {
+            return true;
+        }
+        
+        // User yang membuat project bisa edit
+        if ($record->created_by === $user->id) {
+            return true;
+        }
+        
+        return false;
+    }
+
+    /**
+     * Method untuk mengecek apakah user bisa membuat project baru
+     */
+    public static function canCreate(): bool
+    {
+        $user = auth()->user();
+        
+        // Admin, super-admin, dan role tertentu bisa membuat project
+        return $user->hasRole(['admin', 'super-admin', 'direktur', 'team']);
+    }
+
+    /**
+     * Method untuk mengecek apakah user bisa menghapus project
+     */
+    public static function canDelete($record): bool
+    {
+        $user = auth()->user();
+        
+        // Hanya admin, super-admin, dan project manager yang bisa hapus
+        return $user->hasRole(['admin', 'super-admin']) || 
+               $record->project_manager_id === $user->id ||
+               $record->created_by === $user->id;
     }
 
     public static function getRelations(): array

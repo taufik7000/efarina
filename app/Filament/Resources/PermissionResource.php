@@ -1,21 +1,22 @@
 <?php
+
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\RoleResource\Pages;
+use App\Filament\Resources\PermissionResource\Pages;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission; // <-- Pastikan menggunakan model dari Spatie
 
-class RoleResource extends Resource
+class PermissionResource extends Resource
 {
-    protected static ?string $model = Role::class;
+    protected static ?string $model = Permission::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-finger-print';
+    protected static ?string $navigationIcon = 'heroicon-o-key';
     protected static ?string $navigationGroup = 'Settings';
-    protected static ?int $navigationSort = 2; // Urutkan setelah User
+    protected static ?int $navigationSort = 3; // Urutkan di bawah User dan Role
 
     public static function form(Form $form): Form
     {
@@ -24,21 +25,13 @@ class RoleResource extends Resource
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->unique(ignoreRecord: true)
-                    ->maxLength(255),
-                
-                // --- PERUBAHAN DI SINI: Aktifkan dan atur select untuk permissions ---
-                Forms\Components\Select::make('permissions')
-                    ->multiple()
-                    ->relationship('permissions', 'name') // 'permissions' adalah nama relasi, 'name' adalah kolom yang ditampilkan
-                    ->searchable()
-                    ->preload() // preload() memuat opsi saat halaman dibuka, bagus untuk performa
-                    ->label('Permissions'),
+                    ->maxLength(255)
+                    ->label('Permission Name'),
             ]);
     }
 
     public static function table(Table $table): Table
     {
-        // Bagian ini tidak perlu diubah, sudah benar.
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('id')->sortable(),
@@ -64,9 +57,9 @@ class RoleResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListRoles::route('/'),
-            'create' => Pages\CreateRole::route('/create'),
-            'edit' => Pages\EditRole::route('/{record}/edit'),
+            'index' => Pages\ListPermissions::route('/'),
+            'create' => Pages\CreatePermission::route('/create'),
+            'edit' => Pages\EditPermission::route('/{record}/edit'),
         ];
     }
 }
