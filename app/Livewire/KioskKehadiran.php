@@ -18,7 +18,7 @@ class KioskKehadiran extends Component
         // Leaderboard untuk karyawan yang hadir tepat waktu (sebelum 08:00)
         $leaderboard = Kehadiran::whereDate('tanggal', today('Asia/Jakarta'))
                                 ->with('pengguna:id,name')
-                                ->whereTime('jam_masuk', '<', '22:15:00')
+                                ->whereTime('jam_masuk', '<', '21:15:00')
                                 ->orderBy('jam_masuk', 'asc')
                                 ->take(10) // Top 10 karyawan tercepat
                                 ->get();

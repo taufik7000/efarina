@@ -1,330 +1,161 @@
-<x-filament-panels::page>
-    {{-- Tambahkan meta tag CSRF --}}
-    @push('styles')
-        <meta name="csrf-token" content="{{ csrf_token() }}">
-    @endpush
+<div> {{-- Elemen pembungkus utama untuk Livewire --}}
+    <x-filament-panels::page>
+        @push('styles')
+            <meta name="csrf-token" content="{{ csrf_token() }}">
+        @endpush
 
-    <div class="p-6 bg-white rounded-xl shadow-sm dark:bg-gray-800">
-        <div id="scanner-container" style="width: 100%; max-width: 500px; margin: auto;">
-            <div id="qr-reader" style="width: 100%;"></div>
+        <div class="p-6 bg-white rounded-xl shadow-sm dark:bg-gray-800">
+            <div id="scanner-container" style="width: 100%; max-width: 500px; margin: auto; position: relative; border-radius: 12px; overflow: hidden; background-color: #000;">
+                
+                {{-- Area untuk library html5-qrcode merender video kamera belakang --}}
+                <div id="qr-reader" style="width: 100%; border: none;"></div>
+
+                {{-- Video untuk menampilkan kamera depan saat selfie, awalnya tersembunyi --}}
+                <video id="selfie-camera" playsinline style="width: 100%; height: auto; display: none;"></video>
+
+                {{-- Overlay untuk countdown saat selfie --}}
+                <div id="countdown-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); color: white; display: none; justify-content: center; align-items: center; flex-direction: column; font-size: 2em; z-index: 10;">
+                    <p>Hadap Kamera Depan</p>
+                    <p id="countdown-timer" style="font-size: 3em; font-weight: bold;"></p>
+                </div>
+
+                {{-- Canvas tersembunyi untuk proses pengambilan foto --}}
+                <canvas id="photo-canvas" style="display: none;"></canvas>
+            </div>
+
+            <div id="hasil-scan" class="mt-4 text-center font-semibold"></div>
+
+            <div id="start-button-container" class="flex justify-center mt-4">
+                <x-filament::button id="start-scan-btn">
+                    Mulai Pindai Absensi
+                </x-filament::button>
+            </div>
         </div>
 
-        <div id="hasil-scan" class="mt-4 text-center font-semibold"></div>
+        <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+        <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const qrReaderElement = document.getElementById('qr-reader');
+            const selfieVideoElement = document.getElementById('selfie-camera');
+            const startButton = document.getElementById('start-scan-btn');
+            const startButtonContainer = document.getElementById('start-button-container');
+            const resultElement = document.getElementById('hasil-scan');
+            const countdownOverlay = document.getElementById('countdown-overlay');
+            const countdownTimer = document.getElementById('countdown-timer');
 
-        <div class="flex justify-center mt-4">
-            <x-filament::button id="start-scan-btn">
-                Mulai Pindai
-            </x-filament::button>
-        </div>
-    </div>
+            const html5QrCode = new Html5Qrcode("qr-reader");
 
-    {{-- Memuat pustaka pemindai QR dari CDN --}}
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-
-    {{-- Masukkan JavaScript yang sudah diperbaiki dari artifact sebelumnya --}}
-    <script>
-  document.addEventListener('DOMContentLoaded', function () {
-    const readerElement = document.getElementById('qr-reader');
-    const resultElement = document.getElementById('hasil-scan');
-    const startButton = document.getElementById('start-scan-btn');
-    let html5QrCode;
-    let isScanning = false;
-
-    // Helper function untuk menampilkan pesan dengan styling
-    function showMessage(message, type = 'info') {
-        const colors = {
-            success: 'text-green-500',
-            error: 'text-red-500',
-            warning: 'text-yellow-500',
-            info: 'text-blue-500'
-        };
-        resultElement.innerHTML = `<span class="${colors[type]}">${message}</span>`;
-    }
-
-    // Helper function untuk log error ke console
-    function logError(context, error, additionalInfo = {}) {
-        console.group(`🔴 Error in ${context}`);
-        console.error('Error:', error);
-        console.log('Error Name:', error.name);
-        console.log('Error Message:', error.message);
-        console.log('Additional Info:', additionalInfo);
-        console.log('Timestamp:', new Date().toISOString());
-        console.groupEnd();
-    }
-
-    // Fungsi untuk cek dukungan kamera
-    async function checkCameraSupport() {
-        console.log('🔍 Checking camera support...');
-        
-        // Cek apakah browser mendukung getUserMedia
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            throw new Error('Browser tidak mendukung akses kamera');
-        }
-
-        // Cek apakah dalam HTTPS atau localhost
-        const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-        if (!isSecure) {
-            console.warn('⚠️ Kamera mungkin tidak bekerja di HTTP. Gunakan HTTPS atau localhost.');
-        }
-
-        // Cek daftar kamera yang tersedia
-        try {
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const cameras = devices.filter(device => device.kind === 'videoinput');
-            
-            console.log('📷 Available cameras:', cameras.length);
-            cameras.forEach((camera, index) => {
-                console.log(`Camera ${index + 1}:`, {
-                    label: camera.label || 'Unknown camera',
-                    deviceId: camera.deviceId
-                });
-            });
-
-            if (cameras.length === 0) {
-                throw new Error('Tidak ada kamera yang terdeteksi pada perangkat ini');
-            }
-
-            return cameras;
-        } catch (error) {
-            console.error('Error enumerating devices:', error);
-            throw new Error('Gagal mengakses daftar kamera');
-        }
-    }
-
-    // Fungsi untuk request permission kamera
-    async function requestCameraPermission() {
-        console.log('🔐 Requesting camera permission...');
-        
-        try {
-            // Request permission dengan constraints yang lebih flexible
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: { ideal: "environment" }, // Prefer rear camera
-                    width: { ideal: 640 },
-                    height: { ideal: 480 }
+            const showMessage = (message, type = 'info') => {
+                const colors = { success: 'text-green-500', error: 'text-red-500', info: 'text-blue-500' };
+                resultElement.innerHTML = `<span class="${colors[type]}">${message}</span>`;
+                if (type === 'error' && startButtonContainer) {
+                    startButtonContainer.style.display = 'flex';
                 }
-            });
+            };
 
-            console.log('✅ Camera permission granted');
-            
-            // Stop stream karena kita hanya test permission
-            stream.getTracks().forEach(track => track.stop());
-            
-            return true;
-        } catch (error) {
-            console.error('❌ Camera permission denied or failed:', error);
-            throw error;
-        }
-    }
+            const getCsrfToken = () => document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-    // Helper function untuk mendapatkan CSRF token
-    function getCsrfToken() {
-        const metaToken = document.querySelector('meta[name="csrf-token"]');
-        if (metaToken) {
-            return metaToken.getAttribute('content');
-        }
-        
-        const cookieMatch = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
-        if (cookieMatch) {
-            return decodeURIComponent(cookieMatch[1]);
-        }
-        
-        return null;
-    }
+            const onScanSuccess = (decodedText, decodedResult) => {
+                html5QrCode.stop().then(() => {
+                    qrReaderElement.style.display = 'none';
+                    takeSelfie(decodedText);
+                }).catch(err => console.error("Gagal menghentikan scanner.", err));
+            };
 
-    // Fungsi saat QR berhasil di-scan
-    async function onScanSuccess(decodedText, decodedResult) {
-        if (isScanning) return; // Prevent multiple scans
-        isScanning = true;
-
-        try {
-            console.log('🎯 QR Code detected:', decodedText.substring(0, 15) + '...');
-            
-            // Stop scanner
-            await html5QrCode.stop();
-            showMessage('Memvalidasi token...', 'info');
-
-            // Validasi token format
-            if (!decodedText || decodedText.length < 10) {
-                showMessage('QR Code tidak valid. Format token salah.', 'error');
-                setTimeout(restartScanner, 3000);
-                return;
-            }
-
-            // Dapatkan CSRF token
-            const csrfToken = getCsrfToken();
-            if (!csrfToken) {
-                showMessage('Token keamanan tidak ditemukan. Silakan refresh halaman.', 'error');
-                return;
-            }
-
-            // Kirim request ke server
-            const response = await fetch(window.location.origin + '/api/absensi/validasi', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                },
-                body: JSON.stringify({ token: decodedText }),
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                showMessage(data.pesan || 'Absensi berhasil!', 'success');
-                setTimeout(() => window.location.reload(), 2000);
-            } else {
-                const pesanError = data.pesan || 'Terjadi kesalahan pada server.';
-                showMessage(pesanError, 'error');
-                setTimeout(restartScanner, 3000);
-            }
-
-        } catch (error) {
-            let errorMessage = 'Terjadi kesalahan tidak dikenal.';
-            
-            if (error.name === 'TypeError' && error.message.includes('fetch')) {
-                errorMessage = 'Gagal terhubung ke server. Periksa koneksi internet.';
-            } else if (error.message) {
-                errorMessage = error.message;
-            }
-
-            showMessage(errorMessage, 'error');
-            setTimeout(restartScanner, 3000);
-        } finally {
-            isScanning = false;
-        }
-    }
-
-    // Fungsi saat QR scan gagal (ini akan dipanggil sangat sering, jadi kita filter)
-    function onScanFailure(error) {
-        // Hanya log error yang penting
-        if (!error.includes('QR code parse error') && !error.includes('No QR code found')) {
-            console.warn('QR Scan Warning:', error);
-        }
-    }
-
-    // Fungsi untuk restart scanner
-    function restartScanner() {
-        startButton.style.display = 'block';
-        showMessage('Siap untuk scan ulang', 'info');
-    }
-
-    // Fungsi untuk start scanning dengan berbagai fallback
-    async function startScanning() {
-        try {
-            showMessage('Mengecek dukungan kamera...', 'info');
-            
-            // 1. Cek dukungan kamera
-            await checkCameraSupport();
-            
-            showMessage('Meminta izin kamera...', 'info');
-            
-            // 2. Request permission
-            await requestCameraPermission();
-            
-            showMessage('Memulai scanner...', 'info');
-            
-            // 3. Initialize HTML5-QRCode
-            html5QrCode = new Html5Qrcode("qr-reader");
-            
-            // 4. Konfigurasi scanning yang lebih robust
-            const qrCodeSuccessCallback = onScanSuccess;
-            const qrCodeErrorCallback = onScanFailure;
-            
-            // 5. Try different camera configurations
-            const configs = [
-                // Config 1: Environment camera (rear camera)
-                {
-                    constraints: { facingMode: "environment" },
-                    config: { fps: 10, qrbox: { width: 250, height: 250 } }
-                },
-                // Config 2: Any camera
-                {
-                    constraints: { facingMode: "user" },
-                    config: { fps: 10, qrbox: { width: 250, height: 250 } }
-                },
-                // Config 3: Default camera dengan constraint minimal
-                {
-                    constraints: true,
-                    config: { fps: 5, qrbox: 200 }
-                }
-            ];
-
-            let scannerStarted = false;
-
-            for (let i = 0; i < configs.length && !scannerStarted; i++) {
+            const takeSelfie = async (decodedText) => {
+                showMessage('Scan berhasil! Siap untuk foto...', 'info');
                 try {
-                    console.log(`🔄 Trying camera config ${i + 1}:`, configs[i]);
-                    
-                    await html5QrCode.start(
-                        configs[i].constraints,
-                        configs[i].config,
-                        qrCodeSuccessCallback,
-                        qrCodeErrorCallback
-                    );
-                    
-                    scannerStarted = true;
-                    console.log(`✅ Scanner started with config ${i + 1}`);
-                    showMessage('Arahkan kamera ke QR Code di Kiosk.', 'info');
-                    startButton.style.display = 'none';
-                    
-                } catch (error) {
-                    console.warn(`⚠️ Config ${i + 1} failed:`, error.message);
-                    if (i === configs.length - 1) {
-                        throw error; // Throw error hanya jika semua config gagal
-                    }
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                    selfieVideoElement.srcObject = stream;
+                    selfieVideoElement.style.display = 'block';
+                    await selfieVideoElement.play();
+
+                    countdownOverlay.style.display = 'flex';
+                    let countdown = 3;
+                    countdownTimer.textContent = countdown;
+
+                    const timer = setInterval(async () => {
+                        countdown--;
+                        countdownTimer.textContent = countdown > 0 ? countdown : '📸';
+                        if (countdown <= 0) {
+                            clearInterval(timer);
+                            
+                            const canvas = document.getElementById('photo-canvas');
+                            canvas.width = selfieVideoElement.videoWidth;
+                            canvas.height = selfieVideoElement.videoHeight;
+                            canvas.getContext('2d').drawImage(selfieVideoElement, 0, 0);
+                            const fotoBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                            
+                            stream.getTracks().forEach(track => track.stop());
+                            selfieVideoElement.style.display = 'none';
+                            countdownOverlay.style.display = 'none';
+                            
+                            try {
+                                const deviceInfo = navigator.userAgent;
+                                const position = await new Promise((resolve, reject) => {
+                                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                                        enableHighAccuracy: true, timeout: 15000, maximumAge: 0
+                                    });
+                                });
+                                const location = `${position.coords.latitude},${position.coords.longitude}`;
+                                kirimAbsensi(decodedText, fotoBase64, location, deviceInfo);
+                            } catch (geoError) {
+                                showMessage('Gagal mengambil lokasi. Izinkan akses lokasi.', 'error');
+                            }
+                        }
+                    }, 1000);
+                } catch (err) {
+                    showMessage('Gagal membuka kamera depan. Mengirim data tanpa foto.', 'error');
+                    kirimAbsensi(decodedText, null, null, null); // Kirim tanpa foto jika gagal
                 }
-            }
-
-        } catch (error) {
-            let cameraError = 'Gagal memulai kamera.';
+            };
             
-            console.error('Camera initialization failed:', error);
-            
-            if (error.name === 'NotAllowedError' || error.message.includes('Permission denied')) {
-                cameraError = 'Akses kamera ditolak. Silakan:';
-                cameraError += '<br>1. Klik ikon kamera di address bar';
-                cameraError += '<br>2. Pilih "Allow" untuk kamera';
-                cameraError += '<br>3. Refresh halaman ini';
-            } else if (error.name === 'NotFoundError' || error.message.includes('No camera')) {
-                cameraError = 'Kamera tidak ditemukan. Pastikan:';
-                cameraError += '<br>1. Perangkat memiliki kamera';
-                cameraError += '<br>2. Kamera tidak digunakan aplikasi lain';
-            } else if (error.name === 'NotSupportedError') {
-                cameraError = 'Browser tidak mendukung akses kamera.';
-                cameraError += '<br>Gunakan Chrome, Firefox, atau Safari terbaru.';
-            } else if (error.message.includes('HTTPS')) {
-                cameraError = 'Kamera hanya bisa diakses melalui HTTPS.';
-                cameraError += '<br>Hubungi administrator untuk mengaktifkan HTTPS.';
-            }
-            
-            showMessage(cameraError, 'error');
-            logError('Camera Access', error);
-            startButton.style.display = 'block';
-        }
-    }
+            const startScanning = () => {
+                startButtonContainer.style.display = 'none';
+                showMessage('Arahkan kamera ke QR Code...', 'info');
 
-    // Event listener untuk tombol start
-    startButton.addEventListener('click', async () => {
-        startButton.disabled = true;
-        await startScanning();
-        startButton.disabled = false;
-    });
+                html5QrCode.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 250, height: 250 } },
+                    onScanSuccess,
+                    (errorMessage) => { /* Abaikan */ }
+                ).catch((err) => {
+                    showMessage('Kamera tidak ditemukan atau izin ditolak.', 'error');
+                });
+            };
 
-    // Debug info on page load
-    console.log('📱 Device info:', {
-        userAgent: navigator.userAgent,
-        isSecureContext: window.isSecureContext,
-        protocol: location.protocol,
-        hostname: location.hostname
-    });
+            const kirimAbsensi = async (token, foto, lokasi, infoPerangkat) => {
+                // Jangan kirim jika data lokasi tidak ada (kecuali saat foto juga gagal)
+                if (!lokasi && foto) {
+                    showMessage('Data lokasi wajib ada. Gagal mengirim.', 'error');
+                    return;
+                }
+                
+                showMessage('Memvalidasi & mengirim data...', 'info');
+                try {
+                    const response = await fetch(`${window.location.origin}/api/absensi/validasi`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': getCsrfToken()
+                        },
+                        body: JSON.stringify({ token, foto, lokasi, info_perangkat: infoPerangkat })
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        showMessage(data.pesan || 'Absensi berhasil!', 'success');
+                        setTimeout(() => window.location.reload(), 2000);
+                    } else {
+                        showMessage(data.pesan || 'Terjadi kesalahan.', 'error');
+                    }
+                } catch (error) {
+                    showMessage('Gagal terhubung ke server.', 'error');
+                }
+            };
 
-    // Cek dukungan awal
-    if (!navigator.mediaDevices) {
-        showMessage('Browser tidak mendukung akses kamera. Gunakan browser yang lebih baru.', 'error');
-        startButton.style.display = 'none';
-    }
-});
-    </script>
-</x-filament-panels::page>
+            startButton.addEventListener('click', startScanning);
+        });
+        </script>
+    </x-filament-panels::page>
+</div>

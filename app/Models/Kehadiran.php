@@ -27,12 +27,14 @@ class Kehadiran extends Model
         'tanggal',
         'jam_masuk',
         'jam_pulang',
-        'lokasi_masuk',
-        'lokasi_pulang',
         'foto_masuk',
         'foto_pulang',
         'metode_absen',
         'status',
+        'lokasi_masuk',
+        'lokasi_pulang',
+        'info_perangkat_masuk',
+        'info_perangkat_pulang',
     ];
 
     /**

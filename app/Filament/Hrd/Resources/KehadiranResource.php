@@ -3,17 +3,19 @@
 namespace App\Filament\Hrd\Resources;
 
 use App\Filament\Hrd\Resources\KehadiranResource\Pages;
-use App\Models\User; // Menggunakan model User
+use App\Models\User;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Infolists\Infolist;
+use Filament\Infolists\Components;
 
 class KehadiranResource extends Resource
 {
-    protected static ?string $model = User::class; // Model dasar adalah User
+    protected static ?string $model = User::class;
     
-    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
+    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-check';
     protected static ?string $navigationLabel = 'Kehadiran Hari Ini';
     protected static ?string $pluralModelLabel = 'Kehadiran Hari Ini';
     protected static ?int $navigationSort = 1;
@@ -37,34 +39,63 @@ class KehadiranResource extends Resource
                     ->label('Nama Karyawan')
                     ->searchable()
                     ->sortable(),
-
-                Tables\Columns\TextColumn::make('kehadiran.jam_masuk')
+                
+                // --- PERBAIKAN PADA KOLOM ---
+                // Kita gunakan state() untuk secara eksplisit mengambil data dari relasi
+                Tables\Columns\TextColumn::make('jam_masuk')
+                    ->state(fn (User $record): ?string => $record->kehadiran->first()?->jam_masuk)
                     ->time('H:i:s')
-                    ->label('Jam Masuk')
-                    ->placeholder('Belum Absen Masuk'),
-
-                Tables\Columns\TextColumn::make('kehadiran.jam_pulang')
+                    ->placeholder('Belum Absen'),
+                
+                Tables\Columns\TextColumn::make('jam_pulang')
+                    ->state(fn (User $record): ?string => $record->kehadiran->first()?->jam_pulang)
                     ->time('H:i:s')
-                    ->label('Jam Pulang')
                     ->placeholder('--'),
 
-                Tables\Columns\TextColumn::make('kehadiran.status')
-                    ->label('Status')
+                Tables\Columns\TextColumn::make('status')
+                    ->state(fn (User $record): ?string => $record->kehadiran->first()?->status)
                     ->badge()
                     ->color(fn (?string $state): string => match ($state) {
                         'Tepat Waktu' => 'success',
                         'Terlambat' => 'warning',
-                        default => 'danger',
+                        default => 'gray',
                     })
                     ->formatStateUsing(fn (?string $state): string => $state ?? 'Belum Masuk'),
             ])
-            ->filters([])
+            ->filters([
+                //
+            ])
             ->actions([
-                // --- PERBAIKAN DI SINI ---
-                // Baris TextColumn yang salah telah dihapus dari array ini
-                Tables\Actions\Action::make('view_monthly')
-                    ->label('Lihat Laporan Bulanan')
+                // --- PERBAIKAN PADA MODAL ---
+                Tables\Actions\Action::make('Lihat Detail')
                     ->icon('heroicon-o-eye')
+                    ->modalHeading('Detail Kehadiran')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Tutup')
+                    ->infolist(function (Infolist $infolist) {
+                        return $infolist
+                            ->record($infolist->getRecord()->kehadiran->first()) // Eksplisit set record untuk infolist
+                            ->schema([
+                                Components\Grid::make(2)->schema([
+                                    Components\Section::make('Informasi Masuk')->schema([
+                                        Components\ImageEntry::make('foto_masuk')->disk('public')->placeholder('Tidak ada foto'),
+                                        Components\TextEntry::make('lokasi_masuk')->url(fn (?string $state) => $state ? "https://www.google.com/maps?q={$state}" : null, true)->icon('heroicon-s-map-pin'),
+                                        Components\TextEntry::make('info_perangkat_masuk'),
+                                    ]),
+                                    Components\Section::make('Informasi Pulang')->schema([
+                                        Components\ImageEntry::make('foto_pulang')->disk('public')->placeholder('Tidak ada foto'),
+                                        Components\TextEntry::make('lokasi_pulang')->url(fn (?string $state) => $state ? "https://www.google.com/maps?q={$state}" : null, true)->icon('heroicon-s-map-pin'),
+                                        Components\TextEntry::make('info_perangkat_pulang'),
+                                    ]),
+                                ])
+                            ]);
+                    })
+                    // Hanya tampilkan tombol jika ada data kehadiran
+                    ->visible(fn (User $record) => $record->kehadiran->isNotEmpty()),
+
+                Tables\Actions\Action::make('view_monthly')
+                    ->label('Laporan Bulanan')
+                    ->icon('heroicon-o-calendar-days')
                     ->url(fn (User $record): string => static::getUrl('view', ['record' => $record->id]))
             ])
             ->bulkActions([]);

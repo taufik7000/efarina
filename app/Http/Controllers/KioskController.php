@@ -3,12 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Kehadiran;
-use App\Models\User;
 use Carbon\Carbon;
+use Exception; // <-- Pastikan class Exception di-import
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
@@ -16,140 +17,135 @@ class KioskController extends Controller
 {
     /**
      * Menampilkan halaman Kiosk utama.
-     * Mengirimkan data kehadiran hari ini agar daftar tidak kosong saat halaman pertama kali dimuat.
      */
     public function tampilkanKiosk()
     {
-        $kehadiranHariIni = Kehadiran::whereDate('tanggal', today('Asia/Jakarta'))
-                                    ->with('pengguna') // Eager load untuk performa
-                                    ->orderBy('jam_masuk', 'asc')
-                                    ->get();
-
-        return view('kiosk.tampilan', ['kehadiranHariIni' => $kehadiranHariIni]);
+        return view('kiosk.tampilan');
     }
 
     /**
      * Membuat QR code dinamis yang unik dan berbatas waktu.
-     * Fungsi ini tidak berubah dan tetap menjadi inti dari Kiosk.
      */
     public function buatQrCode()
     {
         try {
             $now = Carbon::now('Asia/Jakarta');
-            $token = Str::random(40); // Token unik untuk setiap QR code
-            $expiredAt = $now->copy()->addSeconds(20); // Waktu valid 20 detik
+            $token = Str::random(40);
+            $expiredAt = $now->copy()->addSeconds(20);
 
-            // Simpan token ke Cache dengan waktu kedaluwarsa
             Cache::put('qrcode_token', $token, $expiredAt);
-
-            // Hasilkan gambar QR code dari token
             $qrCodeImage = QrCode::format('svg')->size(300)->generate($token);
 
             return response($qrCodeImage)->header('Content-Type', 'image/svg+xml');
-
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Gagal membuat QR code', ['error' => $e->getMessage()]);
-            // Jika gagal, buat QR code berisi pesan error agar mudah di-debug
-            $errorQr = QrCode::format('svg')->size(300)->generate('ERROR: Gagal membuat QR Code');
-            return response($errorQr)->header('Content-Type', 'image/svg+xml');
+            return response('Error', 500);
         }
     }
 
     /**
-     * Memvalidasi token QR dan mencatat absensi karyawan.
-     * Setelah absensi berhasil, fungsi ini akan menyiarkan event ke channel 'kiosk'.
+     * Memvalidasi semua data, melakukan geofencing, dan menyimpan catatan absensi.
      */
     public function validasiAbsensi(Request $request)
     {
         try {
-            $validatedData = $request->validate(['token' => 'required|string']);
+            $validatedData = $request->validate([
+                'token'          => 'required|string',
+                'foto'           => 'nullable|string',
+                'lokasi'         => 'required|string',
+                'info_perangkat' => 'required|string',
+            ]);
+
             $tokenDariPonsel = $validatedData['token'];
             $tokenValidDiServer = Cache::get('qrcode_token');
             $now = Carbon::now('Asia/Jakarta');
 
-            // 1. Validasi Token
             if (!$tokenValidDiServer || $tokenDariPonsel !== $tokenValidDiServer) {
                 return response()->json(['pesan' => 'QR Code tidak valid atau kedaluwarsa.'], 422);
             }
-            
-            // 2. Ambil User dan hapus token agar tidak bisa dipakai lagi
+
             $pengguna = Auth::user();
             if (!$pengguna) {
-                return response()->json(['pesan' => 'Sesi tidak ditemukan. Silakan login ulang.'], 401);
+                return response()->json(['pesan' => 'Sesi tidak ditemukan.'], 401);
             }
             Cache::forget('qrcode_token');
+            
+            // --- VALIDASI LOKASI (GEOFENCING) ---
+            $koordinatKantor = [2.976016, 99.079039]; // <-- Menggunakan koordinat Anda
+            list($latPengguna, $lonPengguna) = explode(',', $validatedData['lokasi']);
+            
+            $jarak = $this->hitungJarak($koordinatKantor[0], $koordinatKantor[1], $latPengguna, $lonPengguna);
+            $jarakMaksimalMeter = 500; // Toleransi jarak 500 meter, bisa disesuaikan
 
-            // 3. Cek catatan kehadiran hari ini
+            if ($jarak > $jarakMaksimalMeter) {
+                return response()->json(['pesan' => 'Anda berada di luar area kantor yang diizinkan.'], 403);
+            }
+            // --- AKHIR VALIDASI LOKASI ---
+
+            $fotoPath = null;
+            if (!empty($validatedData['foto'])) {
+                try {
+                    $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $validatedData['foto']));
+                    $imageName = 'absensi/' . $pengguna->id . '_' . now()->timestamp . '.jpg';
+                    Storage::disk('public')->put($imageName, $imageData);
+                    $fotoPath = $imageName;
+                } catch (Exception $e) {
+                    Log::error('Gagal menyimpan foto absensi', ['error' => $e->getMessage()]);
+                }
+            }
+
             $hariIni = $now->toDateString();
             $kehadiranHariIni = Kehadiran::where('user_id', $pengguna->id)
                                          ->whereDate('tanggal', $hariIni)
                                          ->first();
 
             if (!$kehadiranHariIni) {
-                // Proses Absen Masuk
-                $jamMasuk = $now->toTimeString();
                 Kehadiran::create([
-                    'user_id' => $pengguna->id,
-                    'tanggal' => $hariIni,
-                    'jam_masuk' => $jamMasuk,
-                    'status' => $this->tentukanStatusKehadiran($now),
-                    'metode_absen' => 'qrcode',
+                    'user_id'              => $pengguna->id,
+                    'tanggal'              => $hariIni,
+                    'jam_masuk'            => $now->toTimeString(),
+                    'foto_masuk'           => $fotoPath,
+                    'lokasi_masuk'         => $validatedData['lokasi'],
+                    'info_perangkat_masuk' => $validatedData['info_perangkat'],
+                    'status'               => $this->tentukanStatusKehadiran($now),
+                    'metode_absen'         => 'qrcode',
                 ]);
+                return response()->json(['status' => 'success', 'pesan' => 'Absen Masuk Berhasil!']);
+            }
 
-                return response()->json(['status' => 'success', 'pesan' => "Absen Masuk Berhasil pada {$jamMasuk}!"]);
-            }
-            
             if (is_null($kehadiranHariIni->jam_pulang)) {
-                // Proses Absen Pulang
-                $jamPulang = $now->toTimeString();
-                $kehadiranHariIni->update(['jam_pulang' => $jamPulang]);
-                return response()->json(['status' => 'success', 'pesan' => "Absen Pulang Berhasil pada {$jamPulang}!"]);
+                $kehadiranHariIni->update([
+                    'jam_pulang'            => $now->toTimeString(),
+                    'foto_pulang'           => $fotoPath,
+                    'lokasi_pulang'         => $validatedData['lokasi'],
+                    'info_perangkat_pulang' => $validatedData['info_perangkat'],
+                ]);
+                return response()->json(['status' => 'success', 'pesan' => 'Absen Pulang Berhasil!']);
             }
-            
-            // Jika sudah absen masuk dan pulang
+
             return response()->json(['pesan' => 'Anda sudah melakukan absen masuk dan pulang hari ini.'], 422);
 
-        } catch (\Exception $e) {
-            Log::error('Error saat validasi absensi', [
-                'error' => $e->getMessage(),
-                'user_id' => Auth::id(),
-                'request' => $request->all()
-            ]);
-            return response()->json(['pesan' => 'Terjadi kesalahan internal pada server.'], 500);
+        } catch (Exception $e) {
+            Log::error('Kesalahan Fatal di validasiAbsensi', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return response()->json(['pesan' => 'Terjadi kesalahan pada server. Silakan hubungi administrator.'], 500);
         }
     }
-    
-    /**
-     * Tentukan status kehadiran berdasarkan jam masuk.
-     */
+
     private function tentukanStatusKehadiran(Carbon $jamMasuk): string
     {
-        // Jam masuk kantor ditetapkan pukul 08:15
         $jamKerja = Carbon::createFromTime(8, 15, 0, 'Asia/Jakarta');
-
-        if ($jamMasuk->lte($jamKerja)) {
-            return 'Tepat Waktu';
-        } else {
-            return 'Terlambat';
-        }
+        return $jamMasuk->lte($jamKerja) ? 'Tepat Waktu' : 'Terlambat';
     }
 
-    /**
-     * Endpoint opsional untuk me-refresh daftar kehadiran via HTTP request jika diperlukan.
-     */
-    public function getKehadiranJson()
-    {
-        $kehadiran = Kehadiran::whereDate('tanggal', today('Asia/Jakarta'))
-            ->with('pengguna:id,name') // Hanya ambil ID dan nama untuk efisiensi
-            ->orderBy('jam_masuk', 'desc')
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'nama' => $item->pengguna->name,
-                    'jam_masuk' => Carbon::parse($item->jam_masuk)->format('H:i:s'),
-                ];
-            });
-
-        return response()->json($kehadiran);
+    private function hitungJarak($lat1, $lon1, $lat2, $lon2) {
+        $earthRadius = 6371000;
+        $latFrom = deg2rad($lat1);
+        $lonFrom = deg2rad($lon1);
+        $latTo = deg2rad($lat2);
+        $lonTo = deg2rad($lon2);
+        $latDelta = $latTo - $latFrom;
+        $lonDelta = $lonTo - $lonFrom;
+        $angle = 2 * asin(sqrt(pow(sin($latDelta / 2), 2) + cos($latFrom) * cos($latTo) * pow(sin($lonDelta / 2), 2)));
+        return $angle * $earthRadius;
     }
 }
