@@ -51,6 +51,7 @@ class TeamPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+                'role:team',
             ])
             ->authMiddleware([
                 Authenticate::class,

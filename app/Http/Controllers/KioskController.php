@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Events\AbsensiBerhasil; // <-- Penting: Import event yang akan disiarkan
 use App\Models\Kehadiran;
 use App\Models\User;
 use Carbon\Carbon;
@@ -96,9 +95,6 @@ class KioskController extends Controller
                     'status' => $this->tentukanStatusKehadiran($now),
                     'metode_absen' => 'qrcode',
                 ]);
-
-                // Menyiarkan event 'AbsensiBerhasil' ke channel publik 'kiosk'
-                broadcast(new AbsensiBerhasil($pengguna, $jamMasuk))->toOthers();
 
                 return response()->json(['status' => 'success', 'pesan' => "Absen Masuk Berhasil pada {$jamMasuk}!"]);
             }
