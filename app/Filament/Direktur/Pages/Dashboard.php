@@ -8,7 +8,7 @@ use Filament\Pages\Dashboard as BaseDashboard;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Illuminate\Support\Facades\Session;
-use Livewire\Component;
+use Filament\Actions;
 
 class Dashboard extends BaseDashboard implements HasForms
 {
@@ -23,22 +23,21 @@ class Dashboard extends BaseDashboard implements HasForms
     // State untuk menyimpan widget yang dipilih
     public array $selectedWidgets = [];
     public array $availableWidgets = [];
+    public $currentView = 'executive';
 
     public function mount(): void
     {
-        // Load widget preferences dari session
-        $this->selectedWidgets = Session::get('direktur_selected_widgets', [
-            'financial_overview',
-            'budget_alerts', 
-            'recent_approvals'
-        ]);
+        // Load view preference dari session
+        $this->currentView = Session::get('direktur_dashboard_view', 'executive');
+        
+        // Load widget berdasarkan view
+        $this->loadPreset($this->currentView);
 
         // Initialize form data
         $this->data = [
             'date_from' => now()->startOfMonth()->toDateString(),
             'date_to' => now()->toDateString(),
             'budget_period' => null,
-            'widget_selection' => $this->selectedWidgets,
         ];
 
         $this->availableWidgets = [
@@ -93,53 +92,7 @@ class Dashboard extends BaseDashboard implements HasForms
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Filter Dashboard')
-                    ->schema([
-                        Forms\Components\Grid::make(3)
-                            ->schema([
-                                Forms\Components\DatePicker::make('date_from')
-                                    ->label('Dari Tanggal')
-                                    ->native(false)
-                                    ->live()
-                                    ->afterStateUpdated(fn () => $this->updatedFilters()),
-                                
-                                Forms\Components\DatePicker::make('date_to')
-                                    ->label('Sampai Tanggal')
-                                    ->native(false)
-                                    ->live()
-                                    ->afterStateUpdated(fn () => $this->updatedFilters()),
-                                    
-                                Forms\Components\Select::make('budget_period')
-                                    ->label('Periode Budget')
-                                    ->options(
-                                        \App\Models\BudgetPeriod::pluck('nama_periode', 'id')->toArray()
-                                    )
-                                    ->placeholder('Semua Periode')
-                                    ->live()
-                                    ->afterStateUpdated(fn () => $this->updatedFilters()),
-                            ]),
-                    ])
-                    ->collapsible()
-                    ->persistCollapsed(),
-                    
-                Forms\Components\Section::make('Kustomisasi Widget')
-                    ->schema([
-                        Forms\Components\CheckboxList::make('widget_selection')
-                            ->label('Pilih Widget yang Ditampilkan')
-                            ->options(collect($this->availableWidgets)->mapWithKeys(function ($widget, $key) {
-                                return [$key => $widget['name'] . ' - ' . $widget['description']];
-                            })->toArray())
-                            ->columns(2)
-                            ->live()
-                            ->afterStateUpdated(function ($state) {
-                                $this->selectedWidgets = $state ?? [];
-                                Session::put('direktur_selected_widgets', $this->selectedWidgets);
-                                $this->dispatch('widgets-updated');
-                            }),
-                    ])
-                    ->collapsible()
-                    ->collapsed()
-                    ->persistCollapsed(),
+                // Schema kosong karena form dipindah ke header actions
             ])
             ->statePath('data');
     }
@@ -168,64 +121,130 @@ class Dashboard extends BaseDashboard implements HasForms
         return in_array($widgetKey, $this->selectedWidgets);
     }
 
-    // Header Actions untuk quick widget management
+    // Method untuk get current view name
+    public function getCurrentViewName(): string
+    {
+        $viewNames = [
+            'executive' => 'Executive View',
+            'financial' => 'Financial View', 
+            'monitoring' => 'Monitoring View'
+        ];
+        
+        return $viewNames[$this->currentView] ?? 'Executive View';
+    }
+
+    // Header Actions dengan filter periode
     protected function getHeaderActions(): array
     {
         return [
-            \Filament\Actions\Action::make('customize_dashboard')
-                ->label('Kustomisasi Dashboard')
-                ->icon('heroicon-o-cog-6-tooth')
-                ->color('gray')
-                ->form([
-                    Forms\Components\CheckboxList::make('widgets')
-                        ->label('Pilih Widget')
-                        ->options(collect($this->availableWidgets)->groupBy('category')->map(function ($widgets, $category) {
-                            return $widgets->mapWithKeys(function ($widget, $key) {
-                                return [$key => $widget['name']];
-                            });
-                        })->toArray())
-                        ->default($this->selectedWidgets)
-                        ->columns(1),
-                ])
-                ->fillForm(['widgets' => $this->selectedWidgets])
-                ->action(function (array $data) {
-                    $this->selectedWidgets = $data['widgets'] ?? [];
-                    Session::put('direktur_selected_widgets', $this->selectedWidgets);
-                    $this->dispatch('widgets-updated');
-                }),
+            // View Selection
+            Actions\ActionGroup::make([
+                Actions\Action::make('view_executive')
+                    ->label('Executive View')
+                    ->icon('heroicon-o-briefcase')
+                    ->color($this->currentView === 'executive' ? 'primary' : 'gray')
+                    ->action(function () {
+                        $this->switchView('executive');
+                    }),
                 
-            \Filament\Actions\Action::make('load_preset')
-                ->label('Preset Dashboard')
-                ->icon('heroicon-o-squares-2x2')
-                ->color('info')
-                ->form([
-                    Forms\Components\Select::make('preset')
-                        ->label('Pilih Preset')
-                        ->options([
-                            'executive' => 'Executive - Overview & Approval',
-                            'financial' => 'Financial - Detail Keuangan',
-                            'monitoring' => 'Monitoring - Alert & Tracking',
-                            'full' => 'Full - Semua Widget',
-                        ])
-                        ->required(),
-                ])
-                ->action(function (array $data) {
-                    $this->loadPreset($data['preset']);
-                }),
+                Actions\Action::make('view_financial')
+                    ->label('Financial View')
+                    ->icon('heroicon-o-chart-bar-square')
+                    ->color($this->currentView === 'financial' ? 'primary' : 'gray')
+                    ->action(function () {
+                        $this->switchView('financial');
+                    }),
                 
-            \Filament\Actions\Action::make('reset_dashboard')
-                ->label('Reset ke Default')
+                Actions\Action::make('view_monitoring')
+                    ->label('Monitoring View')
+                    ->icon('heroicon-o-shield-check')
+                    ->color($this->currentView === 'monitoring' ? 'primary' : 'gray')
+                    ->action(function () {
+                        $this->switchView('monitoring');
+                    }),
+            ])
+            ->label($this->getCurrentViewName())
+            ->icon('heroicon-o-squares-2x2')
+            ->color('primary')
+            ->button(),
+
+            // Filter Periode
+            Actions\ActionGroup::make([
+                Actions\Action::make('filter_today')
+                    ->label('Hari Ini')
+                    ->icon('heroicon-o-calendar')
+                    ->action(function () {
+                        $this->data['date_from'] = now()->toDateString();
+                        $this->data['date_to'] = now()->toDateString();
+                        $this->form->fill($this->data);
+                        $this->updatedFilters();
+                    }),
+                
+                Actions\Action::make('filter_this_week')
+                    ->label('Minggu Ini')
+                    ->icon('heroicon-o-calendar-days')
+                    ->action(function () {
+                        $this->data['date_from'] = now()->startOfWeek()->toDateString();
+                        $this->data['date_to'] = now()->endOfWeek()->toDateString();
+                        $this->form->fill($this->data);
+                        $this->updatedFilters();
+                    }),
+                
+                Actions\Action::make('filter_this_month')
+                    ->label('Bulan Ini')
+                    ->icon('heroicon-o-calendar')
+                    ->action(function () {
+                        $this->data['date_from'] = now()->startOfMonth()->toDateString();
+                        $this->data['date_to'] = now()->endOfMonth()->toDateString();
+                        $this->form->fill($this->data);
+                        $this->updatedFilters();
+                    }),
+                
+                Actions\Action::make('filter_this_year')
+                    ->label('Tahun Ini')
+                    ->icon('heroicon-o-calendar')
+                    ->action(function () {
+                        $this->data['date_from'] = now()->startOfYear()->toDateString();
+                        $this->data['date_to'] = now()->endOfYear()->toDateString();
+                        $this->form->fill($this->data);
+                        $this->updatedFilters();
+                    }),
+            ])
+            ->label('Filter Periode')
+            ->icon('heroicon-o-clock')
+            ->color('info')
+            ->button(),
+                
+            // Reset Action
+            Actions\Action::make('reset_dashboard')
+                ->label('Reset')
                 ->icon('heroicon-o-arrow-path')
-                ->color('warning')
+                ->color('danger')
                 ->requiresConfirmation()
+                ->modalHeading('Reset Dashboard')
+                ->modalDescription('Apakah Anda yakin ingin reset dashboard ke pengaturan default?')
                 ->action(function () {
-                    $this->selectedWidgets = ['financial_overview', 'budget_alerts', 'recent_approvals'];
-                    Session::put('direktur_selected_widgets', $this->selectedWidgets);
-                    $this->data['widget_selection'] = $this->selectedWidgets;
+                    $this->currentView = 'executive';
+                    $this->loadPreset('executive');
+                    $this->data = [
+                        'date_from' => now()->startOfMonth()->toDateString(),
+                        'date_to' => now()->toDateString(),
+                        'budget_period' => null,
+                    ];
+                    Session::put('direktur_dashboard_view', $this->currentView);
                     $this->form->fill($this->data);
+                    $this->updatedFilters();
                     $this->dispatch('widgets-updated');
                 }),
         ];
+    }
+
+    public function switchView(string $view): void
+    {
+        $this->currentView = $view;
+        $this->loadPreset($view);
+        Session::put('direktur_dashboard_view', $view);
+        $this->dispatch('widgets-updated');
     }
 
     public function loadPreset(string $preset): void
@@ -234,13 +253,8 @@ class Dashboard extends BaseDashboard implements HasForms
             'executive' => ['financial_overview', 'budget_alerts', 'recent_approvals'],
             'financial' => ['financial_overview', 'budget_breakdown', 'cash_flow_trend', 'top_spending'],
             'monitoring' => ['budget_alerts', 'recent_approvals', 'top_spending'],
-            'full' => array_keys($this->availableWidgets),
         ];
 
         $this->selectedWidgets = $presets[$preset] ?? $presets['executive'];
-        Session::put('direktur_selected_widgets', $this->selectedWidgets);
-        $this->data['widget_selection'] = $this->selectedWidgets;
-        $this->form->fill($this->data);
-        $this->dispatch('widgets-updated');
     }
 }

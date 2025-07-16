@@ -30,6 +30,7 @@ class DirekturPanelProvider extends PanelProvider
                 'primary' => Color::Amber,
             ])
             ->discoverResources(in: app_path('Filament/Direktur/Resources'), for: 'App\\Filament\\Direktur\\Resources')
+            ->viteTheme('resources/css/filament/direktur/theme.css')
             ->resources([
                 // Shared Budget Resources untuk Direktur
                 \App\Filament\Resources\BudgetPeriodResource::class,
@@ -38,6 +39,9 @@ class DirekturPanelProvider extends PanelProvider
                 \App\Filament\Resources\BudgetSubcategoryResource::class,
                 \App\Filament\Resources\BudgetAllocationResource::class,
                 \App\Filament\Resources\TransaksiResource::class,
+                \App\Filament\Team\Resources\ProjectResource::class,
+                \App\Filament\Team\Resources\TaskResource::class,
+
             ])
             ->discoverPages(in: app_path('Filament/Direktur/Pages'), for: 'App\\Filament\\Direktur\\Pages')
             ->discoverWidgets(in: app_path('Filament/Direktur/Widgets'), for: 'App\\Filament\\Direktur\\Widgets')

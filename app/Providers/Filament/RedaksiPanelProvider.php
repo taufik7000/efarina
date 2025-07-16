@@ -28,7 +28,12 @@ class RedaksiPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
+            ->viteTheme('resources/css/filament/redaksi/theme.css')
             ->discoverResources(in: app_path('Filament/Redaksi/Resources'), for: 'App\\Filament\\Redaksi\\Resources')
+             ->resources([
+                \App\Filament\Team\Resources\ProjectResource::class,
+                \App\Filament\Team\Resources\TaskResource::class,
+            ])
             ->discoverPages(in: app_path('Filament/Redaksi/Pages'), for: 'App\\Filament\\Redaksi\\Pages')
             ->pages([
                 Pages\Dashboard::class,

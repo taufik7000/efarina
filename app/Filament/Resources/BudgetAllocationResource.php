@@ -227,4 +227,5 @@ class BudgetAllocationResource extends Resource
             'edit' => Pages\EditBudgetAllocation::route('/{record}/edit'),
         ];
     }
+
 }
