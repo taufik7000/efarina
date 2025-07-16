@@ -14,36 +14,39 @@ class Project extends Model
     protected $fillable = [
         'nama_project',
         'deskripsi',
+        'project_manager_id',
+        'tanggal_mulai',
+        'tanggal_selesai',
         'status',
         'prioritas',
-        'tanggal_mulai',
-        'tanggal_deadline',
-        'tanggal_selesai',
-        'project_manager_id',
-        'divisi_id',
-        'budget',
+        'budget_allocated',
+        'budget_used',
         'progress_percentage',
-        'team_members',
-        'catatan',
-        'created_by', // 👈 TAMBAHKAN INI
+        'created_by',
+        // Budget Proposal Fields
+        'proposal_budget',
+        'budget_items',
+        'proposal_description',
+        'redaksi_approval_status',
+        'redaksi_approved_by',
+        'redaksi_approved_at',
+        'redaksi_notes',
+        'keuangan_approval_status',
+        'keuangan_approved_by',
+        'keuangan_approved_at',
+        'keuangan_notes',
     ];
 
-    protected $casts = [
-        'tanggal_mulai' => 'date',
-        'tanggal_deadline' => 'date',
-        'tanggal_selesai' => 'date',
-        'team_members' => 'array',
-        'budget' => 'decimal:2',
+    protected $attributes = [
+        'redaksi_approval_status' => 'pending',
+        'keuangan_approval_status' => 'pending',
+        'progress_percentage' => 0,
     ];
 
+    // Existing Relations
     public function projectManager(): BelongsTo
     {
         return $this->belongsTo(User::class, 'project_manager_id');
-    }
-
-    public function divisi(): BelongsTo
-    {
-        return $this->belongsTo(Divisi::class);
     }
 
     public function createdBy(): BelongsTo
@@ -56,20 +59,29 @@ class Project extends Model
         return $this->hasMany(Task::class);
     }
 
-    public function getTeamMembersUsersAttribute()
+    public function transaksis(): HasMany
     {
-        if (!$this->team_members) {
-            return collect();
-        }
-        
-        return User::whereIn('id', $this->team_members)->get();
+        return $this->hasMany(Transaksi::class);
     }
 
+    // New Relations for Approval Workflow
+    public function redaksiApprovedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'redaksi_approved_by');
+    }
+
+    public function keuanganApprovedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'keuangan_approved_by');
+    }
+
+    // Accessors for Status Colors
     public function getStatusColorAttribute(): string
     {
         return match($this->status) {
             'draft' => 'gray',
-            'active' => 'info',
+            'planning' => 'warning',
+            'active' => 'success',
             'on_hold' => 'warning',
             'completed' => 'success',
             'cancelled' => 'danger',
@@ -77,37 +89,49 @@ class Project extends Model
         };
     }
 
-    public function getPrioritasColorAttribute(): string
+    public function getRedaksiStatusColorAttribute(): string
     {
-        return match($this->prioritas) {
-            'low' => 'gray',
-            'medium' => 'info',
-            'high' => 'warning',
-            'urgent' => 'danger',
+        return match($this->redaksi_approval_status) {
+            'pending' => 'warning',
+            'approved' => 'success',
+            'rejected' => 'danger',
             default => 'gray',
         };
     }
 
-    public function updateProgress(): void
+    public function getKeuanganStatusColorAttribute(): string
     {
-        $totalTasks = $this->tasks()->count();
-        
-        if ($totalTasks === 0) {
-            $this->update(['progress_percentage' => 0]);
-            return;
-        }
+        return match($this->keuangan_approval_status) {
+            'pending' => 'warning',
+            'approved' => 'success',
+            'rejected' => 'danger',
+            default => 'gray',
+        };
+    }
 
-        $completedTasks = $this->tasks()->where('status', 'done')->count();
-        $progressPercentage = round(($completedTasks / $totalTasks) * 100);
+    // Helper Methods
+    public function isRedaksiApproved(): bool
+    {
+        return $this->redaksi_approval_status === 'approved';
+    }
 
-        $this->update(['progress_percentage' => $progressPercentage]);
+    public function isKeuanganApproved(): bool
+    {
+        return $this->keuangan_approval_status === 'approved';
+    }
 
-        // Auto update status based on progress
-        if ($progressPercentage === 100 && $this->status !== 'completed') {
-            $this->update([
-                'status' => 'completed',
-                'tanggal_selesai' => now(),
-            ]);
-        }
+    public function isFullyApproved(): bool
+    {
+        return $this->isRedaksiApproved() && $this->isKeuanganApproved();
+    }
+
+    public function canBeApprovedByRedaksi(): bool
+    {
+        return $this->redaksi_approval_status === 'pending' && $this->proposal_budget > 0;
+    }
+
+    public function canBeApprovedByKeuangan(): bool
+    {
+        return $this->keuangan_approval_status === 'pending' && $this->isRedaksiApproved();
     }
 }

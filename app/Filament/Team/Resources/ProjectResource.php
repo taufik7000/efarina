@@ -5,7 +5,6 @@ namespace App\Filament\Team\Resources;
 use App\Filament\Team\Resources\ProjectResource\Pages;
 use App\Models\Project;
 use App\Models\User;
-use App\Models\Divisi;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -17,8 +16,8 @@ class ProjectResource extends Resource
 {
     protected static ?string $model = Project::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-folder';
-    protected static ?string $navigationGroup = 'Proyek Management';
+    protected static ?string $navigationIcon = 'heroicon-o-briefcase';
+    protected static ?string $navigationGroup = 'Project Management';
     protected static ?string $navigationLabel = 'Projects';
     protected static ?int $navigationSort = 1;
 
@@ -33,23 +32,18 @@ class ProjectResource extends Resource
                             ->required()
                             ->maxLength(255)
                             ->columnSpan(2),
-                        
+
                         Forms\Components\Textarea::make('deskripsi')
                             ->label('Deskripsi')
                             ->rows(3)
                             ->columnSpan(2),
 
-                        Forms\Components\Select::make('status')
-                            ->label('Status')
-                            ->options([
-                                'draft' => 'Draft',
-                                'active' => 'Active',
-                                'on_hold' => 'On Hold',
-                                'completed' => 'Completed',
-                                'cancelled' => 'Cancelled',
-                            ])
-                            ->required()
-                            ->default('draft'),
+                        Forms\Components\Select::make('project_manager_id')
+                            ->label('Project Manager')
+                            ->relationship('projectManager', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->required(),
 
                         Forms\Components\Select::make('prioritas')
                             ->label('Prioritas')
@@ -61,63 +55,159 @@ class ProjectResource extends Resource
                             ])
                             ->required()
                             ->default('medium'),
-                    ])
-                    ->columns(2),
 
-                Forms\Components\Section::make('Timeline & Assignment')
-                    ->schema([
-                        Forms\Components\DatePicker::make('tanggal_mulai')
-                            ->label('Tanggal Mulai')
-                            ->native(false),
-
-                        Forms\Components\DatePicker::make('tanggal_deadline')
-                            ->label('Deadline')
-                            ->native(false),
-
-                        Forms\Components\Select::make('project_manager_id')
-                            ->label('Project Manager')
-                            ->relationship('projectManager', 'name')
-                            ->searchable()
-                            ->preload()
-                            ->required(),
-
-                        Forms\Components\Select::make('divisi_id')
-                            ->label('Divisi')
-                            ->relationship('divisi', 'nama_divisi')
-                            ->searchable()
-                            ->preload(),
-
-                        Forms\Components\Select::make('team_members')
-                            ->label('Team Members')
-                            ->multiple()
-                            ->options(User::pluck('name', 'id'))
-                            ->searchable()
-                            ->preload()
-                            ->columnSpan(2),
-                    ])
-                    ->columns(2),
-
-                Forms\Components\Section::make('Budget & Progress')
-                    ->schema([
-                        Forms\Components\TextInput::make('budget')
-                            ->label('Budget')
-                            ->numeric()
-                            ->prefix('Rp'),
+                        Forms\Components\Select::make('status')
+                            ->label('Status')
+                            ->options([
+                                'draft' => 'Draft',
+                                'active' => 'Active',
+                                'completed' => 'Completed',
+                                'cancelled' => 'Cancelled',
+                            ])
+                            ->required()
+                            ->default('draft')
+                            ->visible(fn ($record) => $record !== null), // Hanya tampil saat edit/view
 
                         Forms\Components\TextInput::make('progress_percentage')
                             ->label('Progress (%)')
                             ->numeric()
+                            ->default(0)
                             ->minValue(0)
                             ->maxValue(100)
-                            ->default(0)
-                            ->suffix('%'),
-
-                        Forms\Components\Textarea::make('catatan')
-                            ->label('Catatan')
-                            ->rows(3)
-                            ->columnSpan(2),
+                            ->suffix('%')
+                            ->visible(fn ($record) => $record !== null), // Hanya tampil saat edit/view
                     ])
                     ->columns(2),
+
+                Forms\Components\Section::make('Timeline')
+                    ->schema([
+                        Forms\Components\DatePicker::make('tanggal_mulai')
+                            ->label('Tanggal Mulai')
+                            ->required(),
+
+                        Forms\Components\DatePicker::make('tanggal_selesai')
+                            ->label('Tanggal Selesai')
+                            ->required()
+                            ->after('tanggal_mulai'),
+                    ])
+                    ->columns(2),
+
+                Forms\Components\Section::make('Proposal Anggaran')
+                    ->schema([
+                        Forms\Components\TextInput::make('proposal_budget')
+                            ->label('Total Anggaran')
+                            ->numeric()
+                            ->prefix('Rp')
+                            ->required()
+                            ->minValue(0)
+                            ->helperText('Masukkan total anggaran yang dibutuhkan'),
+
+                        Forms\Components\Textarea::make('proposal_description')
+                            ->label('Deskripsi Penggunaan Anggaran')
+                            ->required()
+                            ->rows(4)
+                            ->helperText('Jelaskan secara detail penggunaan anggaran')
+                            ->columnSpan(2),
+
+                        Forms\Components\Placeholder::make('approval_info')
+                            ->label('Status Workflow')
+                            ->content(function ($record) {
+                                if (!$record) return '⏳ Setelah project dibuat, akan otomatis masuk ke approval workflow redaksi.';
+                                
+                                $content = '';
+                                
+                                // Redaksi Status
+                                $redaksiStatus = match($record->redaksi_approval_status) {
+                                    'pending' => '⏳ Menunggu approval redaksi',
+                                    'approved' => '✅ Disetujui redaksi pada ' . $record->redaksi_approved_at?->format('d M Y H:i'),
+                                    'rejected' => '❌ Ditolak redaksi pada ' . $record->redaksi_approved_at?->format('d M Y H:i'),
+                                };
+                                
+                                // Keuangan Status
+                                $keuanganStatus = match($record->keuangan_approval_status) {
+                                    'pending' => '⏳ Menunggu approval keuangan',
+                                    'approved' => '✅ Disetujui keuangan pada ' . $record->keuangan_approved_at?->format('d M Y H:i'),
+                                    'rejected' => '❌ Ditolak keuangan pada ' . $record->keuangan_approved_at?->format('d M Y H:i'),
+                                };
+                                
+                                $content .= "Redaksi: {$redaksiStatus}\n";
+                                $content .= "Keuangan: {$keuanganStatus}";
+                                
+                                if ($record->redaksi_notes) {
+                                    $content .= "\n\nCatatan Redaksi: {$record->redaksi_notes}";
+                                }
+                                
+                                if ($record->keuangan_notes) {
+                                    $content .= "\n\nCatatan Keuangan: {$record->keuangan_notes}";
+                                }
+                                
+                                return $content;
+                            })
+                            ->columnSpan(2)
+                            ->visible(fn ($record) => $record !== null), // Hanya tampil saat edit/view
+                    ])
+                    ->columns(2)
+                    ->collapsible(),
+
+                Forms\Components\Section::make('Status Approval')
+                    ->schema([
+                        Forms\Components\Select::make('redaksi_approval_status')
+                            ->label('Status Redaksi')
+                            ->options([
+                                'pending' => 'Menunggu',
+                                'approved' => 'Disetujui',
+                                'rejected' => 'Ditolak',
+                            ])
+                            ->disabled()
+                            ->dehydrated(false),
+
+                        Forms\Components\Select::make('keuangan_approval_status')
+                            ->label('Status Keuangan')
+                            ->options([
+                                'pending' => 'Menunggu',
+                                'approved' => 'Disetujui',
+                                'rejected' => 'Ditolak',
+                            ])
+                            ->disabled()
+                            ->dehydrated(false),
+
+                        Forms\Components\Textarea::make('redaksi_notes')
+                            ->label('Catatan Redaksi')
+                            ->disabled()
+                            ->dehydrated(false)
+                            ->rows(3)
+                            ->visible(fn ($record) => $record && $record->redaksi_notes),
+
+                        Forms\Components\Textarea::make('keuangan_notes')
+                            ->label('Catatan Keuangan')
+                            ->disabled()
+                            ->dehydrated(false)
+                            ->rows(3)
+                            ->visible(fn ($record) => $record && $record->keuangan_notes),
+                    ])
+                    ->columns(2)
+                    ->visible(fn ($record) => $record !== null) // Hanya tampil saat edit/view
+                    ->collapsible(),
+
+                Forms\Components\Section::make('Budget Tracking')
+                    ->schema([
+                        Forms\Components\TextInput::make('budget_allocated')
+                            ->label('Budget Allocated')
+                            ->numeric()
+                            ->prefix('Rp')
+                            ->disabled()
+                            ->dehydrated(false),
+
+                        Forms\Components\TextInput::make('budget_used')
+                            ->label('Budget Used')
+                            ->numeric()
+                            ->prefix('Rp')
+                            ->disabled()
+                            ->dehydrated(false),
+                    ])
+                    ->columns(2)
+                    ->collapsible()
+                    ->collapsed(),
             ]);
     }
 
@@ -126,49 +216,77 @@ class ProjectResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('nama_project')
-                    ->label('Nama Project')
+                    ->label('Project')
                     ->searchable()
-                    ->sortable()
-                    ->weight('bold'),
-
-                Tables\Columns\BadgeColumn::make('status')
-                    ->label('Status')
-                    ->colors([
-                        'secondary' => 'draft',
-                        'primary' => 'active',
-                        'warning' => 'on_hold',
-                        'success' => 'completed',
-                        'danger' => 'cancelled',
-                    ]),
-
-                Tables\Columns\BadgeColumn::make('prioritas')
-                    ->label('Prioritas')
-                    ->colors([
-                        'secondary' => 'low',
-                        'primary' => 'medium',
-                        'warning' => 'high',
-                        'danger' => 'urgent',
-                    ]),
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('projectManager.name')
-                    ->label('Project Manager')
-                    ->searchable(),
+                    ->label('Manager')
+                    ->searchable()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('status')
+                    ->label('Status')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'draft' => 'gray',
+                        'planning' => 'warning',
+                        'active' => 'success',
+                        'on_hold' => 'warning',
+                        'completed' => 'success',
+                        'cancelled' => 'danger',
+                        default => 'gray',
+                    }),
+
+                Tables\Columns\TextColumn::make('prioritas')
+                    ->label('Prioritas')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'low' => 'gray',
+                        'medium' => 'warning',
+                        'high' => 'danger',
+                        'urgent' => 'danger',
+                    }),
+
+                Tables\Columns\TextColumn::make('proposal_budget')
+                    ->label('Anggaran Proposal')
+                    ->money('IDR')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('redaksi_approval_status')
+                    ->label('Status Redaksi')
+                    ->badge()
+                    ->color(fn ($record) => $record->redaksi_status_color)
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'pending' => 'Menunggu',
+                        'approved' => 'Disetujui',
+                        'rejected' => 'Ditolak',
+                    }),
+
+                Tables\Columns\TextColumn::make('keuangan_approval_status')
+                    ->label('Status Keuangan')
+                    ->badge()
+                    ->color(fn ($record) => $record->keuangan_status_color)
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'pending' => 'Menunggu',
+                        'approved' => 'Disetujui',
+                        'rejected' => 'Ditolak',
+                    }),
 
                 Tables\Columns\TextColumn::make('progress_percentage')
                     ->label('Progress')
                     ->suffix('%')
+                    ->color(fn ($state) => $state >= 75 ? 'success' : ($state >= 50 ? 'warning' : 'danger')),
+
+                Tables\Columns\TextColumn::make('tanggal_mulai')
+                    ->label('Mulai')
+                    ->date('d M Y')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('tanggal_deadline')
-                    ->label('Deadline')
+                Tables\Columns\TextColumn::make('tanggal_selesai')
+                    ->label('Selesai')
                     ->date('d M Y')
-                    ->sortable()
-                    ->color(fn ($record) => $record->tanggal_deadline && $record->tanggal_deadline->isPast() && $record->status !== 'completed' ? 'danger' : null),
-
-                Tables\Columns\TextColumn::make('tasks_count')
-                    ->label('Tasks')
-                    ->counts('tasks')
-                    ->badge(),
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat')
@@ -180,6 +298,7 @@ class ProjectResource extends Resource
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'draft' => 'Draft',
+                        'planning' => 'Planning',
                         'active' => 'Active',
                         'on_hold' => 'On Hold',
                         'completed' => 'Completed',
@@ -194,83 +313,39 @@ class ProjectResource extends Resource
                         'urgent' => 'Urgent',
                     ]),
 
-                Tables\Filters\SelectFilter::make('project_manager_id')
-                    ->label('Project Manager')
-                    ->relationship('projectManager', 'name'),
+                Tables\Filters\SelectFilter::make('redaksi_approval_status')
+                    ->label('Status Redaksi')
+                    ->options([
+                        'pending' => 'Menunggu',
+                        'approved' => 'Disetujui',
+                        'rejected' => 'Ditolak',
+                    ]),
 
-                Tables\Filters\SelectFilter::make('divisi_id')
-                    ->label('Divisi')
-                    ->relationship('divisi', 'nama_divisi'),
+                Tables\Filters\SelectFilter::make('keuangan_approval_status')
+                    ->label('Status Keuangan')
+                    ->options([
+                        'pending' => 'Menunggu',
+                        'approved' => 'Disetujui',
+                        'rejected' => 'Ditolak',
+                    ]),
+
+                Tables\Filters\Filter::make('my_projects')
+                    ->label('My Projects')
+                    ->query(fn (Builder $query): Builder => 
+                        $query->where('project_manager_id', auth()->id())
+                              ->orWhere('created_by', auth()->id())
+                    ),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
-                
-                // Edit action hanya untuk project manager
-                Tables\Actions\EditAction::make()
-                    ->visible(fn ($record) => self::canEdit($record)),
+                Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->visible(fn () => auth()->user()->hasRole(['admin', 'super-admin'])), // Hanya admin yang bisa bulk delete
+                    Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');
-    }
-
-    // HAPUS METHOD getEloquentQuery() AGAR SEMUA USER BISA MELIHAT SEMUA PROJECT
-    // public static function getEloquentQuery(): Builder
-    // {
-    //     // Method ini dihapus agar semua user bisa melihat semua project
-    // }
-
-    /**
-     * Method untuk mengecek apakah user bisa mengedit project
-     */
-    public static function canEdit($record): bool
-    {
-        $user = auth()->user();
-        
-        // Admin dan super-admin bisa edit semua
-        if ($user->hasRole(['admin', 'super-admin'])) {
-            return true;
-        }
-        
-        // Project manager bisa edit project mereka
-        if ($record->project_manager_id === $user->id) {
-            return true;
-        }
-        
-        // User yang membuat project bisa edit
-        if ($record->created_by === $user->id) {
-            return true;
-        }
-        
-        return false;
-    }
-
-    /**
-     * Method untuk mengecek apakah user bisa membuat project baru
-     */
-    public static function canCreate(): bool
-    {
-        $user = auth()->user();
-        
-        // Admin, super-admin, dan role tertentu bisa membuat project
-        return $user->hasRole(['admin', 'super-admin', 'direktur', 'team']);
-    }
-
-    /**
-     * Method untuk mengecek apakah user bisa menghapus project
-     */
-    public static function canDelete($record): bool
-    {
-        $user = auth()->user();
-        
-        // Hanya admin, super-admin, dan project manager yang bisa hapus
-        return $user->hasRole(['admin', 'super-admin']) || 
-               $record->project_manager_id === $user->id ||
-               $record->created_by === $user->id;
     }
 
     public static function getRelations(): array

@@ -5,6 +5,8 @@ namespace App\Providers;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL;
+use App\Models\Project;
+use App\Observers\ProjectObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -21,6 +23,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Project::observe(ProjectObserver::class);
         // Praktik terbaik: Hanya izinkan mass assignment di lingkungan non-produksi.
         // Ini mencegah kerentanan mass assignment di server live.
         // Model::unguard() memungkinkan Anda untuk tidak perlu mendefinisikan $fillable

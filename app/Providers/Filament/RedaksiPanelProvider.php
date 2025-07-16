@@ -33,6 +33,7 @@ class RedaksiPanelProvider extends PanelProvider
              ->resources([
                 \App\Filament\Team\Resources\ProjectResource::class,
                 \App\Filament\Team\Resources\TaskResource::class,
+                \App\Filament\Team\Resources\PengajuanAnggaranResource::class,
             ])
             ->discoverPages(in: app_path('Filament/Redaksi/Pages'), for: 'App\\Filament\\Redaksi\\Pages')
             ->pages([

@@ -1,26 +1,29 @@
 <?php
 
-namespace App\Filament\Team\Resources\ProjectResource\Pages;
+namespace App\Filament\Team\Resources\PengajuanAnggaranResource\Pages;
 
-use App\Filament\Team\Resources\ProjectResource;
+use App\Filament\Team\Resources\PengajuanAnggaranResource;
 use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Notifications\Notification;
 
-class CreateProject extends CreateRecord
+class CreatePengajuanAnggaran extends CreateRecord
 {
-    protected static string $resource = ProjectResource::class;
+    protected static string $resource = PengajuanAnggaranResource::class;
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         // Set created_by to current user
         $data['created_by'] = auth()->id();
         
-        // Set default values yang sesuai dengan database
-        $data['status'] = 'draft'; // Sesuaikan dengan enum yang ada di database
-        $data['progress_percentage'] = 0;
+        // Set default values
+        $data['status'] = 'draft';
         $data['redaksi_approval_status'] = 'pending';
         $data['keuangan_approval_status'] = 'pending';
+        $data['tanggal_pengajuan'] = now();
+        $data['realisasi_anggaran'] = 0;
+        $data['sisa_anggaran'] = $data['total_anggaran'] ?? 0;
+        $data['is_used'] = false;
         
         return $data;
     }
@@ -29,10 +32,10 @@ class CreateProject extends CreateRecord
     {
         $record = $this->record;
         
-        // Show notification about workflow
+        // Show notification
         Notification::make()
-            ->title('Project berhasil dibuat!')
-            ->body("Project '{$record->nama_project}' telah dibuat dan proposal anggaran sebesar Rp " . number_format($record->proposal_budget, 0, ',', '.') . " telah dikirim ke redaksi untuk approval.")
+            ->title('Pengajuan Anggaran Berhasil Dibuat!')
+            ->body("Pengajuan '{$record->judul_pengajuan}' telah dibuat sebagai draft. Anda dapat mengajukan untuk masuk ke workflow approval.")
             ->success()
             ->duration(8000)
             ->send();

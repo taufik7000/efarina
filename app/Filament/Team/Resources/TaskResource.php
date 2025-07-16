@@ -18,10 +18,29 @@ class TaskResource extends Resource
     protected static ?string $model = Task::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
-    protected static ?string $navigationGroup = 'Project Management';
+    protected static ?string $navigationGroup = 'Proyek Management';
     protected static ?string $navigationLabel = 'Tasks';
     protected static ?int $navigationSort = 2;
 
+    public static function getEloquentQuery(): Builder
+    {
+        $user = auth()->user();
+
+        // Untuk list/index page, filter berdasarkan user
+        if (request()->routeIs('filament.team.resources.tasks.index')) {
+            return parent::getEloquentQuery()
+                ->where(function ($query) use ($user) {
+                    $query->where('assigned_to', $user->id)
+                        ->orWhere('created_by', $user->id)
+                        ->orWhereHas('project', function ($projectQuery) use ($user) {
+                            $projectQuery->where('project_manager_id', $user->id);
+                        });
+                });
+        }
+
+        // Untuk view/edit page, semua task bisa diakses
+        return parent::getEloquentQuery();
+    }
 
     public static function form(Form $form): Form
     {

@@ -1,5 +1,4 @@
 <?php
-// app/Models/Transaksi.php
 
 namespace App\Models;
 
@@ -7,7 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Carbon\Carbon;
 
 class Transaksi extends Model
 {
@@ -30,6 +28,12 @@ class Transaksi extends Model
         'approved_at',
         'approved_by',
         'created_by',
+        // Workflow Fields
+        'workflow_type',
+        'redaksi_approved_at',
+        'redaksi_approved_by',
+        'redaksi_notes',
+        'pengajuan_anggaran_id',
     ];
 
     protected $casts = [
@@ -37,13 +41,14 @@ class Transaksi extends Model
         'total_amount' => 'decimal:2',
         'attachments' => 'array',
         'approved_at' => 'datetime',
+        'redaksi_approved_at' => 'datetime',
     ];
 
     protected $attributes = [
-    'total_amount' => 0,
+        'total_amount' => 0,
     ];
 
-    // Relasi
+    // Existing Relations
     public function budgetAllocation(): BelongsTo
     {
         return $this->belongsTo(BudgetAllocation::class);
@@ -69,7 +74,18 @@ class Transaksi extends Model
         return $this->hasMany(TransaksiItem::class);
     }
 
-    // Scopes
+    // New Relations for Workflow
+    public function redaksiApprovedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'redaksi_approved_by');
+    }
+
+    public function pengajuanAnggaran(): BelongsTo
+    {
+        return $this->belongsTo(PengajuanAnggaran::class, 'pengajuan_anggaran_id');
+    }
+
+    // Existing Scopes
     public function scopePemasukan($query)
     {
         return $query->where('jenis_transaksi', 'pemasukan');
@@ -94,6 +110,24 @@ class Transaksi extends Model
     {
         return $query->whereMonth('tanggal_transaksi', now()->month)
                     ->whereYear('tanggal_transaksi', now()->year);
+    }
+
+    // New Scopes for Workflow
+    public function scopeProjectProposal($query)
+    {
+        return $query->where('workflow_type', 'project_proposal');
+    }
+
+    public function scopePendingRedaksi($query)
+    {
+        return $query->where('workflow_type', 'project_proposal')
+                    ->where('status', 'draft');
+    }
+
+    public function scopePendingKeuangan($query)
+    {
+        return $query->where('workflow_type', 'project_proposal')
+                    ->where('status', 'pending');
     }
 
     // Accessors & Mutators
@@ -124,118 +158,19 @@ class Transaksi extends Model
         return $prefix . ' Rp ' . number_format($this->total_amount, 0, ',', '.');
     }
 
-    // Methods
-    public function generateNomorTransaksi(): string
+    // Helper Methods for Workflow
+    public function isProjectProposal(): bool
     {
-        $prefix = match($this->jenis_transaksi) {
-            'pemasukan' => 'IN',
-            'pengeluaran' => 'OUT',
-            default => 'TRX',
-        };
-        
-        $date = $this->tanggal_transaksi->format('Ymd');
-        $counter = static::whereDate('tanggal_transaksi', $this->tanggal_transaksi)
-                         ->where('jenis_transaksi', $this->jenis_transaksi)
-                         ->count() + 1;
-        
-        return $prefix . '/' . $date . '/' . str_pad($counter, 3, '0', STR_PAD_LEFT);
+        return $this->workflow_type === 'project_proposal';
     }
 
-    public function approve(int $userId, string $catatan = null): void
+    public function needsRedaksiApproval(): bool
     {
-    $oldStatus = $this->status;
-    
-    $this->update([
-        'status' => 'approved',
-        'approved_by' => $userId,
-        'approved_at' => now(),
-        'catatan_approval' => $catatan,
-    ]);
-    
-    $this->logStatusChange('approved', $userId, $catatan);
+        return $this->isProjectProposal() && $this->status === 'draft';
     }
 
-    public function complete(): void
+    public function needsKeuanganApproval(): bool
     {
-    if ($this->status === 'approved') {
-        $this->update(['status' => 'completed']);
-        
-        // Update budget allocation jika pengeluaran
-        if ($this->jenis_transaksi === 'pengeluaran' && $this->budget_allocation_id) {
-            $this->budgetAllocation->increment('used_amount', $this->total_amount);
-        }
+        return $this->isProjectProposal() && $this->status === 'pending';
     }
-    }
-
-    public function reject(int $userId, string $catatan): void
-    {
-        $oldStatus = $this->status;
-
-        $this->update([
-            'status' => 'rejected',
-            'approved_by' => $userId,
-            'approved_at' => now(),
-            'catatan_approval' => $catatan,
-        ]);
-
-        $this->logStatusChange('rejected', $userId, $catatan);
-    }
-
-    // Update total amount dari items
-    public function updateTotalFromItems(): void
-    {
-        $total = $this->items()->sum('subtotal');
-        $this->update(['total_amount' => $total]);
-    }
-
-    // Boot method
-protected static function boot()
-{
-    parent::boot();
-
-    static::creating(function ($transaksi) {
-        if (empty($transaksi->nomor_transaksi)) {
-            $transaksi->nomor_transaksi = $transaksi->generateNomorTransaksi();
-        }
-        
-        if (empty($transaksi->total_amount)) {
-            $transaksi->total_amount = 0;
-        }
-    });
-    
-    static::created(function ($transaksi) {
-        // Log pembuatan transaksi
-        $transaksi->logStatusChange($transaksi->status, $transaksi->created_by, 'Transaksi dibuat');
-    });
-    
-    static::updating(function ($transaksi) {
-        // Log perubahan status jika status berubah
-        if ($transaksi->isDirty('status')) {
-            $transaksi->logStatusChange(
-                $transaksi->status, 
-                auth()->id(), 
-                'Status diperbarui'
-            );
-        }
-    });
-}
-
-
-    public function histories(): HasMany
-    {
-    return $this->hasMany(TransaksiHistory::class)->orderBy('action_at', 'desc');
-    }
-
-    public function logStatusChange(string $statusTo, int $actionBy, string $notes = null): void
-{
-    $this->histories()->create([
-        'status_from' => $this->getOriginal('status'),
-        'status_to' => $statusTo,
-        'action_by' => $actionBy,
-        'action_at' => now(),
-        'notes' => $notes,
-        'ip_address' => request()->ip(),
-        'user_agent' => request()->userAgent(),
-    ]);
-}
 }

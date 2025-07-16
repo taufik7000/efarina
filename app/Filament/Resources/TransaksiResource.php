@@ -418,4 +418,5 @@ class TransaksiResource extends Resource
             'edit' => Pages\EditTransaksi::route('/{record}/edit'),
         ];
     }
+
 }
