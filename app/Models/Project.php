@@ -14,36 +14,38 @@ class Project extends Model
     protected $fillable = [
         'nama_project',
         'deskripsi',
+        'pengajuan_anggaran_id',
         'project_manager_id',
         'tanggal_mulai',
         'tanggal_selesai',
         'status',
         'prioritas',
+        'client_name',
+        'client_contact',
         'budget_allocated',
         'budget_used',
         'progress_percentage',
         'created_by',
-        // Budget Proposal Fields
-        'proposal_budget',
-        'budget_items',
-        'proposal_description',
-        'redaksi_approval_status',
-        'redaksi_approved_by',
-        'redaksi_approved_at',
-        'redaksi_notes',
-        'keuangan_approval_status',
-        'keuangan_approved_by',
-        'keuangan_approved_at',
-        'keuangan_notes',
+    ];
+
+    protected $casts = [
+        'tanggal_mulai' => 'date',
+        'tanggal_selesai' => 'date',
+        'budget_allocated' => 'decimal:2',
+        'budget_used' => 'decimal:2',
+        'progress_percentage' => 'integer',
     ];
 
     protected $attributes = [
-        'redaksi_approval_status' => 'pending',
-        'keuangan_approval_status' => 'pending',
         'progress_percentage' => 0,
     ];
 
-    // Existing Relations
+    // Relations
+    public function pengajuanAnggaran(): BelongsTo
+    {
+        return $this->belongsTo(PengajuanAnggaran::class, 'pengajuan_anggaran_id');
+    }
+
     public function projectManager(): BelongsTo
     {
         return $this->belongsTo(User::class, 'project_manager_id');
@@ -64,17 +66,6 @@ class Project extends Model
         return $this->hasMany(Transaksi::class);
     }
 
-    // New Relations for Approval Workflow
-    public function redaksiApprovedBy(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'redaksi_approved_by');
-    }
-
-    public function keuanganApprovedBy(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'keuangan_approved_by');
-    }
-
     // Accessors for Status Colors
     public function getStatusColorAttribute(): string
     {
@@ -89,49 +80,14 @@ class Project extends Model
         };
     }
 
-    public function getRedaksiStatusColorAttribute(): string
-    {
-        return match($this->redaksi_approval_status) {
-            'pending' => 'warning',
-            'approved' => 'success',
-            'rejected' => 'danger',
-            default => 'gray',
-        };
-    }
-
-    public function getKeuanganStatusColorAttribute(): string
-    {
-        return match($this->keuangan_approval_status) {
-            'pending' => 'warning',
-            'approved' => 'success',
-            'rejected' => 'danger',
-            default => 'gray',
-        };
-    }
-
     // Helper Methods
-    public function isRedaksiApproved(): bool
+    public function hasApprovedBudget(): bool
     {
-        return $this->redaksi_approval_status === 'approved';
+        return $this->pengajuanAnggaran && $this->pengajuanAnggaran->isFullyApproved();
     }
 
-    public function isKeuanganApproved(): bool
+    public function getBudgetAmount(): float
     {
-        return $this->keuangan_approval_status === 'approved';
-    }
-
-    public function isFullyApproved(): bool
-    {
-        return $this->isRedaksiApproved() && $this->isKeuanganApproved();
-    }
-
-    public function canBeApprovedByRedaksi(): bool
-    {
-        return $this->redaksi_approval_status === 'pending' && $this->proposal_budget > 0;
-    }
-
-    public function canBeApprovedByKeuangan(): bool
-    {
-        return $this->keuangan_approval_status === 'pending' && $this->isRedaksiApproved();
+        return $this->pengajuanAnggaran ? $this->pengajuanAnggaran->total_anggaran : 0;
     }
 }

@@ -92,61 +92,44 @@ class ProjectResource extends Resource
                     ])
                     ->columns(2),
 
-                Forms\Components\Section::make('Proposal Anggaran')
+                Forms\Components\Section::make('Anggaran Project')
                     ->schema([
-                        Forms\Components\TextInput::make('proposal_budget')
-                            ->label('Total Anggaran')
-                            ->numeric()
-                            ->prefix('Rp')
-                            ->required()
-                            ->minValue(0)
-                            ->helperText('Masukkan total anggaran yang dibutuhkan'),
+                        Forms\Components\Select::make('pengajuan_anggaran_id')
+                            ->label('Pengajuan Anggaran')
+                            ->options(function () {
+                                return \App\Models\PengajuanAnggaran::approved()
+                                    ->available()
+                                    ->get()
+                                    ->pluck('display_name', 'id');
+                            })
+                            ->searchable()
+                            ->helperText('Pilih pengajuan anggaran yang sudah disetujui')
+                            ->nullable(),
 
-                        Forms\Components\Textarea::make('proposal_description')
-                            ->label('Deskripsi Penggunaan Anggaran')
-                            ->required()
-                            ->rows(4)
-                            ->helperText('Jelaskan secara detail penggunaan anggaran')
-                            ->columnSpan(2),
-
-                        Forms\Components\Placeholder::make('approval_info')
-                            ->label('Status Workflow')
-                            ->content(function ($record) {
-                                if (!$record) return '⏳ Setelah project dibuat, akan otomatis masuk ke approval workflow redaksi.';
-                                
-                                $content = '';
-                                
-                                // Redaksi Status
-                                $redaksiStatus = match($record->redaksi_approval_status) {
-                                    'pending' => '⏳ Menunggu approval redaksi',
-                                    'approved' => '✅ Disetujui redaksi pada ' . $record->redaksi_approved_at?->format('d M Y H:i'),
-                                    'rejected' => '❌ Ditolak redaksi pada ' . $record->redaksi_approved_at?->format('d M Y H:i'),
-                                };
-                                
-                                // Keuangan Status
-                                $keuanganStatus = match($record->keuangan_approval_status) {
-                                    'pending' => '⏳ Menunggu approval keuangan',
-                                    'approved' => '✅ Disetujui keuangan pada ' . $record->keuangan_approved_at?->format('d M Y H:i'),
-                                    'rejected' => '❌ Ditolak keuangan pada ' . $record->keuangan_approved_at?->format('d M Y H:i'),
-                                };
-                                
-                                $content .= "Redaksi: {$redaksiStatus}\n";
-                                $content .= "Keuangan: {$keuanganStatus}";
-                                
-                                if ($record->redaksi_notes) {
-                                    $content .= "\n\nCatatan Redaksi: {$record->redaksi_notes}";
+                        Forms\Components\Placeholder::make('anggaran_info')
+                            ->label('Informasi Anggaran')
+                            ->content(function ($get) {
+                                $pengajuanId = $get('pengajuan_anggaran_id');
+                                if (!$pengajuanId) {
+                                    return 'Pilih pengajuan anggaran untuk melihat detail.';
                                 }
                                 
-                                if ($record->keuangan_notes) {
-                                    $content .= "\n\nCatatan Keuangan: {$record->keuangan_notes}";
+                                $pengajuan = \App\Models\PengajuanAnggaran::find($pengajuanId);
+                                if (!$pengajuan) {
+                                    return 'Pengajuan anggaran tidak ditemukan.';
                                 }
+                                
+                                $content = "Nomor: {$pengajuan->nomor_pengajuan}\n";
+                                $content .= "Total: Rp " . number_format($pengajuan->total_anggaran, 0, ',', '.') . "\n";
+                                $content .= "Status: " . ucfirst($pengajuan->status) . "\n";
+                                $content .= "Redaksi: " . ucfirst($pengajuan->redaksi_approval_status) . "\n";
+                                $content .= "Keuangan: " . ucfirst($pengajuan->keuangan_approval_status);
                                 
                                 return $content;
                             })
-                            ->columnSpan(2)
-                            ->visible(fn ($record) => $record !== null), // Hanya tampil saat edit/view
+                            ->visible(fn ($get) => $get('pengajuan_anggaran_id')),
                     ])
-                    ->columns(2)
+                    ->columns(1)
                     ->collapsible(),
 
                 Forms\Components\Section::make('Status Approval')

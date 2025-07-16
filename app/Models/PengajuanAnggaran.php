@@ -175,6 +175,11 @@ class PengajuanAnggaran extends Model
         return $this->isFullyApproved() && !$this->is_used;
     }
 
+    public function getDisplayNameAttribute(): string
+    {
+        return $this->nomor_pengajuan . ' - ' . $this->judul_pengajuan . ' (Rp ' . number_format($this->total_anggaran, 0, ',', '.') . ')';
+    }
+
     public function calculateSisaAnggaran(): void
     {
         $this->sisa_anggaran = $this->total_anggaran - $this->realisasi_anggaran;

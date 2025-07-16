@@ -13,10 +13,7 @@ class CreatePengajuanAnggaran extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        // Set created_by to current user
         $data['created_by'] = auth()->id();
-        
-        // Set default values
         $data['status'] = 'draft';
         $data['redaksi_approval_status'] = 'pending';
         $data['keuangan_approval_status'] = 'pending';
@@ -32,12 +29,10 @@ class CreatePengajuanAnggaran extends CreateRecord
     {
         $record = $this->record;
         
-        // Show notification
         Notification::make()
             ->title('Pengajuan Anggaran Berhasil Dibuat!')
-            ->body("Pengajuan '{$record->judul_pengajuan}' telah dibuat sebagai draft. Anda dapat mengajukan untuk masuk ke workflow approval.")
+            ->body("Pengajuan '{$record->judul_pengajuan}' telah dibuat sebagai draft.")
             ->success()
-            ->duration(8000)
             ->send();
     }
 

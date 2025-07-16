@@ -428,6 +428,7 @@ class PengajuanAnggaranResource extends Resource
         return [
             'index' => Pages\ListPengajuanAnggarans::route('/'),
             'create' => Pages\CreatePengajuanAnggaran::route('/create'),
+            'view' => Pages\ViewPengajuanAnggaran::route('/{record}'),
             'edit' => Pages\EditPengajuanAnggaran::route('/{record}/edit'),
         ];
     }
