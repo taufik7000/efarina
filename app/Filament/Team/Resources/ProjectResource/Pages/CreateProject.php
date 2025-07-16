@@ -13,14 +13,11 @@ class CreateProject extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        // Set created_by to current user
         $data['created_by'] = auth()->id();
-        
-        // Set default values yang sesuai dengan database
-        $data['status'] = 'draft'; // Sesuaikan dengan enum yang ada di database
         $data['progress_percentage'] = 0;
-        $data['redaksi_approval_status'] = 'pending';
-        $data['keuangan_approval_status'] = 'pending';
+        
+        // Status selalu draft saat dibuat, nanti bisa diubah manual
+        $data['status'] = 'draft';
         
         return $data;
     }
@@ -29,12 +26,20 @@ class CreateProject extends CreateRecord
     {
         $record = $this->record;
         
-        // Show notification about workflow
+        $message = "Project '{$record->nama_project}' telah dibuat";
+        
+        if ($record->pengajuan_anggaran_id) {
+            $pengajuan = $record->pengajuanAnggaran;
+            $message .= " dengan anggaran Rp " . number_format($pengajuan->total_anggaran, 0, ',', '.') . " dari pengajuan yang sudah disetujui.";
+        } else {
+            $message .= " tanpa anggaran khusus.";
+        }
+        
         Notification::make()
             ->title('Project berhasil dibuat!')
-            ->body("Project '{$record->nama_project}' telah dibuat dan proposal anggaran sebesar Rp " . number_format($record->proposal_budget, 0, ',', '.') . " telah dikirim ke redaksi untuk approval.")
+            ->body($message)
             ->success()
-            ->duration(8000)
+            ->duration(6000)
             ->send();
     }
 

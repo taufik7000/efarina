@@ -28,7 +28,6 @@ class Transaksi extends Model
         'approved_at',
         'approved_by',
         'created_by',
-        // Workflow Fields
         'workflow_type',
         'redaksi_approved_at',
         'redaksi_approved_by',
