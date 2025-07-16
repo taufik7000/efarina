@@ -26,14 +26,14 @@ class RedaksiPanelProvider extends PanelProvider
             ->id('redaksi')
             ->path('redaksi')
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::Blue,
             ])
             ->viteTheme('resources/css/filament/redaksi/theme.css')
             ->discoverResources(in: app_path('Filament/Redaksi/Resources'), for: 'App\\Filament\\Redaksi\\Resources')
              ->resources([
-                \App\Filament\Team\Resources\ProjectResource::class,
                 \App\Filament\Team\Resources\TaskResource::class,
                 \App\Filament\Team\Resources\PengajuanAnggaranResource::class,
+                \App\Filament\Team\Resources\ProjectResource::class,
             ])
             ->discoverPages(in: app_path('Filament/Redaksi/Pages'), for: 'App\\Filament\\Redaksi\\Pages')
             ->pages([

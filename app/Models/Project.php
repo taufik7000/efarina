@@ -38,7 +38,7 @@ class Project extends Model
 
     protected $attributes = [
         'progress_percentage' => 0,
-        'status' => 'draft',
+        'status' => 'planning',
     ];
 
     // Relations
@@ -78,9 +78,9 @@ class Project extends Model
         return $query->where('status', 'completed');
     }
 
-    public function scopeDraft($query)
+    public function scopePlanning($query)
     {
-        return $query->where('status', 'draft');
+        return $query->where('status', 'planning');
     }
 
     public function scopeWithBudget($query)
@@ -102,8 +102,7 @@ class Project extends Model
     public function getStatusColorAttribute(): string
     {
         return match($this->status) {
-            'draft' => 'gray',
-            'approved' => 'success',
+            'planning' => 'warning',
             'active' => 'primary',
             'completed' => 'success',
             'cancelled' => 'danger',
@@ -182,12 +181,12 @@ class Project extends Model
 
     public function canBeStarted(): bool
     {
-        return $this->status === 'draft' || $this->status === 'approved';
+        return $this->status === 'planning';
     }
 
     public function canBeCompleted(): bool
     {
-        return $this->status === 'active' && $this->progress_percentage >= 100;
+        return $this->status === 'active';
     }
 
     public function getTotalTasks(): int
@@ -215,6 +214,11 @@ class Project extends Model
     {
         $taskProgress = $this->getTaskCompletionPercentage();
         $this->update(['progress_percentage' => $taskProgress]);
+    }
+
+    public function updateProgress(): void
+    {
+        $this->updateProgressFromTasks();
     }
 
     public function markAsCompleted(): void

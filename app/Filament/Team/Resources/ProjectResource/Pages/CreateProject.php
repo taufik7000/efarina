@@ -16,8 +16,8 @@ class CreateProject extends CreateRecord
         $data['created_by'] = auth()->id();
         $data['progress_percentage'] = 0;
         
-        // Status selalu draft saat dibuat, nanti bisa diubah manual
-        $data['status'] = 'draft';
+        // Status selalu planning saat dibuat
+        $data['status'] = 'planning';
         
         return $data;
     }

@@ -14,7 +14,7 @@ class CreatePengajuanAnggaran extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['created_by'] = auth()->id();
-        $data['status'] = 'draft';
+        $data['status'] = 'pending';
         $data['redaksi_approval_status'] = 'pending';
         $data['keuangan_approval_status'] = 'pending';
         $data['tanggal_pengajuan'] = now();

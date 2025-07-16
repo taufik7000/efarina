@@ -114,11 +114,10 @@ class ProjectResource extends Resource
                         Forms\Components\Select::make('status')
                             ->label('Status')
                             ->options([
-                                'draft' => 'Draft',
-                                'approved' => 'Disetujui',
-                                'active' => 'Aktif',
-                                'completed' => 'Selesai',
-                                'cancelled' => 'Dibatalkan',
+                                'planning' => 'Planning',
+                                'active' => 'Active',
+                                'completed' => 'Completed',
+                                'cancelled' => 'Cancelled',
                             ])
                             ->disabled()
                             ->dehydrated(false),
@@ -154,10 +153,10 @@ class ProjectResource extends Resource
                 Tables\Columns\BadgeColumn::make('status')
                     ->label('Status')
                     ->colors([
-                        'gray' => 'draft',
-                        'success' => ['approved', 'completed'],
-                        'danger' => 'cancelled',
+                        'warning' => 'planning',
                         'primary' => 'active',
+                        'success' => 'completed',
+                        'danger' => 'cancelled',
                     ]),
 
                 Tables\Columns\BadgeColumn::make('prioritas')
@@ -199,11 +198,10 @@ class ProjectResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
-                        'draft' => 'Draft',
-                        'approved' => 'Disetujui',
-                        'active' => 'Aktif',
-                        'completed' => 'Selesai',
-                        'cancelled' => 'Dibatalkan',
+                        'planning' => 'Planning',
+                        'active' => 'Active',
+                        'completed' => 'Completed',
+                        'cancelled' => 'Cancelled',
                     ]),
 
                 Tables\Filters\SelectFilter::make('prioritas')
@@ -220,11 +218,51 @@ class ProjectResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->visible(fn () => auth()->user()->hasRole('redaksi') || auth()->user()->hasRole('admin')),
+                    
+                Tables\Actions\Action::make('mark_active')
+                    ->label('Mulai Project')
+                    ->icon('heroicon-o-play')
+                    ->color('primary')
+                    ->visible(fn ($record) => 
+                        $record->status === 'planning' && 
+                        (auth()->user()->hasRole('redaksi') || auth()->user()->hasRole('admin'))
+                    )
+                    ->requiresConfirmation()
+                    ->action(function ($record) {
+                        $record->markAsActive();
+                        
+                        \Filament\Notifications\Notification::make()
+                            ->title('Project Dimulai')
+                            ->body("Project '{$record->nama_project}' sekarang dalam status aktif.")
+                            ->success()
+                            ->send();
+                    }),
+
+                Tables\Actions\Action::make('mark_completed')
+                    ->label('Selesaikan')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->visible(fn ($record) => 
+                        $record->status === 'active' && 
+                        (auth()->user()->hasRole('redaksi') || auth()->user()->hasRole('admin'))
+                    )
+                    ->requiresConfirmation()
+                    ->action(function ($record) {
+                        $record->markAsCompleted();
+                        
+                        \Filament\Notifications\Notification::make()
+                            ->title('Project Selesai')
+                            ->body("Project '{$record->nama_project}' telah diselesaikan.")
+                            ->success()
+                            ->send();
+                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->visible(fn () => auth()->user()->hasRole('redaksi') || auth()->user()->hasRole('admin')),
                 ]),
             ]);
     }
@@ -244,5 +282,23 @@ class ProjectResource extends Resource
             'view' => Pages\ViewProject::route('/{record}'),
             'edit' => Pages\EditProject::route('/{record}/edit'),
         ];
+    }
+
+    public static function canCreate(): bool
+    {
+        // Hanya role redaksi yang bisa create project
+        return auth()->user()->hasRole('redaksi') || auth()->user()->hasRole('admin');
+    }
+
+    public static function canEdit($record): bool
+    {
+        // Hanya role redaksi yang bisa edit project
+        return auth()->user()->hasRole('redaksi') || auth()->user()->hasRole('admin');
+    }
+
+    public static function canDelete($record): bool
+    {
+        // Hanya role redaksi yang bisa delete project
+        return auth()->user()->hasRole('redaksi') || auth()->user()->hasRole('admin');
     }
 }

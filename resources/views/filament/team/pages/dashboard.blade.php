@@ -164,15 +164,15 @@
                     <p class="text-sm text-gray-500 dark:text-gray-400">Get things done faster</p>
                 </div>
                 <div class="space-y-3">
-                    <a href="{{ \App\Filament\Team\Resources\TaskResource::getUrl('create') }}" 
+                    <a href="{{ \App\Filament\Team\Resources\PengajuanAnggaranResource::getUrl('create') }}" 
                        class="flex items-center justify-center w-full px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-purple-700 rounded-xl hover:from-purple-700 hover:to-purple-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-200 transform hover:scale-105 shadow-lg">
                         <x-heroicon-o-plus-circle class="w-5 h-5 mr-2"/> 
-                        Create New Task
+                        Ajukan Anggaran
                     </a>
-                    <a href="{{ \App\Filament\Team\Resources\ProjectResource::getUrl('create') }}"
+                    <a href="{{ \App\Filament\Team\Resources\ProjectProposalResource::getUrl('create') }}"
                        class="flex items-center justify-center w-full px-4 py-3 text-sm font-semibold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 transform hover:scale-105 border border-gray-200 dark:border-gray-600">
                         <x-heroicon-o-folder-plus class="w-5 h-5 mr-2"/> 
-                        New Project
+                        Ajukan Proposal Proyek
                     </a>
                 </div>
             </div>

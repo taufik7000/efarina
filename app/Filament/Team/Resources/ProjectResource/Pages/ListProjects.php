@@ -1,6 +1,5 @@
 <?php
 
-// File: app/Filament/Team/Resources/ProjectResource/Pages/ListProjects.php
 namespace App\Filament\Team\Resources\ProjectResource\Pages;
 
 use App\Filament\Team\Resources\ProjectResource;
@@ -13,8 +12,32 @@ class ListProjects extends ListRecords
 
     protected function getHeaderActions(): array
     {
+        $actions = [];
+
+        // Tombol Create Project - Hanya untuk Redaksi
+        if (auth()->user()->hasRole('redaksi') || auth()->user()->hasRole('admin')) {
+            $actions[] = Actions\CreateAction::make()
+                ->label('Buat Project Baru')
+                ->icon('heroicon-o-plus')
+                ->color('primary');
+        }
+
+        // Tombol Create Proposal - Untuk Tim
+        if (auth()->user()->hasRole('tim') || !auth()->user()->hasRole('redaksi')) {
+            $actions[] = Actions\Action::make('create_proposal')
+                ->label('Buat Proposal Project')
+                ->icon('heroicon-o-light-bulb')
+                ->color('warning')
+                ->url(route('filament.team.resources.project-proposals.create'));
+        }
+
+        return $actions;
+    }
+
+    protected function getHeaderWidgets(): array
+    {
         return [
-            Actions\CreateAction::make(),
+            // Bisa tambahkan widget statistik project di sini
         ];
     }
 }
