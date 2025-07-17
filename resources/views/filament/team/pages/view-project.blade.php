@@ -22,7 +22,7 @@
                     <div class="flex items-center space-x-4 text-white/80">
                         <div class="flex items-center space-x-2">
                             <x-heroicon-o-user class="h-5 w-5" />
-                            <span>PM: {{ $record->projectManager->name ?? 'Belum ditentukan' }}</span>
+                            <span>Penanggungjawab: {{ $record->projectManager->name ?? 'Belum ditentukan' }}</span>
                         </div>
                         <div class="flex items-center space-x-2">
                             <x-heroicon-o-calendar class="h-5 w-5" />
@@ -177,168 +177,144 @@
                 </div>
 
                 {{-- Tasks Section --}}
-                <div class="rounded-xl bg-white shadow-lg border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
-                    <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-                        <div class="flex items-center space-x-3">
-                            <div class="rounded-lg bg-green-100 p-2 dark:bg-green-900/50">
-                                <x-heroicon-o-clipboard-document-list class="h-5 w-5 text-green-600 dark:text-green-400" />
-                            </div>
-                            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Project Tasks</h3>
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
-                                {{ $taskStats['total'] }} Tasks
-                            </span>
-                        </div>
-                        
-                        {{-- Create Task Button --}}
-                        @if(auth()->user()->can('create', \App\Models\Task::class))
-                            <a href="{{ \App\Filament\Team\Resources\TaskResource::getUrl('create', ['project_id' => $record->id]) }}" 
-                               class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">
-                                <x-heroicon-o-plus class="h-4 w-4 mr-2" />
-                                Tambah Task
-                            </a>
-                        @endif
-                    </div>
-
-                    {{-- Task Stats Grid --}}
-                    @if($taskStats['total'] > 0)
-                        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
-                            <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-                                <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 text-center">
-                                    <div class="text-2xl font-bold text-gray-600 dark:text-gray-300">{{ $taskStats['todo'] }}</div>
-                                    <div class="text-sm text-gray-500 dark:text-gray-400">To Do</div>
-                                </div>
-                                <div class="bg-blue-100 dark:bg-blue-800 rounded-lg p-4 text-center">
-                                    <div class="text-2xl font-bold text-blue-600 dark:text-blue-300">{{ $taskStats['in_progress'] }}</div>
-                                    <div class="text-sm text-blue-500 dark:text-blue-400">In Progress</div>
-                                </div>
-                                <div class="bg-yellow-100 dark:bg-yellow-800 rounded-lg p-4 text-center">
-                                    <div class="text-2xl font-bold text-yellow-600 dark:text-yellow-300">{{ $taskStats['review'] }}</div>
-                                    <div class="text-sm text-yellow-500 dark:text-yellow-400">Review</div>
-                                </div>
-                                <div class="bg-green-100 dark:bg-green-800 rounded-lg p-4 text-center">
-                                    <div class="text-2xl font-bold text-green-600 dark:text-green-300">{{ $taskStats['done'] }}</div>
-                                    <div class="text-sm text-green-500 dark:text-green-400">Done</div>
-                                </div>
-                                <div class="bg-red-100 dark:bg-red-800 rounded-lg p-4 text-center">
-                                    <div class="text-2xl font-bold text-red-600 dark:text-red-300">{{ $taskStats['blocked'] }}</div>
-                                    <div class="text-sm text-red-500 dark:text-red-400">Blocked</div>
-                                </div>
-                            </div>
-                        </div>
-                    @endif
-
-                    {{-- Tasks List --}}
-                    <div class="divide-y divide-gray-200 dark:divide-gray-700">
-                        @forelse($tasks as $task)
-                            <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex-1 min-w-0">
-                                        <div class="flex items-center space-x-3">
-                                            <a href="{{ \App\Filament\Team\Resources\TaskResource::getUrl('view', ['record' => $task]) }}" 
-                                               class="text-lg font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400">
-                                                {{ $task->nama_task }}
-                                            </a>
-                                            
-                                            {{-- Status Badge --}}
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                                   {{ match($task->status) {
-                                                       'todo' => 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
-                                                       'in_progress' => 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200',
-                                                       'review' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200',
-                                                       'done' => 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200',
-                                                       'blocked' => 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-200',
-                                                       default => 'bg-gray-100 text-gray-800'
-                                                   } }}">
-                                                {{ ucfirst(str_replace('_', ' ', $task->status)) }}
-                                            </span>
-
-                                            {{-- Priority Badge --}}
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                                   {{ match($task->prioritas) {
-                                                       'low' => 'bg-gray-100 text-gray-600',
-                                                       'medium' => 'bg-blue-100 text-blue-600',
-                                                       'high' => 'bg-orange-100 text-orange-600',
-                                                       'urgent' => 'bg-red-100 text-red-600',
-                                                       default => 'bg-gray-100 text-gray-600'
-                                                   } }}">
-                                                {{ ucfirst($task->prioritas) }}
-                                            </span>
-                                        </div>
-                                        
-                                        {{-- Task Info --}}
-                                        <div class="mt-2 flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
-                                            @if($task->assignedTo)
-                                                <div class="flex items-center space-x-1">
-                                                    <x-heroicon-o-user class="h-4 w-4" />
-                                                    <span>{{ $task->assignedTo->name }}</span>
-                                                </div>
-                                            @endif
-                                            
-                                            @if($task->tanggal_deadline)
-                                                <div class="flex items-center space-x-1 {{ $task->tanggal_deadline->isPast() ? 'text-red-500' : '' }}">
-                                                    <x-heroicon-o-calendar class="h-4 w-4" />
-                                                    <span>{{ $task->tanggal_deadline->format('d M Y') }}</span>
-                                                    @if($task->tanggal_deadline->isPast())
-                                                        <span class="text-red-500 font-medium">(Overdue)</span>
-                                                    @endif
-                                                </div>
-                                            @endif
-                                            
-                                            <div class="flex items-center space-x-1">
-                                                <x-heroicon-o-chart-bar class="h-4 w-4" />
-                                                <span>{{ $task->progress_percentage }}%</span>
-                                            </div>
-                                        </div>
-                                        
-                                        {{-- Progress Bar --}}
-                                        @if($task->progress_percentage > 0)
-                                            <div class="mt-2 w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
-                                                <div class="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                                                     style="width: {{ $task->progress_percentage }}%"></div>
-                                            </div>
-                                        @endif
-                                    </div>
-                                    
-                                    {{-- Actions --}}
-                                    <div class="flex items-center space-x-2 ml-4">
-                                        @if(auth()->user()->can('update', $task))
-                                            <a href="{{ \App\Filament\Team\Resources\TaskResource::getUrl('edit', ['record' => $task]) }}" 
-                                               class="p-2 text-gray-400 hover:text-blue-600 transition-colors">
-                                                <x-heroicon-o-pencil class="h-4 w-4" />
-                                            </a>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
-                        @empty
-                            <div class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
-                                <x-heroicon-o-clipboard-document-list class="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                                <p class="text-lg font-medium">Belum ada task</p>
-                                <p class="text-sm">Mulai dengan membuat task pertama untuk project ini!</p>
-                                
-                                @if(auth()->user()->can('create', \App\Models\Task::class))
-                                    <div class="mt-4">
-                                        <a href="{{ \App\Filament\Team\Resources\TaskResource::getUrl('create', ['project_id' => $record->id]) }}" 
-                                           class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
-                                            <x-heroicon-o-plus class="h-4 w-4 mr-2" />
-                                            Buat Task Pertama
-                                        </a>
-                                    </div>
-                                @endif
-                            </div>
-                        @endforelse
-                    </div>
-
-                    {{-- View All Tasks Link --}}
-                    @if($tasks->count() > 0)
-                        <div class="px-6 py-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
-                            <a href="{{ \App\Filament\Team\Resources\TaskResource::getUrl('index', ['tableFilters[project_id][value]' => $record->id]) }}" 
-                               class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 font-medium">
-                                Lihat semua {{ $tasks->count() }} tasks di halaman Task →
-                            </a>
-                        </div>
-                    @endif
+@if($this->canViewTasks())
+    <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Tasks</h3>
+            
+            {{-- Tombol Create Task dengan Validasi --}}
+            @if($this->canCreateTask())
+                <a href="{{ \App\Filament\Team\Resources\TaskResource::getUrl('create', ['project_id' => $record->id]) }}" 
+                   class="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
+                    <x-heroicon-o-plus class="h-4 w-4 mr-1" />
+                    Tambah Task
+                </a>
+            @elseif($record->status === 'draft' || $record->status === 'planning')
+                <div class="text-sm text-yellow-600 bg-yellow-100 px-3 py-2 rounded-lg">
+                    <x-heroicon-o-exclamation-triangle class="h-4 w-4 inline mr-1" />
+                    Project harus disetujui dulu sebelum bisa menambah task
                 </div>
+            @elseif($record->status === 'completed')
+                <div class="text-sm text-gray-600 bg-gray-100 px-3 py-2 rounded-lg">
+                    <x-heroicon-o-lock-closed class="h-4 w-4 inline mr-1" />
+                    Project sudah selesai, tidak bisa menambah task
+                </div>
+            @else
+                <div class="text-sm text-gray-600 bg-gray-100 px-3 py-2 rounded-lg">
+                    <x-heroicon-o-no-symbol class="h-4 w-4 inline mr-1" />
+                    Tidak bisa menambah task
+                </div>
+            @endif
+        </div>
+
+        {{-- Task Statistics --}}
+        @php
+            $tasks = $record->tasks;
+            $taskStats = [
+                'total' => $tasks->count(),
+                'todo' => $tasks->where('status', 'todo')->count(),
+                'in_progress' => $tasks->where('status', 'in_progress')->count(),
+                'review' => $tasks->where('status', 'review')->count(),
+                'done' => $tasks->where('status', 'done')->count(),
+                'blocked' => $tasks->where('status', 'blocked')->count(),
+            ];
+        @endphp
+
+        @if($taskStats['total'] > 0)
+            {{-- Task Stats Grid --}}
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
+                <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-gray-600 dark:text-gray-300">{{ $taskStats['total'] }}</div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400">Total</div>
+                </div>
+                <div class="bg-blue-100 dark:bg-blue-800 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-blue-600 dark:text-blue-300">{{ $taskStats['todo'] }}</div>
+                    <div class="text-sm text-blue-500 dark:text-blue-400">To Do</div>
+                </div>
+                <div class="bg-yellow-100 dark:bg-yellow-800 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-yellow-600 dark:text-yellow-300">{{ $taskStats['in_progress'] }}</div>
+                    <div class="text-sm text-yellow-500 dark:text-yellow-400">In Progress</div>
+                </div>
+                <div class="bg-purple-100 dark:bg-purple-800 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-purple-600 dark:text-purple-300">{{ $taskStats['review'] }}</div>
+                    <div class="text-sm text-purple-500 dark:text-purple-400">Review</div>
+                </div>
+                <div class="bg-green-100 dark:bg-green-800 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-green-600 dark:text-green-300">{{ $taskStats['done'] }}</div>
+                    <div class="text-sm text-green-500 dark:text-green-400">Done</div>
+                </div>
+                <div class="bg-red-100 dark:bg-red-800 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-red-600 dark:text-red-300">{{ $taskStats['blocked'] }}</div>
+                    <div class="text-sm text-red-500 dark:text-red-400">Blocked</div>
+                </div>
+            </div>
+
+            {{-- Tasks List --}}
+            <div class="divide-y divide-gray-200 dark:divide-gray-700">
+                @foreach($tasks->take(5) as $task)
+                    <div class="py-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <h4 class="font-medium text-gray-900 dark:text-gray-100">
+                                    <a href="{{ \App\Filament\Team\Resources\TaskResource::getUrl('view', ['record' => $task]) }}" 
+                                       class="hover:text-blue-600">
+                                        {{ $task->nama_task }}
+                                    </a>
+                                </h4>
+                                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ $task->deskripsi }}</p>
+                                <div class="flex items-center space-x-4 mt-2">
+                                    <span class="text-xs text-gray-500">
+                                        Assigned: {{ $task->assignedTo?->name ?? 'Unassigned' }}
+                                    </span>
+                                    @if($task->tanggal_deadline)
+                                        <span class="text-xs text-gray-500">
+                                            Due: {{ $task->tanggal_deadline->format('d M Y') }}
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                       {{ match($task->status) {
+                                           'todo' => 'bg-blue-100 text-blue-800',
+                                           'in_progress' => 'bg-yellow-100 text-yellow-800', 
+                                           'review' => 'bg-purple-100 text-purple-800',
+                                           'done' => 'bg-green-100 text-green-800',
+                                           'blocked' => 'bg-red-100 text-red-800',
+                                           default => 'bg-gray-100 text-gray-800'
+                                       } }}">
+                                    {{ ucfirst($task->status) }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+
+            @if($tasks->count() > 5)
+                <div class="mt-4 text-center">
+                    <a href="{{ \App\Filament\Team\Resources\TaskResource::getUrl('index', ['tableFilters[project][value]' => $record->id]) }}" 
+                       class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                        Lihat semua {{ $tasks->count() }} tasks →
+                    </a>
+                </div>
+            @endif
+        @else
+            {{-- No Tasks State --}}
+            <div class="text-center py-8">
+                <x-heroicon-o-clipboard-document-list class="w-12 h-12 mx-auto text-gray-400 mb-3" />
+                <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Belum Ada Task</h4>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                    @if($this->canCreateTask())
+                        Mulai dengan menambahkan task pertama untuk project ini.
+                    @else
+                        Task akan muncul di sini setelah project disetujui.
+                    @endif
+                </p>
+            </div>
+        @endif
+    </div>
+@endif
 
 
             </div>
@@ -395,7 +371,7 @@
                     </div>
                 </div>
 
-                {{-- Budget Summary Card --}}
+{{-- Budget Summary Card --}}
 @if($record->hasBudget())
     <div class="rounded-xl bg-white p-6 shadow-lg border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Ringkasan Anggaran</h3>
@@ -419,8 +395,7 @@
                 </span>
             </div>
         </div>
-
-        {{-- Budget Usage Progress Bar --}}
+         {{-- Budget Usage Progress Bar --}}
         <div class="mb-6">
             <div class="flex justify-between items-center mb-2">
                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Penggunaan Anggaran</span>
@@ -432,13 +407,13 @@
             </div>
         </div>
 
-        {{-- Approved Budget Requests List --}}
+        {{-- Approved Budget Requests List dengan Tombol Realisasi --}}
         <div>
             <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">Pengajuan Anggaran Disetujui</h4>
             <div class="space-y-2">
                 @foreach($record->getApprovedBudgetRequests() as $pengajuan)
                     <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
-                        <div class="flex justify-between items-start">
+                        <div class="flex justify-between items-start mb-3">
                             <div class="flex-1">
                                 <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $pengajuan->judul_pengajuan }}</p>
                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -454,6 +429,72 @@
                                 @endif
                             </div>
                         </div>
+
+                        {{-- Progress Realisasi --}}
+                        @php
+                            $totalRealized = collect($pengajuan->detail_items)->sum(function ($item) {
+                                return $item['realisasi']['total_actual'] ?? 0;
+                            });
+                            $realizationPercentage = $pengajuan->total_anggaran > 0 ? round(($totalRealized / $pengajuan->total_anggaran) * 100, 2) : 0;
+                        @endphp
+                        <div class="mb-3">
+                            <div class="flex justify-between text-xs text-gray-500 mb-1">
+                                <span>Realisasi: Rp {{ number_format($totalRealized, 0, ',', '.') }}</span>
+                                <span>{{ $realizationPercentage }}%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="h-2 rounded-full {{ $realizationPercentage >= 100 ? 'bg-green-500' : 'bg-blue-500' }}" 
+                                     style="width: {{ min($realizationPercentage, 100) }}%"></div>
+                            </div>
+                        </div>
+
+                        {{-- Detail Items dengan Tombol Realisasi --}}
+                        @if(count($pengajuan->detail_items) > 0)
+                            <div class="border-t border-gray-200 dark:border-gray-600 pt-3">
+                                <h5 class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Detail Items:</h5>
+                                <div class="space-y-2">
+                                    @foreach($pengajuan->detail_items as $index => $item)
+                                        <div class="flex justify-between items-center bg-white dark:bg-gray-600 rounded px-3 py-2">
+                                            <div class="flex-1">
+                                                <p class="text-xs font-medium text-gray-800 dark:text-gray-200">
+                                                    {{ $item['item_name'] ?? $item['nama_item'] ?? 'Item' }}
+                                                </p>
+                                                <p class="text-xs text-gray-500">
+                                                    {{ $item['quantity'] ?? $item['kuantitas'] ?? 1 }}x 
+                                                    @ Rp {{ number_format($item['unit_price'] ?? $item['harga_satuan'] ?? 0, 0, ',', '.') }}
+                                                </p>
+                                            </div>
+                                            
+                                            <div class="text-right flex items-center space-x-2">
+                                                <div>
+                                                    <p class="text-xs font-semibold text-gray-800 dark:text-gray-200">
+                                                        Rp {{ number_format($item['total_price'] ?? 0, 0, ',', '.') }}
+                                                    </p>
+                                                    @if(isset($item['realisasi']) && $item['realisasi']['status'] === 'realized')
+                                                        <p class="text-xs text-green-600">
+                                                            ✓ Rp {{ number_format($item['realisasi']['total_actual'], 0, ',', '.') }}
+                                                        </p>
+                                                    @endif
+                                                </div>
+                                                
+                                                {{-- Tombol Input Realisasi - Hanya untuk PM --}}
+                                                @if($this->canInputRealization() && (!isset($item['realisasi']) || $item['realisasi']['status'] !== 'realized'))
+                                                    <button 
+                                                        wire:click="inputRealizationModal({{ $pengajuan->id }}, {{ $index }})"
+                                                        class="bg-orange-500 hover:bg-orange-600 text-white px-2 py-1 rounded text-xs font-medium transition-colors">
+                                                        Input Realisasi
+                                                    </button>
+                                                @elseif(isset($item['realisasi']) && $item['realisasi']['status'] === 'realized')
+                                                    <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">
+                                                        Sudah Direalisasi
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 @endforeach
             </div>
@@ -489,44 +530,6 @@
     </div>
 @endif
 
-                {{-- Project Info Card --}}
-                <div class="rounded-xl bg-white p-6 shadow-lg border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Informasi Project</h3>
-                    <div class="space-y-4">
-                        <div>
-                            <span class="text-sm font-medium text-gray-500">Budget:</span>
-                            <p class="text-gray-900 dark:text-gray-100">Rp {{ number_format($record->budget, 0, ',', '.') }}</p>
-                        </div>
-                        <div>
-                            <span class="text-sm font-medium text-gray-500">Prioritas:</span>
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                   {{ match($record->prioritas) {
-                                       'low' => 'bg-gray-100 text-gray-800',
-                                       'medium' => 'bg-blue-100 text-blue-800',
-                                       'high' => 'bg-orange-100 text-orange-800',
-                                       'urgent' => 'bg-red-100 text-red-800',
-                                       default => 'bg-gray-100 text-gray-800'
-                                   } }}">
-                                {{ ucfirst($record->prioritas) }}
-                            </span>
-                        </div>
-                        <div>
-                            <span class="text-sm font-medium text-gray-500">Dibuat oleh:</span>
-                            <p class="text-gray-900 dark:text-gray-100">{{ $record->createdBy->name }}</p>
-                        </div>
-                        <div>
-                            <span class="text-sm font-medium text-gray-500">Tanggal dibuat:</span>
-                            <p class="text-gray-900 dark:text-gray-100">{{ $record->created_at->format('d M Y, H:i') }}</p>
-                        </div>
-                        @if($record->catatan)
-                            <div>
-                                <span class="text-sm font-medium text-gray-500">Catatan:</span>
-                                <p class="text-gray-900 dark:text-gray-100 text-sm">{{ $record->catatan }}</p>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-
                 {{-- Team Members Card --}}
                 @if($record->team_members && count($record->team_members) > 0)
                     <div class="rounded-xl bg-white p-6 shadow-lg border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
@@ -546,4 +549,91 @@
             </div>
         </div>
     </div>
+
+
+@if($showRealizationModal && $selectedPengajuan)
+    <div class="fixed inset-0 z-50 overflow-y-auto" style="background-color: rgba(0, 0, 0, 0.5);">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Input Realisasi Anggaran</h3>
+                    <button wire:click="closeRealizationModal" class="text-gray-400 hover:text-gray-600">
+                        <x-heroicon-o-x-mark class="h-6 w-6" />
+                    </button>
+                </div>
+
+                @if($selectedPengajuan && isset($selectedPengajuan->detail_items[$selectedItemIndex]))
+                    @php $selectedItem = $selectedPengajuan->detail_items[$selectedItemIndex]; @endphp
+                    
+                    <div class="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded">
+                        <p class="text-sm font-medium">{{ $selectedItem['item_name'] ?? $selectedItem['nama_item'] ?? 'Item' }}</p>
+                        <p class="text-xs text-gray-500">
+                            Budget: {{ $selectedItem['quantity'] ?? $selectedItem['kuantitas'] ?? 1 }}x @ Rp {{ number_format($selectedItem['unit_price'] ?? $selectedItem['harga_satuan'] ?? 0, 0, ',', '.') }}
+                            = Rp {{ number_format($selectedItem['total_price'] ?? 0, 0, ',', '.') }}
+                        </p>
+                    </div>
+
+                    <form wire:submit.prevent="submitRealization" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tanggal Realisasi</label>
+                            <input type="date" wire:model="tanggal_realisasi" 
+                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" required>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Vendor/Supplier</label>
+                            <input type="text" wire:model="vendor" 
+                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" 
+                                   placeholder="Nama vendor/supplier" required>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Qty Aktual</label>
+                                <input type="number" wire:model.live="qty_actual" step="0.01" min="0"
+                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Harga Aktual</label>
+                                <input type="number" wire:model.live="harga_actual" step="0.01" min="0"
+                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" required>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Total Aktual</label>
+                            <input type="number" wire:model="total_actual" step="0.01" min="0" readonly
+                                   class="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm dark:bg-gray-600 dark:border-gray-600 dark:text-gray-100">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Upload Bukti</label>
+                            <input type="file" wire:model="bukti_files" multiple accept="image/*,.pdf"
+                                   class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                            <p class="text-xs text-gray-500 mt-1">JPG, PNG, PDF - Max 5MB per file</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Catatan</label>
+                            <textarea wire:model="catatan_realisasi" rows="3"
+                                      class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                                      placeholder="Catatan tambahan (opsional)"></textarea>
+                        </div>
+
+                        <div class="flex justify-end space-x-2 pt-4">
+                            <button type="button" wire:click="closeRealizationModal"
+                                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 dark:bg-gray-600 dark:text-gray-300 dark:hover:bg-gray-500">
+                                Batal
+                            </button>
+                            <button type="submit"
+                                    class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                                Simpan Realisasi
+                            </button>
+                        </div>
+                    </form>
+                @endif
+            </div>
+        </div>
+    </div>
+@endif
 </x-filament-panels::page>

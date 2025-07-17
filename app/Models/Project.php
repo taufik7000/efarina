@@ -334,11 +334,19 @@ public function getTotalApprovedBudgetAttribute(): float
 // Get total yang sudah terpakai dari semua pengajuan anggaran
 public function getTotalUsedBudgetAttribute(): float
 {
-    return $this->transaksis()
+    // Hitung dari realisasi_anggaran di PengajuanAnggaran
+    $totalFromRealisasi = $this->pengajuanAnggarans()
         ->where('status', 'approved')
+        ->sum('realisasi_anggaran');
+    
+    // Jika ada, tambahkan dari transaksi yang completed (bukan dari pengajuan anggaran)
+    $totalFromTransaksi = $this->transaksis()
+        ->where('status', 'completed')
+        ->whereNull('pengajuan_anggaran_id') // Transaksi manual, bukan dari pengajuan
         ->sum('total_amount');
+    
+    return $totalFromRealisasi + $totalFromTransaksi;
 }
-
 // Get sisa budget yang tersedia
 public function getRemainingBudgetAttribute(): float
 {

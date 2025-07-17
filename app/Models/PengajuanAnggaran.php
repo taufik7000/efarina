@@ -245,4 +245,102 @@ class PengajuanAnggaran extends Model
     {
         return $this->belongsTo(BudgetAllocation::class, 'budget_subcategory_id', 'budget_subcategory_id');
     }
+
+
+    /**
+ * Check apakah pengajuan ini bisa direalisasi
+ */
+public function canBeRealized(): bool
+{
+    return $this->status === 'approved' && !$this->isFullyRealized();
+}
+
+/**
+ * Check apakah sudah full realized
+ */
+public function isFullyRealized(): bool
+{
+    $items = collect($this->detail_items);
+    return $items->every(function ($item) {
+        return isset($item['realisasi']) && $item['realisasi']['status'] === 'realized';
+    });
+}
+
+/**
+ * Get total realisasi dari semua items
+ */
+public function getTotalRealizedAttribute(): float
+{
+    return collect($this->detail_items)
+        ->sum(function ($item) {
+            return $item['realisasi']['total_actual'] ?? 0;
+        });
+}
+
+/**
+ * Get realisasi percentage
+ */
+public function getRealizationPercentageAttribute(): float
+{
+    if ($this->total_anggaran == 0) return 0;
+    
+    return round(($this->total_realized / $this->total_anggaran) * 100, 2);
+}
+
+/**
+ * Get items yang belum direalisasi
+ */
+public function getUnrealizedItems(): array
+{
+    return collect($this->detail_items)
+        ->filter(function ($item, $index) {
+            $hasRealization = isset($item['realisasi']) && $item['realisasi']['status'] === 'realized';
+            return !$hasRealization;
+        })
+        ->map(function ($item, $index) {
+            $item['index'] = $index; // Tambah index untuk referensi
+            return $item;
+        })
+        ->values()
+        ->toArray();
+}
+
+/**
+ * Update realisasi untuk item tertentu
+ */
+public function updateItemRealization(int $itemIndex, array $realizationData): bool
+{
+    $items = $this->detail_items;
+    
+    if (!isset($items[$itemIndex])) {
+        return false;
+    }
+    
+    // Tambahkan data realisasi ke item
+    $items[$itemIndex]['realisasi'] = array_merge([
+        'tanggal_realisasi' => now()->format('Y-m-d'),
+        'realized_by' => auth()->id(),
+        'realized_at' => now()->toISOString(),
+        'status' => 'realized'
+    ], $realizationData);
+    
+    // Update detail_items dan realisasi_anggaran
+    $this->update([
+        'detail_items' => $items,
+        'realisasi_anggaran' => $this->calculateTotalRealized($items)
+    ]);
+    
+    return true;
+}
+
+/**
+ * Calculate total realized dari items
+ */
+private function calculateTotalRealized(array $items): float
+{
+    return collect($items)
+        ->sum(function ($item) {
+            return $item['realisasi']['total_actual'] ?? 0;
+        });
+}
 }

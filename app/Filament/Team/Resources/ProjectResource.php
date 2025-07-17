@@ -96,74 +96,74 @@ class ProjectResource extends Resource
                             ->helperText('Siapa target audience dari project ini')
                             ->columnSpan(2),
 
-                Forms\Components\Section::make('Target Metrics')
-                    ->description('Definisikan metrics yang dapat diukur untuk mengevaluasi kesuksesan project')
-                    ->schema([
-                        Forms\Components\Repeater::make('target_metrics')
-                            ->label('Target Metrics')
+                        Forms\Components\Section::make('Target Metrics')
+                            ->description('Definisikan metrics yang dapat diukur untuk mengevaluasi kesuksesan project')
                             ->schema([
-                                Forms\Components\TextInput::make('metric')
-                                    ->label('Metric')
-                                    ->placeholder('contoh: Total Views, Engagement Rate, Downloads')
-                                    ->required()
-                                    ->maxLength(255),
-                                Forms\Components\TextInput::make('target')
-                                    ->label('Target')
-                                    ->placeholder('contoh: 100K, 5%, 1000')
-                                    ->required()
-                                    ->maxLength(100),
-                                Forms\Components\TextInput::make('timeframe')
-                                    ->label('Timeframe')
-                                    ->placeholder('contoh: 3 bulan, 1 minggu')
-                                    ->required()
-                                    ->maxLength(100),
-                            ])
-                            ->columns(3)
-                            ->defaultItems(1)
-                            ->addActionLabel('Tambah Metric')
-                            ->columnSpanFull(),
-                    ]),
-
-                Forms\Components\Section::make('Deliverables')
-                    ->description('Daftar output konkret yang akan dihasilkan dari project ini')
-                    ->schema([
-                        Forms\Components\Repeater::make('deliverables')
-                            ->label('Deliverables')
-                            ->schema([
-                                Forms\Components\Select::make('type')
-                                    ->label('Jenis')
-                                    ->options([
-                                        'article' => '📝 Artikel',
-                                        'video' => '🎥 Video',
-                                        'podcast' => '🎙️ Podcast',
-                                        'infographic' => '📊 Infografis',
-                                        'report' => '📋 Report',
-                                        'ebook' => '📚 E-book',
-                                        'webinar' => '💻 Webinar',
-                                        'campaign' => '📢 Campaign',
-                                        'other' => '❓ Lainnya',
+                                Forms\Components\Repeater::make('target_metrics')
+                                    ->label('Target Metrics')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('metric')
+                                            ->label('Metric')
+                                            ->placeholder('contoh: Total Views, Engagement Rate, Downloads')
+                                            ->required()
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('target')
+                                            ->label('Target')
+                                            ->placeholder('contoh: 100K, 5%, 1000')
+                                            ->required()
+                                            ->maxLength(100),
+                                        Forms\Components\TextInput::make('timeframe')
+                                            ->label('Timeframe')
+                                            ->placeholder('contoh: 3 bulan, 1 minggu')
+                                            ->required()
+                                            ->maxLength(100),
                                     ])
-                                    ->required(),
-                                Forms\Components\TextInput::make('title')
-                                    ->label('Judul/Deskripsi')
-                                    ->required()
-                                    ->maxLength(255),
-                                Forms\Components\TextInput::make('quantity')
-                                    ->label('Jumlah')
-                                    ->placeholder('contoh: 5 artikel, 1 video')
-                                    ->required()
-                                    ->maxLength(100),
-                                Forms\Components\Textarea::make('description')
-                                    ->label('Detail')
-                                    ->placeholder('Jelaskan spesifikasi lebih detail')
-                                    ->rows(2)
-                                    ->maxLength(500),
-                            ])
-                            ->columns(2)
-                            ->defaultItems(1)
-                            ->addActionLabel('Tambah Deliverable')
-                            ->columnSpanFull(),
-                    ]),
+                                    ->columns(3)
+                                    ->defaultItems(1)
+                                    ->addActionLabel('Tambah Metric')
+                                    ->columnSpanFull(),
+                            ]),
+
+                        Forms\Components\Section::make('Deliverables')
+                            ->description('Daftar output konkret yang akan dihasilkan dari project ini')
+                            ->schema([
+                                Forms\Components\Repeater::make('deliverables')
+                                    ->label('Deliverables')
+                                    ->schema([
+                                        Forms\Components\Select::make('type')
+                                            ->label('Jenis')
+                                            ->options([
+                                                'article' => '📝 Artikel',
+                                                'video' => '🎥 Video',
+                                                'podcast' => '🎙️ Podcast',
+                                                'infographic' => '📊 Infografis',
+                                                'report' => '📋 Report',
+                                                'ebook' => '📚 E-book',
+                                                'webinar' => '💻 Webinar',
+                                                'campaign' => '📢 Campaign',
+                                                'other' => '❓ Lainnya',
+                                            ])
+                                            ->required(),
+                                        Forms\Components\TextInput::make('title')
+                                            ->label('Judul/Deskripsi')
+                                            ->required()
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('quantity')
+                                            ->label('Jumlah')
+                                            ->placeholder('contoh: 5 artikel, 1 video')
+                                            ->required()
+                                            ->maxLength(100),
+                                        Forms\Components\Textarea::make('description')
+                                            ->label('Detail')
+                                            ->placeholder('Jelaskan spesifikasi lebih detail')
+                                            ->rows(2)
+                                            ->maxLength(500),
+                                    ])
+                                    ->columns(2)
+                                    ->defaultItems(1)
+                                    ->addActionLabel('Tambah Deliverable')
+                                    ->columnSpanFull(),
+                            ]),
 
                         Forms\Components\Textarea::make('expected_outcomes')
                             ->label('Expected Outcomes')
@@ -207,11 +207,11 @@ class ProjectResource extends Resource
                             ->label('Catatan')
                             ->rows(3)
                             ->helperText('Catatan tambahan atau alasan penolakan')
-                            ->visible(fn () => auth()->user()->hasRole(['admin', 'redaksi']))
+                            ->visible(fn() => auth()->user()->hasRole(['admin', 'redaksi']))
                             ->columnSpan(2),
                     ])
                     ->columns(1)
-                    ->visible(fn () => auth()->user()->hasRole(['admin', 'redaksi']) || request()->routeIs('*.view')),
+                    ->visible(fn() => auth()->user()->hasRole(['admin', 'redaksi']) || request()->routeIs('*.view')),
             ]);
     }
 
@@ -227,12 +227,6 @@ class ProjectResource extends Resource
                 Tables\Columns\TextColumn::make('projectManager.name')
                     ->label('Project Manager')
                     ->sortable(),
-
-                Tables\Columns\TextColumn::make('team_members')
-                    ->label('Tim')
-                    ->formatStateUsing(fn ($record) => $record->getTeamMemberNames())
-                    ->limit(50)
-                    ->toggleable(),
 
                 Tables\Columns\BadgeColumn::make('prioritas')
                     ->label('Prioritas')
@@ -293,21 +287,18 @@ class ProjectResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
-                
+
                 Tables\Actions\EditAction::make()
-                    ->visible(fn ($record) => 
-                        auth()->user()->hasRole(['admin', 'redaksi']) ||
-                        ($record->created_by === auth()->id() && $record->status === 'draft') ||
-                        $record->project_manager_id === auth()->id()
-                    ),
-                
+                    ->visible(fn($record) => auth()->user()->hasRole(['redaksi'])),
+
                 // Action untuk Redaksi: Approve Project
                 Tables\Actions\Action::make('approve')
                     ->label('Setujui')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
-                    ->visible(fn ($record) => 
-                        auth()->user()->hasRole(['redaksi', 'admin']) && 
+                    ->visible(
+                        fn($record) =>
+                        auth()->user()->hasRole(['redaksi']) &&
                         $record->status === 'draft'
                     )
                     ->requiresConfirmation()
@@ -315,7 +306,7 @@ class ProjectResource extends Resource
                     ->modalDescription('Project akan disetujui dan bisa dimulai.')
                     ->action(function ($record) {
                         $record->update(['status' => 'planning']);
-                        
+
                         Notification::make()
                             ->title('Project Disetujui')
                             ->body("Project '{$record->nama_project}' telah disetujui.")
@@ -328,8 +319,9 @@ class ProjectResource extends Resource
                     ->label('Tolak')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
-                    ->visible(fn ($record) => 
-                        auth()->user()->hasRole(['redaksi', 'admin']) && 
+                    ->visible(
+                        fn($record) =>
+                        auth()->user()->hasRole(['redaksi', 'admin']) &&
                         $record->status === 'draft'
                     )
                     ->form([
@@ -343,7 +335,7 @@ class ProjectResource extends Resource
                             'status' => 'cancelled',
                             'catatan' => $data['catatan'],
                         ]);
-                        
+
                         Notification::make()
                             ->title('Project Ditolak')
                             ->body("Project '{$record->nama_project}' ditolak.")
@@ -376,25 +368,56 @@ class ProjectResource extends Resource
 
                 // Action untuk PM: Complete Project
                 Tables\Actions\Action::make('complete_project')
-                    ->label('Selesai')
+                    ->label('Selesaikan')
                     ->icon('heroicon-o-check-badge')
                     ->color('success')
-                    ->visible(fn ($record) => 
-                        $record->project_manager_id === auth()->id() && 
+                    ->visible(
+                        fn($record) =>
+                        auth()->user()->hasRole(['redaksi']) &&
                         in_array($record->status, ['in_progress', 'review'])
                     )
                     ->requiresConfirmation()
                     ->modalHeading('Selesaikan Project')
-                    ->modalDescription('Project akan ditandai sebagai selesai.')
+                    ->modalDescription('Project akan dinyatakan selesai dan tidak dapat diubah lagi.')
                     ->action(function ($record) {
-                        $record->markAsCompleted();
-                        
+                        if (method_exists($record, 'markAsCompleted')) {
+                            $record->markAsCompleted();
+                        } else {
+                            $record->update([
+                                'status' => 'completed',
+                                'tanggal_selesai' => now(),
+                                'progress_percentage' => 100
+                            ]);
+                        }
+
                         Notification::make()
                             ->title('Project Selesai')
-                            ->body("Project '{$record->nama_project}' telah selesai.")
+                            ->body("Project '{$record->nama_project}' telah dinyatakan selesai.")
                             ->success()
                             ->send();
                     }),
+
+
+                               Tables\Actions\Action::make('submit_for_review')
+                ->label('Submit Review')
+                ->icon('heroicon-o-eye')
+                ->color('warning')
+                ->visible(fn ($record) => 
+                    $record->project_manager_id === auth()->id() && 
+                    $record->status === 'in_progress'
+                )
+                ->requiresConfirmation()
+                ->modalHeading('Submit untuk Review')
+                ->modalDescription('Project akan dikirim ke redaksi untuk review dan persetujuan penyelesaian.')
+                ->action(function ($record) {
+                    $record->update(['status' => 'review']);
+                    
+                    Notification::make()
+                        ->title('Project Submitted for Review')
+                        ->body("Project '{$record->nama_project}' telah dikirim untuk review redaksi.")
+                        ->success()
+                        ->send();
+                }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -420,32 +443,34 @@ class ProjectResource extends Resource
         ];
     }
 
-public static function getEloquentQuery(): Builder
-{
-    $user = auth()->user();
+    public static function getEloquentQuery(): Builder
+    {
+        $user = auth()->user();
 
-    if (!$user) {
-        return parent::getEloquentQuery()->whereRaw('1 = 0');
+        if (!$user) {
+            return parent::getEloquentQuery()->whereRaw('1 = 0');
+        }
+
+        // Admin, Redaksi, Direktur, Keuangan, HRD bisa lihat semua project
+        if ($user->hasRole(['admin', 'redaksi', 'direktur', 'keuangan', 'hrd'])) {
+            return parent::getEloquentQuery();
+        }
+
+        // Team hanya bisa lihat project yang terkait dengan mereka
+        return parent::getEloquentQuery()
+            ->where(function ($query) use ($user) {
+                $query->where('created_by', $user->id)
+                    ->orWhere('project_manager_id', $user->id)
+                    ->orWhereJsonContains('team_members', (string) $user->id);
+            });
     }
-
-    if ($user->hasRole(['admin', 'redaksi'])) {
-        return parent::getEloquentQuery();
-    }
-
-    return parent::getEloquentQuery()
-        ->where(function ($query) use ($user) {
-            $query->where('created_by', $user->id)
-                ->orWhere('project_manager_id', $user->id)
-                ->orWhereJsonContains('team_members', (string) $user->id); // Cast ke string
-        });
-}
 
     public static function getNavigationBadge(): ?string
     {
         if (auth()->check() && auth()->user()->hasRole(['redaksi', 'admin'])) {
             return static::getModel()::where('status', 'draft')->count();
         }
-        
+
         return null;
     }
 }

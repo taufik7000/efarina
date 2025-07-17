@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\KioskController;
+use App\Http\Controllers\SecureFileController;
 
 Route::get('/', function () {
     return redirect()->route('login'); // Arahkan halaman utama ke login
@@ -63,4 +64,19 @@ Route::middleware(['auth:sanctum'])->group(function () {
 Route::middleware(['web', 'auth'])->prefix('api')->group(function () {
     Route::post('/absensi/validasi', [KioskController::class, 'validasiAbsensi']);
     Route::get('/absensi/status', [KioskController::class, 'cekStatusAbsensi']);
+});
+
+// Secure file routes - harus login
+Route::middleware(['auth'])->group(function () {
+    // View/preview file
+    Route::get('/secure-files/bukti-realisasi/{projectId}/{pengajuanId}/{filename}', 
+        [SecureFileController::class, 'serveBuktiRealisasi'])
+        ->name('secure.bukti-realisasi')
+        ->where(['projectId' => '[0-9]+', 'pengajuanId' => '[0-9]+']);
+    
+    // Download file
+    Route::get('/secure-files/download/bukti-realisasi/{projectId}/{pengajuanId}/{filename}', 
+        [SecureFileController::class, 'downloadBuktiRealisasi'])
+        ->name('secure.download.bukti-realisasi')
+        ->where(['projectId' => '[0-9]+', 'pengajuanId' => '[0-9]+']);
 });

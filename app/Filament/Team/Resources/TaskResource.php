@@ -18,7 +18,7 @@ class TaskResource extends Resource
     protected static ?string $model = Task::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
-    protected static ?string $navigationGroup = 'Proyek Management';
+    protected static ?string $navigationGroup = 'Project Management';
     protected static ?string $navigationLabel = 'Tasks';
     protected static ?int $navigationSort = 2;
 
@@ -48,29 +48,103 @@ class TaskResource extends Resource
             ->schema([
                 Forms\Components\Section::make('Informasi Task')
                     ->schema([
-                        Forms\Components\Select::make('project_id')
-                            ->label('Project')
-                            ->relationship('project', 'nama_project', function ($query) {
-                                $user = auth()->user();
+Forms\Components\Select::make('project_id')
+    ->label('Project')
+    ->relationship('project', 'nama_project', function ($query) {
+        $user = auth()->user();
 
-                                // Redaksi bisa pilih semua project yang sudah ada
-                                if ($user->hasRole('redaksi')) {
-                                    return $query; // Tidak ada filter, semua project
-                                }
+        // Base filter: Hanya project dengan status yang diizinkan untuk create task
+        $query->whereIn('status', ['in_progress', 'review']);
 
-                                // Team hanya bisa pilih project yang dia kelola sebagai PM
-                                if ($user->hasRole('team')) {
-                                    return $query->where('project_manager_id', $user->id);
-                                }
+        // Redaksi bisa pilih semua project yang statusnya in_progress atau review
+        if ($user->hasRole(['redaksi', 'admin'])) {
+            return $query; // Sudah ada filter status di atas
+        }
 
-                                // Role lain tidak bisa akses form create (sudah diatur di policy)
-                                return $query->whereRaw('1 = 0'); // Query kosong
-                            })
-                            ->searchable()
-                            ->preload()
-                            ->required()
-                            ->live()
-                            ->columnSpan(2),
+        // Team hanya bisa pilih project yang terkait dengan mereka
+        if ($user->hasRole('team')) {
+            return $query->where(function ($subQuery) use ($user) {
+                $subQuery->where('project_manager_id', $user->id)
+                    ->orWhere('created_by', $user->id)
+                    ->orWhereJsonContains('team_members', (string) $user->id);
+            });
+        }
+
+        // Role lain tidak bisa akses form create
+        return $query->whereRaw('1 = 0'); // Query kosong
+    })
+    ->searchable()
+    ->preload()
+    ->required()
+    ->live()
+    ->columnSpan(2)
+    ->afterStateUpdated(function ($state, callable $set, callable $get) {
+        // Validasi tambahan saat project dipilih
+        if ($state) {
+            $project = \App\Models\Project::find($state);
+            $user = auth()->user();
+            
+            // Cek status project
+            if ($project && !in_array($project->status, ['in_progress', 'review'])) {
+                Notification::make()
+                    ->title('Project Tidak Valid')
+                    ->body('Task hanya bisa dibuat untuk project yang sedang berjalan (In Progress atau Review).')
+                    ->danger()
+                    ->send();
+                $set('project_id', null);
+                return;
+            }
+            
+            // Cek permission user terhadap project
+            if ($project && !$user->can('createForProject', [\App\Models\Task::class, $project])) {
+                Notification::make()
+                    ->title('Akses Ditolak')
+                    ->body('Anda tidak memiliki izin untuk membuat task di project ini.')
+                    ->danger()
+                    ->send();
+                $set('project_id', null);
+                return;
+            }
+        }
+    })
+    ->helperText(function () {
+        $user = auth()->user();
+        
+        if ($user->hasRole(['redaksi', 'admin'])) {
+            return 'Pilih project yang sedang berjalan (In Progress atau Review).';
+        }
+        
+        return 'Hanya project yang Anda kelola dan sedang berjalan yang dapat dipilih.';
+    })
+    ->placeholder('Pilih project yang sedang berjalan')
+    ->getOptionLabelFromRecordUsing(function ($record) {
+        // Tampilkan status project di option label
+        return $record->nama_project . ' (' . ucfirst($record->status) . ')';
+    })
+    ->getSearchResultsUsing(function (string $search) {
+        $user = auth()->user();
+        
+        $query = \App\Models\Project::where('nama_project', 'like', "%{$search}%")
+            ->whereIn('status', ['in_progress', 'review']);
+        
+        if ($user->hasRole(['redaksi', 'admin'])) {
+            // Redaksi bisa search semua project yang statusnya valid
+            return $query->limit(50)->get();
+        }
+        
+        if ($user->hasRole('team')) {
+            // Team hanya bisa search project mereka
+            $query->where(function ($subQuery) use ($user) {
+                $subQuery->where('project_manager_id', $user->id)
+                    ->orWhere('created_by', $user->id)
+                    ->orWhereJsonContains('team_members', (string) $user->id);
+            });
+            
+            return $query->limit(50)->get();
+        }
+        
+        return collect(); // Empty collection untuk role lain
+    }),
 
                         Forms\Components\TextInput::make('nama_task')
                             ->label('Nama Task')
