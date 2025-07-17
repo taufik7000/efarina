@@ -23,6 +23,7 @@ class PengajuanAnggaran extends Model
         'tanggal_dibutuhkan',
         'justifikasi',
         'status',
+        'budget_subcategory_id',
         'redaksi_approval_status',
         'redaksi_approved_by',
         'redaksi_approved_at',
@@ -233,5 +234,15 @@ class PengajuanAnggaran extends Model
                          ->count() + 1;
         
         return $prefix . '/' . $year . '/' . $month . '/' . str_pad($counter, 3, '0', STR_PAD_LEFT);
+    }
+
+    public function budgetSubcategory(): BelongsTo
+    {
+        return $this->belongsTo(BudgetSubcategory::class, 'budget_subcategory_id');
+    }
+
+    public function budgetAllocation(): BelongsTo
+    {
+        return $this->belongsTo(BudgetAllocation::class, 'budget_subcategory_id', 'budget_subcategory_id');
     }
 }
