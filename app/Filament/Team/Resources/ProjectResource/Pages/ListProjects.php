@@ -15,7 +15,7 @@ class ListProjects extends ListRecords
         $actions = [];
 
         // Tombol Create Project - Hanya untuk Redaksi
-        if (auth()->user()->hasRole('redaksi') || auth()->user()->hasRole('admin')) {
+        if (auth()->user()->hasRole(['redaksi', 'admin'])) {
             $actions[] = Actions\CreateAction::make()
                 ->label('Buat Project Baru')
                 ->icon('heroicon-o-plus')
@@ -23,7 +23,7 @@ class ListProjects extends ListRecords
         }
 
         // Tombol Create Proposal - Untuk Tim
-        if (auth()->user()->hasRole('tim') || !auth()->user()->hasRole('redaksi')) {
+        if (!auth()->user()->hasRole(['redaksi', 'admin'])) {
             $actions[] = Actions\Action::make('create_proposal')
                 ->label('Buat Proposal Project')
                 ->icon('heroicon-o-light-bulb')

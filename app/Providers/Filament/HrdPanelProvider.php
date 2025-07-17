@@ -28,6 +28,7 @@ class HrdPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
+            ->databaseNotifications()
             ->discoverResources(in: app_path('Filament/Hrd/Resources'), for: 'App\\Filament\\Hrd\\Resources')
             ->discoverPages(in: app_path('Filament/Hrd/Pages'), for: 'App\\Filament\\Hrd\\Pages')
             ->discoverWidgets(in: app_path('Filament/Hrd/Widgets'), for: 'App\\Filament\\Hrd\\Widgets')

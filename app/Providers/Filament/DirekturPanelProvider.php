@@ -29,6 +29,7 @@ class DirekturPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
+            ->databaseNotifications()
             ->discoverResources(in: app_path('Filament/Direktur/Resources'), for: 'App\\Filament\\Direktur\\Resources')
             ->viteTheme('resources/css/filament/direktur/theme.css')
             ->resources([

@@ -28,6 +28,7 @@ class KeuanganPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
+            ->databaseNotifications()
             ->discoverResources(in: app_path('Filament/Keuangan/Resources'), for: 'App\\Filament\\Keuangan\\Resources')
             ->resources([
                 // Shared Budget Resources untuk Direktur

@@ -28,6 +28,7 @@ class BisnisPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
+            ->databaseNotifications()
             ->discoverResources(in: app_path('Filament/Bisnis/Resources'), for: 'App\\Filament\\Bisnis\\Resources')
             ->discoverPages(in: app_path('Filament/Bisnis/Pages'), for: 'App\\Filament\\Bisnis\\Pages')
             ->pages([

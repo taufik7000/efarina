@@ -6,7 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL;
 use App\Models\Project;
+use App\Models\ProjectProposal;   
 use App\Observers\ProjectObserver;
+use App\Observers\ProjectProposalObserver;
+
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -24,10 +27,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Project::observe(ProjectObserver::class);
-        // Praktik terbaik: Hanya izinkan mass assignment di lingkungan non-produksi.
-        // Ini mencegah kerentanan mass assignment di server live.
-        // Model::unguard() memungkinkan Anda untuk tidak perlu mendefinisikan $fillable
-        // pada setiap model, yang mempercepat pengembangan dan seeding.
+        ProjectProposal::observe(ProjectProposalObserver::class);
         if ($this->app->isLocal()) {
             Model::unguard();
         }

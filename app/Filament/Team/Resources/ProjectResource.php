@@ -219,7 +219,7 @@ class ProjectResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make()
-                    ->visible(fn () => auth()->user()->hasRole('redaksi') || auth()->user()->hasRole('admin')),
+                    ->visible(fn () => auth()->user()->hasRole(['redaksi', 'admin'])),
                     
                 Tables\Actions\Action::make('mark_active')
                     ->label('Mulai Project')
@@ -227,7 +227,7 @@ class ProjectResource extends Resource
                     ->color('primary')
                     ->visible(fn ($record) => 
                         $record->status === 'planning' && 
-                        (auth()->user()->hasRole('redaksi') || auth()->user()->hasRole('admin'))
+                        auth()->user()->hasRole(['redaksi', 'admin'])
                     )
                     ->requiresConfirmation()
                     ->action(function ($record) {
@@ -246,7 +246,7 @@ class ProjectResource extends Resource
                     ->color('success')
                     ->visible(fn ($record) => 
                         $record->status === 'active' && 
-                        (auth()->user()->hasRole('redaksi') || auth()->user()->hasRole('admin'))
+                        auth()->user()->hasRole(['redaksi', 'admin'])
                     )
                     ->requiresConfirmation()
                     ->action(function ($record) {
@@ -262,7 +262,7 @@ class ProjectResource extends Resource
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
-                        ->visible(fn () => auth()->user()->hasRole('redaksi') || auth()->user()->hasRole('admin')),
+                        ->visible(fn () => auth()->user()->hasRole(['redaksi', 'admin'])),
                 ]),
             ]);
     }
@@ -286,19 +286,19 @@ class ProjectResource extends Resource
 
     public static function canCreate(): bool
     {
-        // Hanya role redaksi yang bisa create project
-        return auth()->user()->hasRole('redaksi') || auth()->user()->hasRole('admin');
+        // Menggunakan Spatie Permission
+        return auth()->user()->hasRole(['redaksi', 'admin']);
     }
 
     public static function canEdit($record): bool
     {
-        // Hanya role redaksi yang bisa edit project
-        return auth()->user()->hasRole('redaksi') || auth()->user()->hasRole('admin');
+        // Menggunakan Spatie Permission
+        return auth()->user()->hasRole(['redaksi', 'admin']);
     }
 
     public static function canDelete($record): bool
     {
-        // Hanya role redaksi yang bisa delete project
-        return auth()->user()->hasRole('redaksi') || auth()->user()->hasRole('admin');
+        // Menggunakan Spatie Permission
+        return auth()->user()->hasRole(['redaksi', 'admin']);
     }
 }

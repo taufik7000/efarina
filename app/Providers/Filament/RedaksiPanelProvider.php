@@ -28,6 +28,7 @@ class RedaksiPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Blue,
             ])
+            ->databaseNotifications()
             ->viteTheme('resources/css/filament/redaksi/theme.css')
             ->discoverResources(in: app_path('Filament/Redaksi/Resources'), for: 'App\\Filament\\Redaksi\\Resources')
              ->resources([
