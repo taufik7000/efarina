@@ -3,7 +3,6 @@
 namespace App\Filament\Team\Resources\PengajuanAnggaranResource\Pages;
 
 use App\Filament\Team\Resources\PengajuanAnggaranResource;
-use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Notifications\Notification;
 
@@ -13,31 +12,85 @@ class CreatePengajuanAnggaran extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        // Set created_by
         $data['created_by'] = auth()->id();
-        $data['status'] = 'pending';
-        $data['redaksi_approval_status'] = 'pending';
-        $data['keuangan_approval_status'] = 'pending';
+        
+        // Set default status
+        $data['status'] = 'draft';
+        
+        // PENTING: Hitung total_anggaran dari detail_items
+        if (isset($data['detail_items']) && is_array($data['detail_items'])) {
+            $total = 0;
+            
+            foreach ($data['detail_items'] as $item) {
+                $total += (float) ($item['total_price'] ?? 0);
+            }
+            
+            $data['total_anggaran'] = $total;
+            
+            // Debug log (optional)
+            \Log::info('Pengajuan Anggaran Created:', [
+                'total_calculated' => $total,
+                'items_count' => count($data['detail_items']),
+                'items' => $data['detail_items']
+            ]);
+        } else {
+            $data['total_anggaran'] = 0;
+        }
+        
+        // Generate nomor pengajuan jika belum ada
+        if (empty($data['nomor_pengajuan'])) {
+            $data['nomor_pengajuan'] = $this->generateNomorPengajuan();
+        }
+        
+        // Set tanggal pengajuan
         $data['tanggal_pengajuan'] = now();
-        $data['realisasi_anggaran'] = 0;
-        $data['sisa_anggaran'] = $data['total_anggaran'] ?? 0;
-        $data['is_used'] = false;
         
         return $data;
     }
 
-    protected function afterCreate(): void
+    protected function getCreatedNotification(): ?\Filament\Notifications\Notification
     {
-        $record = $this->record;
-        
-        Notification::make()
-            ->title('Pengajuan Anggaran Berhasil Dibuat!')
-            ->body("Pengajuan '{$record->judul_pengajuan}' telah dibuat sebagai draft.")
+        return Notification::make()
             ->success()
-            ->send();
+            ->title('Pengajuan Anggaran Dibuat')
+            ->body("Pengajuan anggaran berhasil dibuat dengan total Rp " . number_format($this->record->total_anggaran, 0, ',', '.'))
+            ->actions([
+                \Filament\Notifications\Actions\Action::make('view')
+                    ->label('Lihat Pengajuan')
+                    ->url(fn () => static::getResource()::getUrl('view', ['record' => $this->record])),
+            ]);
     }
 
     protected function getRedirectUrl(): string
     {
-        return $this->getResource()::getUrl('view', ['record' => $this->record]);
+        return $this->getResource()::getUrl('view', ['record' => $this->getRecord()]);
+    }
+
+    private function generateNomorPengajuan(): string
+    {
+        $year = date('Y');
+        $month = date('m');
+        
+        // Ambil nomor terakhir bulan ini
+        $lastNumber = \App\Models\PengajuanAnggaran::whereYear('created_at', $year)
+            ->whereMonth('created_at', $month)
+            ->whereNotNull('nomor_pengajuan')
+            ->count();
+        
+        $nextNumber = str_pad($lastNumber + 1, 3, '0', STR_PAD_LEFT);
+        
+        return "PA/{$year}/{$month}/{$nextNumber}";
+    }
+
+    // Override untuk form actions
+    protected function getFormActions(): array
+    {
+        return [
+            $this->getCreateFormAction()
+                ->label('Simpan Pengajuan'),
+            ...(static::canCreateAnother() ? [$this->getCreateAnotherFormAction()] : []),
+            $this->getCancelFormAction(),
+        ];
     }
 }
