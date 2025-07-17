@@ -5,6 +5,8 @@ namespace App\Filament\Team\Resources\ProjectResource\Pages;
 use App\Filament\Team\Resources\ProjectResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Resources\Components\Tab;
+use Illuminate\Database\Eloquent\Builder;
 
 class ListProjects extends ListRecords
 {
@@ -12,26 +14,76 @@ class ListProjects extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        $actions = [];
-
-        // Tombol Create Project - Hanya untuk Redaksi
-        if (auth()->user()->hasRole(['redaksi', 'admin'])) {
-            $actions[] = Actions\CreateAction::make()
+        return [
+            Actions\CreateAction::make()
                 ->label('Buat Project Baru')
                 ->icon('heroicon-o-plus')
-                ->color('primary');
+                ->color('primary'),
+        ];
+    }
+
+    public function getTabs(): array
+    {
+        $user = auth()->user();
+        
+        $tabs = [
+            'all' => Tab::make('Semua Project')
+                ->badge($this->getTabBadgeCount('all')),
+        ];
+
+        // Tab untuk status
+        $tabs['draft'] = Tab::make('Menunggu Approval')
+            ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'draft'))
+            ->badge($this->getTabBadgeCount('draft'))
+            ->badgeColor('warning');
+
+        $tabs['planning'] = Tab::make('Planning')
+            ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'planning'))
+            ->badge($this->getTabBadgeCount('planning'))
+            ->badgeColor('info');
+
+        $tabs['in_progress'] = Tab::make('In Progress')
+            ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'in_progress'))
+            ->badge($this->getTabBadgeCount('in_progress'))
+            ->badgeColor('primary');
+
+        $tabs['completed'] = Tab::make('Completed')
+            ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'completed'))
+            ->badge($this->getTabBadgeCount('completed'))
+            ->badgeColor('success');
+
+        // Tab khusus untuk team member
+        if (!$user->hasRole(['admin', 'redaksi'])) {
+            $tabs['my_projects'] = Tab::make('Project Saya')
+                ->modifyQueryUsing(fn (Builder $query) => $query->where(function ($q) use ($user) {
+                    $q->where('created_by', $user->id)
+                      ->orWhere('project_manager_id', $user->id)
+                      ->orWhereJsonContains('team_members', $user->id);
+                }))
+                ->badge($this->getTabBadgeCount('my_projects'));
         }
 
-        // Tombol Create Proposal - Untuk Tim
-        if (!auth()->user()->hasRole(['redaksi', 'admin'])) {
-            $actions[] = Actions\Action::make('create_proposal')
-                ->label('Buat Proposal Project')
-                ->icon('heroicon-o-light-bulb')
-                ->color('warning')
-                ->url(route('filament.team.resources.project-proposals.create'));
-        }
+        return $tabs;
+    }
 
-        return $actions;
+    protected function getTabBadgeCount(string $tab): int
+    {
+        $user = auth()->user();
+        $query = static::getResource()::getEloquentQuery();
+
+        return match ($tab) {
+            'all' => $query->count(),
+            'draft' => $query->where('status', 'draft')->count(),
+            'planning' => $query->where('status', 'planning')->count(),
+            'in_progress' => $query->where('status', 'in_progress')->count(),
+            'completed' => $query->where('status', 'completed')->count(),
+            'my_projects' => $query->where(function ($q) use ($user) {
+                $q->where('created_by', $user->id)
+                  ->orWhere('project_manager_id', $user->id)
+                  ->orWhereJsonContains('team_members', $user->id);
+            })->count(),
+            default => 0,
+        };
     }
 
     protected function getHeaderWidgets(): array

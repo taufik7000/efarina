@@ -12,42 +12,46 @@ class Project extends Model
     use HasFactory;
 
     protected $fillable = [
-        'project_proposal_id',
         'nama_project',
         'deskripsi',
+        'tujuan_utama',
+        'target_audience',
+        'target_metrics',
+        'deliverables',
+        'expected_outcomes',
         'pengajuan_anggaran_id',
         'project_manager_id',
         'tanggal_mulai',
+        'tanggal_deadline',
         'tanggal_selesai',
         'status',
         'prioritas',
         'client_name',
         'client_contact',
-        'budget_allocated',
-        'budget_used',
+        'budget',
         'progress_percentage',
+        'team_members',
         'created_by',
+        'catatan',
     ];
 
     protected $casts = [
         'tanggal_mulai' => 'date',
+        'tanggal_deadline' => 'date',
         'tanggal_selesai' => 'date',
-        'budget_allocated' => 'decimal:2',
-        'budget_used' => 'decimal:2',
+        'budget' => 'decimal:2',
         'progress_percentage' => 'integer',
+        'target_metrics' => 'array',
+        'deliverables' => 'array',
+        'team_members' => 'array',
     ];
 
     protected $attributes = [
         'progress_percentage' => 0,
-        'status' => 'planning',
+        'status' => 'draft',
     ];
 
     // Relations
-    public function projectProposal(): BelongsTo
-    {
-        return $this->belongsTo(ProjectProposal::class, 'project_proposal_id');
-    }
-
     public function pengajuanAnggaran(): BelongsTo
     {
         return $this->belongsTo(PengajuanAnggaran::class, 'pengajuan_anggaran_id');
@@ -73,10 +77,35 @@ class Project extends Model
         return $this->hasMany(Transaksi::class);
     }
 
+    // Helper methods untuk team members
+    public function getTeamMemberUsers()
+    {
+        if (!$this->team_members) {
+            return collect();
+        }
+        
+        return User::whereIn('id', $this->team_members)->get();
+    }
+
+    public function getTeamMemberNames(): string
+    {
+        return $this->getTeamMemberUsers()->pluck('name')->join(', ');
+    }
+
+    public function isTeamMember(User $user): bool
+    {
+        return in_array($user->id, $this->team_members ?? []);
+    }
+
     // Scopes
     public function scopeActive($query)
     {
-        return $query->where('status', 'active');
+        return $query->where('status', 'in_progress');
+    }
+
+    public function scopeInProgress($query)
+    {
+        return $query->where('status', 'in_progress');
     }
 
     public function scopeCompleted($query)
@@ -87,6 +116,11 @@ class Project extends Model
     public function scopePlanning($query)
     {
         return $query->where('status', 'planning');
+    }
+
+    public function scopeDraft($query)
+    {
+        return $query->where('status', 'draft');
     }
 
     public function scopeWithBudget($query)
@@ -108,8 +142,10 @@ class Project extends Model
     public function getStatusColorAttribute(): string
     {
         return match($this->status) {
-            'planning' => 'warning',
-            'active' => 'primary',
+            'draft' => 'warning',
+            'planning' => 'secondary',
+            'in_progress' => 'primary',
+            'review' => 'info',
             'completed' => 'success',
             'cancelled' => 'danger',
             default => 'gray',
@@ -129,6 +165,9 @@ class Project extends Model
 
     public function getFormattedBudgetAttribute(): string
     {
+        if ($this->budget) {
+            return 'Rp ' . number_format($this->budget, 0, ',', '.');
+        }
         if ($this->pengajuanAnggaran) {
             return 'Rp ' . number_format($this->pengajuanAnggaran->total_anggaran, 0, ',', '.');
         }
@@ -148,21 +187,23 @@ class Project extends Model
 
     public function getDaysRemainingAttribute(): int
     {
-        if (!$this->tanggal_selesai) {
+        $deadline = $this->tanggal_deadline ?: $this->tanggal_selesai;
+        if (!$deadline) {
             return 0;
         }
         
-        $daysRemaining = now()->diffInDays($this->tanggal_selesai, false);
+        $daysRemaining = now()->diffInDays($deadline, false);
         return $daysRemaining > 0 ? $daysRemaining : 0;
     }
 
     public function getIsOverdueAttribute(): bool
     {
-        if (!$this->tanggal_selesai) {
+        $deadline = $this->tanggal_deadline ?: $this->tanggal_selesai;
+        if (!$deadline) {
             return false;
         }
         
-        return now()->isAfter($this->tanggal_selesai) && $this->status !== 'completed';
+        return now()->isAfter($deadline) && $this->status !== 'completed';
     }
 
     // Helper Methods
@@ -173,13 +214,16 @@ class Project extends Model
 
     public function getBudgetAmount(): float
     {
+        if ($this->budget) {
+            return $this->budget;
+        }
         return $this->pengajuanAnggaran ? $this->pengajuanAnggaran->total_anggaran : 0;
     }
 
     public function getRemainingBudget(): float
     {
         if (!$this->pengajuanAnggaran) {
-            return 0;
+            return $this->budget ?? 0;
         }
         
         return $this->pengajuanAnggaran->sisa_anggaran;
@@ -192,7 +236,7 @@ class Project extends Model
 
     public function canBeCompleted(): bool
     {
-        return $this->status === 'active';
+        return in_array($this->status, ['in_progress', 'review']);
     }
 
     public function getTotalTasks(): int
@@ -237,7 +281,7 @@ class Project extends Model
 
     public function markAsActive(): void
     {
-        $this->update(['status' => 'active']);
+        $this->update(['status' => 'in_progress']);
     }
 
     public function markAsCancelled(): void

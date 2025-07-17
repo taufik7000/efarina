@@ -169,11 +169,6 @@
                         <x-heroicon-o-plus-circle class="w-5 h-5 mr-2"/> 
                         Ajukan Anggaran
                     </a>
-                    <a href="{{ \App\Filament\Team\Resources\ProjectProposalResource::getUrl('create') }}"
-                       class="flex items-center justify-center w-full px-4 py-3 text-sm font-semibold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 transform hover:scale-105 border border-gray-200 dark:border-gray-600">
-                        <x-heroicon-o-folder-plus class="w-5 h-5 mr-2"/> 
-                        Ajukan Proposal Proyek
-                    </a>
                 </div>
             </div>
 

@@ -6,9 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL;
 use App\Models\Project;
-use App\Models\ProjectProposal;   
 use App\Observers\ProjectObserver;
-use App\Observers\ProjectProposalObserver;
 
 
 class AppServiceProvider extends ServiceProvider
@@ -27,7 +25,6 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Project::observe(ProjectObserver::class);
-        ProjectProposal::observe(ProjectProposalObserver::class);
         if ($this->app->isLocal()) {
             Model::unguard();
         }
