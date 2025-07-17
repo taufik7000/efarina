@@ -12,6 +12,7 @@ class PengajuanAnggaran extends Model
     use HasFactory;
 
     protected $fillable = [
+        'project_id',
         'nomor_pengajuan',
         'judul_pengajuan',
         'deskripsi',
@@ -76,6 +77,10 @@ class PengajuanAnggaran extends Model
     public function projects(): HasMany
     {
         return $this->hasMany(Project::class, 'pengajuan_anggaran_id');
+    }
+    public function project(): BelongsTo
+    {
+    return $this->belongsTo(Project::class, 'project_id');
     }
 
     public function transaksis(): HasMany

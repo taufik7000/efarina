@@ -50,7 +50,22 @@ class TaskResource extends Resource
                     ->schema([
                         Forms\Components\Select::make('project_id')
                             ->label('Project')
-                            ->relationship('project', 'nama_project')
+                            ->relationship('project', 'nama_project', function ($query) {
+                                $user = auth()->user();
+
+                                // Redaksi bisa pilih semua project yang sudah ada
+                                if ($user->hasRole('redaksi')) {
+                                    return $query; // Tidak ada filter, semua project
+                                }
+
+                                // Team hanya bisa pilih project yang dia kelola sebagai PM
+                                if ($user->hasRole('team')) {
+                                    return $query->where('project_manager_id', $user->id);
+                                }
+
+                                // Role lain tidak bisa akses form create (sudah diatur di policy)
+                                return $query->whereRaw('1 = 0'); // Query kosong
+                            })
                             ->searchable()
                             ->preload()
                             ->required()

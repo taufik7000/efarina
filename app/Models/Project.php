@@ -317,4 +317,54 @@ class Project extends Model
             2
         );
     }
+
+    public function pengajuanAnggarans(): HasMany
+{
+    return $this->hasMany(PengajuanAnggaran::class, 'project_id');
+}
+
+// Get total anggaran yang disetujui untuk project ini
+public function getTotalApprovedBudgetAttribute(): float
+{
+    return $this->pengajuanAnggarans()
+        ->where('status', 'approved')
+        ->sum('total_anggaran');
+}
+
+// Get total yang sudah terpakai dari semua pengajuan anggaran
+public function getTotalUsedBudgetAttribute(): float
+{
+    return $this->transaksis()
+        ->where('status', 'approved')
+        ->sum('total_amount');
+}
+
+// Get sisa budget yang tersedia
+public function getRemainingBudgetAttribute(): float
+{
+    return $this->total_approved_budget - $this->total_used_budget;
+}
+
+// Get persentase penggunaan budget
+public function getBudgetUsagePercentageAttribute(): float
+{
+    if ($this->total_approved_budget == 0) return 0;
+    
+    return round(($this->total_used_budget / $this->total_approved_budget) * 100, 2);
+}
+
+// Check apakah project punya budget
+public function hasBudget(): bool
+{
+    return $this->total_approved_budget > 0;
+}
+
+// Get semua pengajuan anggaran yang disetujui
+public function getApprovedBudgetRequests()
+{
+    return $this->pengajuanAnggarans()
+        ->where('status', 'approved')
+        ->with(['createdBy', 'redaksiApprovedBy', 'keuanganApprovedBy'])
+        ->get();
+}
 }

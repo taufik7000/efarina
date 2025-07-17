@@ -12,13 +12,29 @@ class CreateProject extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        $user = auth()->user();
+        
         // Set created_by ke user yang sedang login
-        $data['created_by'] = auth()->id();
+        $data['created_by'] = $user->id;
 
-        // Jika user bukan redaksi/admin, paksa status ke draft
-        if (!auth()->user()->hasRole(['admin', 'redaksi'])) {
+        // Jika user adalah team (bukan redaksi/admin)
+        if ($user->hasRole('team')) {
+            // Paksa status ke draft untuk approval
             $data['status'] = 'draft';
-            unset($data['catatan']); // Team tidak bisa isi catatan
+            
+            // Set project_manager_id ke dirinya sendiri
+            $data['project_manager_id'] = $user->id;
+            
+            // Team tidak bisa isi catatan
+            unset($data['catatan']);
+        }
+
+        // Jika user redaksi/admin, biarkan mereka pilih PM dan status bisa langsung planning
+        if ($user->hasRole(['admin', 'redaksi'])) {
+            // Jika tidak ada status yang dipilih, set default ke planning
+            if (!isset($data['status']) || empty($data['status'])) {
+                $data['status'] = 'planning';
+            }
         }
 
         return $data;
@@ -32,16 +48,22 @@ class CreateProject extends CreateRecord
             return Notification::make()
                 ->success()
                 ->title('Project Dibuat')
-                ->body('Project berhasil dibuat dan bisa langsung dimulai.');
+                ->body('Project berhasil dibuat dan bisa langsung dimulai.')
+                ->actions([
+                    \Filament\Notifications\Actions\Action::make('view')
+                        ->label('Lihat Project')
+                        ->url(fn () => static::getResource()::getUrl('view', ['record' => $this->record])),
+                ]);
         }
 
+        // Untuk team
         return Notification::make()
             ->success()
-            ->title('Project Proposal Submitted')
-            ->body('Project proposal telah dikirim dan menunggu approval dari redaksi.')
+            ->title('Proposal Project Terkirim')
+            ->body('Proposal project telah dikirim dan menunggu approval dari redaksi.')
             ->actions([
                 \Filament\Notifications\Actions\Action::make('view')
-                    ->label('Lihat Project')
+                    ->label('Lihat Proposal')
                     ->url(fn () => static::getResource()::getUrl('view', ['record' => $this->record])),
             ]);
     }
@@ -53,11 +75,30 @@ class CreateProject extends CreateRecord
 
     protected function getFormActions(): array
     {
+        $user = auth()->user();
+        
+        // Label tombol berbeda berdasarkan role
+        $createLabel = $user->hasRole('team') ? 'Ajukan Proposal Project' : 'Buat Project';
+        
         return [
             $this->getCreateFormAction()
-                ->label('Buat Project'),
+                ->label($createLabel),
             ...(static::canCreateAnother() ? [$this->getCreateAnotherFormAction()] : []),
             $this->getCancelFormAction(),
         ];
+    }
+
+    // Override untuk set page title
+    public function getTitle(): string
+    {
+        $user = auth()->user();
+        return $user->hasRole('team') ? 'Ajukan Proposal Project' : 'Buat Project Baru';
+    }
+
+    // Override breadcrumb
+    public function getBreadcrumb(): string
+    {
+        $user = auth()->user();
+        return $user->hasRole('team') ? 'Ajukan Proposal' : 'Buat Project';
     }
 }

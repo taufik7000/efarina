@@ -10,6 +10,7 @@ use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Notifications\Notification;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -21,6 +22,7 @@ class ProjectResource extends Resource
     protected static ?string $navigationGroup = 'Project Management';
     protected static ?string $navigationLabel = 'Projects';
     protected static ?int $navigationSort = 1;
+
 
     public static function form(Form $form): Form
     {
@@ -46,7 +48,13 @@ class ProjectResource extends Resource
                             ->relationship('projectManager', 'name')
                             ->searchable()
                             ->preload()
-                            ->required(),
+                            ->required()
+                            ->visible(fn() => auth()->user()->hasRole(['admin', 'redaksi'])) // Hanya visible untuk redaksi/admin
+                            ->disabled(fn($context) => $context === 'edit' && auth()->user()->hasRole('team')),
+
+                        Forms\Components\Hidden::make('project_manager_id')
+                            ->default(fn() => auth()->user()->hasRole('team') ? auth()->id() : null)
+                            ->visible(fn() => auth()->user()->hasRole('team')),
 
                         Forms\Components\Select::make('prioritas')
                             ->label('Prioritas')
@@ -191,11 +199,9 @@ class ProjectResource extends Resource
                                 'completed' => 'Completed',
                                 'cancelled' => 'Cancelled',
                             ])
-                            ->default('draft')
-                            ->required()
-                            ->helperText('Draft = menunggu approval, Planning = disetujui tapi belum mulai')
-                            ->disabled(fn () => !auth()->user()->hasRole(['admin', 'redaksi']))
-                            ->dehydrated(fn () => auth()->user()->hasRole(['admin', 'redaksi'])),
+                            ->default(fn() => auth()->user()->hasRole('team') ? 'draft' : 'planning')
+                            ->visible(fn() => auth()->user()->hasRole(['admin', 'redaksi']))
+                            ->dehydrated(fn() => auth()->user()->hasRole(['admin', 'redaksi'])),
 
                         Forms\Components\Textarea::make('catatan')
                             ->label('Catatan')
@@ -350,8 +356,9 @@ class ProjectResource extends Resource
                     ->label('Mulai')
                     ->icon('heroicon-o-play')
                     ->color('primary')
-                    ->visible(fn ($record) => 
-                        $record->project_manager_id === auth()->id() && 
+                    ->visible(
+                        fn($record) =>
+                        auth()->user()->hasRole(['redaksi', 'admin']) &&
                         $record->status === 'planning'
                     )
                     ->requiresConfirmation()
@@ -359,7 +366,7 @@ class ProjectResource extends Resource
                     ->modalDescription('Project akan diubah status menjadi in progress.')
                     ->action(function ($record) {
                         $record->update(['status' => 'in_progress']);
-                        
+
                         Notification::make()
                             ->title('Project Dimulai')
                             ->body("Project '{$record->nama_project}' telah dimulai.")
@@ -413,27 +420,29 @@ class ProjectResource extends Resource
         ];
     }
 
-    public static function getEloquentQuery(): Builder
-    {
-        $user = auth()->user();
+public static function getEloquentQuery(): Builder
+{
+    $user = auth()->user();
 
-        // Admin dan Redaksi bisa lihat semua
-        if ($user->hasRole(['admin', 'redaksi'])) {
-            return parent::getEloquentQuery();
-        }
-
-        // Team member bisa lihat project yang mereka terlibat
-        return parent::getEloquentQuery()
-            ->where(function ($query) use ($user) {
-                $query->where('created_by', $user->id)
-                    ->orWhere('project_manager_id', $user->id)
-                    ->orWhereJsonContains('team_members', $user->id);
-            });
+    if (!$user) {
+        return parent::getEloquentQuery()->whereRaw('1 = 0');
     }
+
+    if ($user->hasRole(['admin', 'redaksi'])) {
+        return parent::getEloquentQuery();
+    }
+
+    return parent::getEloquentQuery()
+        ->where(function ($query) use ($user) {
+            $query->where('created_by', $user->id)
+                ->orWhere('project_manager_id', $user->id)
+                ->orWhereJsonContains('team_members', (string) $user->id); // Cast ke string
+        });
+}
 
     public static function getNavigationBadge(): ?string
     {
-        if (auth()->user()->hasRole(['admin', 'redaksi'])) {
+        if (auth()->check() && auth()->user()->hasRole(['redaksi', 'admin'])) {
             return static::getModel()::where('status', 'draft')->count();
         }
         

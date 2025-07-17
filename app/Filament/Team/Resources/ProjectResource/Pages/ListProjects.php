@@ -14,9 +14,16 @@ class ListProjects extends ListRecords
 
     protected function getHeaderActions(): array
     {
+        $user = auth()->user();
+        
+        // Dynamic label berdasarkan role
+        $createLabel = $user->hasRole('team') 
+            ? 'Ajukan Proposal Project' 
+            : 'Buat Project Baru';
+
         return [
             Actions\CreateAction::make()
-                ->label('Buat Project Baru')
+                ->label($createLabel)
                 ->icon('heroicon-o-plus')
                 ->color('primary'),
         ];
@@ -32,7 +39,7 @@ class ListProjects extends ListRecords
         ];
 
         // Tab untuk status
-        $tabs['draft'] = Tab::make('Menunggu Approval')
+        $tabs['draft'] = Tab::make($user->hasRole('team') ? 'Proposal Pending' : 'Menunggu Approval')
             ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'draft'))
             ->badge($this->getTabBadgeCount('draft'))
             ->badgeColor('warning');
@@ -66,7 +73,7 @@ class ListProjects extends ListRecords
         return $tabs;
     }
 
-    protected function getTabBadgeCount(string $tab): int
+    private function getTabBadgeCount(string $tab): int
     {
         $user = auth()->user();
         $query = static::getResource()::getEloquentQuery();
@@ -86,10 +93,10 @@ class ListProjects extends ListRecords
         };
     }
 
-    protected function getHeaderWidgets(): array
+    // Override page title based on role
+    public function getTitle(): string
     {
-        return [
-            // Bisa tambahkan widget statistik project di sini
-        ];
+        $user = auth()->user();
+        return $user->hasRole('team') ? 'Project Proposals' : 'Manage Projects';
     }
 }

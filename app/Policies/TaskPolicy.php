@@ -43,67 +43,116 @@ class TaskPolicy
 
     /**
      * Menentukan apakah pengguna dapat membuat task baru.
-     * Logika: Hanya pengguna dengan peran tertentu yang bisa membuat.
+     * Logika: 
+     * - Redaksi: bisa membuat task dari project yang sudah ada
+     * - Team: hanya jika dia Project Manager dari project tersebut
      */
     public function create(User $user): bool
     {
-        // Hanya peran ini yang bisa membuat task baru.
-        return $user->hasRole(['admin', 'super-admin', 'direktur', 'team']);
+        // Redaksi bisa membuat task dari project manapun
+        if ($user->hasRole('redaksi')) {
+            return true;
+        }
+
+        // Team bisa membuat task jika ada project yang dia kelola sebagai PM
+        if ($user->hasRole('team')) {
+            // Cek apakah user ini PM dari setidaknya satu project
+            return \App\Models\Project::where('project_manager_id', $user->id)->exists();
+        }
+
+        // Role lain (direktur, keuangan, marketing, hrd) tidak bisa membuat task
+        return false;
     }
 
     /**
      * Menentukan apakah pengguna dapat mengedit sebuah task.
-     * Logika: Admin/super-admin bisa edit semua.
-     * Pengguna lain bisa edit jika dia adalah Project Manager, assignee, atau pembuat task.
+     * Logika: Hanya redaksi dan team yang bisa edit
      */
     public function update(User $user, Task $task): bool
     {
-        // Pengecekan untuk super-admin/admin sudah ditangani di method before().
-        // Jadi, logika di sini berlaku untuk peran lain seperti 'team'.
-        return $user->id === $task->assigned_to
-            || $user->id === $task->created_by
-            || ($task->project && $user->id === $task->project->project_manager_id);
+        // Redaksi bisa edit semua task
+        if ($user->hasRole('redaksi')) {
+            return true;
+        }
+
+        // Team bisa edit jika:
+        // - Dia yang membuat task tersebut, ATAU
+        // - Dia assigned ke task tersebut, ATAU  
+        // - Dia PM dari project task tersebut
+        if ($user->hasRole('team')) {
+            return $user->id === $task->created_by
+                || $user->id === $task->assigned_to
+                || ($task->project && $user->id === $task->project->project_manager_id);
+        }
+
+        // Role lain tidak bisa edit
+        return false;
     }
 
     /**
      * Menentukan apakah pengguna dapat menghapus sebuah task.
-     * Logika: Hanya peran dengan hak tinggi (admin, super-admin, direktur) yang bisa.
+     * Logika: Hanya redaksi dan team yang bisa hapus
      */
     public function delete(User $user, Task $task): bool
     {
-        return $user->hasRole(['admin', 'super-admin', 'direktur']);
+        // Redaksi bisa hapus semua task
+        if ($user->hasRole('redaksi')) {
+            return true;
+        }
+
+        // Team hanya bisa hapus task yang dia buat atau PM dari projectnya
+        if ($user->hasRole('team')) {
+            return $user->id === $task->created_by
+                || ($task->project && $user->id === $task->project->project_manager_id);
+        }
+
+        // Role lain tidak bisa hapus
+        return false;
     }
 
     /**
      * Menentukan apakah pengguna dapat melakukan hapus massal.
-     * Logika: Sama dengan delete, hanya peran dengan hak tinggi.
+     * Logika: Sama dengan delete
      */
     public function deleteAny(User $user): bool
     {
-        return $user->hasRole(['admin', 'super-admin', 'direktur']);
+        return $user->hasRole(['redaksi', 'team']);
     }
 
-        /**
+    /**
      * Menentukan apakah pengguna dapat menambahkan komentar pada sebuah task.
-     *
-     * @param  \App\Models\User  $user
-     * @param  \App\Models\Task  $task
-     * @return bool
      */
     public function addComment(User $user, Task $task): bool
     {
-        // Izinkan jika pengguna adalah Project Manager dari proyek terkait.
-        if ($task->project && $user->id === $task->project->project_manager_id) {
+        // Redaksi bisa komen di semua task
+        if ($user->hasRole('redaksi')) {
             return true;
         }
 
-        // Izinkan jika pengguna adalah bagian dari tim proyek.
-        // Pastikan kolom 'team_members' berisi array ID.
-        if ($task->project && is_array($task->project->team_members)) {
-            return in_array($user->id, $task->project->team_members);
+        // Team bisa komen jika terlibat dengan task
+        if ($user->hasRole('team')) {
+            // Izinkan jika pengguna adalah Project Manager dari proyek terkait
+            if ($task->project && $user->id === $task->project->project_manager_id) {
+                return true;
+            }
+
+            // Izinkan jika assigned ke task ini
+            if ($user->id === $task->assigned_to) {
+                return true;
+            }
+
+            // Izinkan jika pembuat task
+            if ($user->id === $task->created_by) {
+                return true;
+            }
+
+            // Izinkan jika pengguna adalah bagian dari tim proyek
+            if ($task->project && is_array($task->project->team_members)) {
+                return in_array($user->id, $task->project->team_members);
+            }
         }
 
-        // Tolak jika tidak memenuhi kondisi di atas.
+        // Role lain tidak bisa komen
         return false;
     }
 }
