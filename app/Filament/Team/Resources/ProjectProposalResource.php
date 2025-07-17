@@ -26,7 +26,7 @@ class ProjectProposalResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Informasi Proposal')
+                Forms\Components\Section::make('Informasi Dasar')
                     ->schema([
                         Forms\Components\TextInput::make('judul_proposal')
                             ->label('Judul Proposal')
@@ -60,18 +60,100 @@ class ProjectProposalResource extends Resource
                             ->label('Deskripsi Project')
                             ->required()
                             ->rows(4)
+                            ->columnSpan(2)
+                            ->helperText('Jelaskan secara detail tentang project yang akan dikerjakan'),
+                    ])
+                    ->columns(2),
+
+                Forms\Components\Section::make('Tujuan & Target')
+                    ->schema([
+                        Forms\Components\Textarea::make('tujuan_utama')
+                            ->label('Tujuan Utama')
+                            ->required()
+                            ->rows(3)
+                            ->helperText('Apa tujuan utama dari project ini?')
+                            ->columnSpan(2),
+
+                        Forms\Components\Textarea::make('target_audience')
+                            ->label('Target Audience')
+                            ->required()
+                            ->rows(2)
+                            ->helperText('Siapa target audience dari project ini?')
                             ->columnSpan(2),
 
                         Forms\Components\Textarea::make('tujuan_project')
-                            ->label('Tujuan & Target')
+                            ->label('Tujuan & Outcome yang Diharapkan')
                             ->required()
                             ->rows(3)
-                            ->helperText('Jelaskan tujuan dan target yang ingin dicapai')
+                            ->helperText('Jelaskan outcome dan impact yang diharapkan')
                             ->columnSpan(2),
                     ])
                     ->columns(2),
 
-                Forms\Components\Section::make('Estimasi')
+                Forms\Components\Section::make('Target Metrics')
+                    ->description('Definisikan metrics yang dapat diukur untuk mengevaluasi kesuksesan project')
+                    ->schema([
+                        Forms\Components\Repeater::make('target_metrics')
+                            ->label('Target Metrics')
+                            ->schema([
+                                Forms\Components\TextInput::make('metric')
+                                    ->label('Metric')
+                                    ->placeholder('contoh: Total Views, Engagement Rate, Downloads')
+                                    ->required(),
+                                Forms\Components\TextInput::make('target')
+                                    ->label('Target')
+                                    ->placeholder('contoh: 100K, 5%, 1000')
+                                    ->required(),
+                                Forms\Components\TextInput::make('timeframe')
+                                    ->label('Timeframe')
+                                    ->placeholder('contoh: 3 bulan, 1 minggu')
+                                    ->required(),
+                            ])
+                            ->columns(3)
+                            ->defaultItems(1)
+                            ->addActionLabel('Tambah Metric')
+                            ->columnSpanFull(),
+                    ]),
+
+                Forms\Components\Section::make('Deliverables')
+                    ->description('Daftar output konkret yang akan dihasilkan dari project ini')
+                    ->schema([
+                        Forms\Components\Repeater::make('deliverables')
+                            ->label('Deliverables')
+                            ->schema([
+                                Forms\Components\Select::make('type')
+                                    ->label('Jenis')
+                                    ->options([
+                                        'article' => '📝 Artikel',
+                                        'video' => '🎥 Video',
+                                        'podcast' => '🎙️ Podcast',
+                                        'infographic' => '📊 Infografis',
+                                        'report' => '📋 Report',
+                                        'ebook' => '📚 E-book',
+                                        'webinar' => '💻 Webinar',
+                                        'campaign' => '📢 Campaign',
+                                        'other' => '❓ Lainnya',
+                                    ])
+                                    ->required(),
+                                Forms\Components\TextInput::make('title')
+                                    ->label('Judul/Deskripsi')
+                                    ->required(),
+                                Forms\Components\TextInput::make('quantity')
+                                    ->label('Jumlah')
+                                    ->placeholder('contoh: 5 artikel, 1 video')
+                                    ->required(),
+                                Forms\Components\Textarea::make('description')
+                                    ->label('Detail')
+                                    ->placeholder('Jelaskan spesifikasi lebih detail')
+                                    ->rows(2),
+                            ])
+                            ->columns(2)
+                            ->defaultItems(1)
+                            ->addActionLabel('Tambah Deliverable')
+                            ->columnSpanFull(),
+                    ]),
+
+                Forms\Components\Section::make('Timeline & Budget')
                     ->schema([
                         Forms\Components\TextInput::make('estimasi_durasi_hari')
                             ->label('Estimasi Durasi (Hari)')
@@ -84,9 +166,59 @@ class ProjectProposalResource extends Resource
                             ->label('Estimasi Budget')
                             ->numeric()
                             ->prefix('Rp')
-                            ->helperText('Kosongkan jika tidak memerlukan budget khusus'),
+                            ->helperText('Total estimasi budget yang dibutuhkan'),
+
+                        Forms\Components\Repeater::make('budget_breakdown')
+                            ->label('Rincian Budget')
+                            ->schema([
+                                Forms\Components\TextInput::make('item')
+                                    ->label('Item')
+                                    ->placeholder('contoh: Transport, Equipment, Talent Fee')
+                                    ->required(),
+                                Forms\Components\TextInput::make('amount')
+                                    ->label('Jumlah')
+                                    ->numeric()
+                                    ->prefix('Rp')
+                                    ->required(),
+                                Forms\Components\Textarea::make('description')
+                                    ->label('Keterangan')
+                                    ->placeholder('Detail penggunaan budget')
+                                    ->rows(1),
+                            ])
+                            ->columns(3)
+                            ->addActionLabel('Tambah Item Budget')
+                            ->columnSpanFull()
+                            ->collapsible(),
+                    ])
+                    ->columns(2),
+
+                Forms\Components\Section::make('Detail Metodologi')
+                    ->schema([
+                        Forms\Components\Textarea::make('metodologi')
+                            ->label('Metodologi & Pendekatan')
+                            ->rows(4)
+                            ->helperText('Jelaskan metode dan pendekatan yang akan digunakan')
+                            ->columnSpan(2),
+
+                        Forms\Components\Textarea::make('resiko_dan_mitigasi')
+                            ->label('Resiko & Mitigasi')
+                            ->rows(3)
+                            ->helperText('Identifikasi resiko potensial dan cara mengatasinya')
+                            ->columnSpan(2),
                     ])
                     ->columns(2)
+                    ->collapsible(),
+
+                Forms\Components\Section::make('Dokumen Pendukung')
+                    ->schema([
+                        Forms\Components\FileUpload::make('attachments')
+                            ->label('Lampiran Dokumen')
+                            ->multiple()
+                            ->acceptedFileTypes(['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png'])
+                            ->maxSize(10240) // 10MB
+                            ->helperText('Upload dokumen pendukung seperti proposal detail, referensi, mockup, dll. (Max 10MB per file)')
+                            ->columnSpanFull(),
+                    ])
                     ->collapsible(),
 
                 Forms\Components\Section::make('Review Status')
@@ -222,6 +354,7 @@ class ProjectProposalResource extends Resource
                     ->visible(fn ($record) => $record->status === 'pending'),
                 // Hapus semua tombol approve, reject, dan create_project dari team panel
             ])
+            
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()

@@ -1,5 +1,7 @@
 <?php
 
+// File: app/Filament/Redaksi/Resources/ProjectProposalResource/Pages/ListProjectProposals.php
+
 namespace App\Filament\Redaksi\Resources\ProjectProposalResource\Pages;
 
 use App\Filament\Redaksi\Resources\ProjectProposalResource;
@@ -13,7 +15,15 @@ class ListProjectProposals extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            // Redaksi biasanya tidak create proposal, tapi bisa ditambahkan jika perlu
+            // Actions\CreateAction::make(),
+        ];
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            // Bisa tambahkan widget statistik proposal di sini
         ];
     }
 }

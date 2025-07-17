@@ -15,10 +15,19 @@ class ProjectProposal extends Model
         'judul_proposal',
         'deskripsi',
         'tujuan_project',
+        'tujuan_utama',
+        'target_audience',
+        'target_metrics',
+        'deliverables',
+        'attachments',
+        'metodologi',
+        'resiko_dan_mitigasi',
+        'timeline_detail',
         'kategori',
         'prioritas',
         'estimasi_durasi_hari',
         'estimasi_budget',
+        'budget_breakdown',
         'status',
         'catatan_review',
         'created_by',
@@ -31,6 +40,11 @@ class ProjectProposal extends Model
         'estimasi_budget' => 'decimal:2',
         'estimasi_durasi_hari' => 'integer',
         'reviewed_at' => 'datetime',
+        'target_metrics' => 'array',
+        'deliverables' => 'array',
+        'attachments' => 'array',
+        'timeline_detail' => 'array',
+        'budget_breakdown' => 'array',
     ];
 
     protected $attributes = [
@@ -144,7 +158,7 @@ class ProjectProposal extends Model
 
     public function hasProject(): bool
     {
-        return !is_null($this->project_id);
+        return $this->project()->exists();
     }
 
     public function canBeApproved(): bool
@@ -183,15 +197,13 @@ class ProjectProposal extends Model
     public function createProject(array $additionalData = []): Project
     {
         $project = Project::create(array_merge([
+            'project_proposal_id' => $this->id,
             'nama_project' => $this->judul_proposal,
             'deskripsi' => $this->deskripsi,
             'prioritas' => $this->prioritas,
             'created_by' => $this->created_by,
             'status' => 'planning',
         ], $additionalData));
-
-        // Link proposal ke project
-        $this->update(['project_id' => $project->id]);
 
         return $project;
     }

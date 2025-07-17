@@ -12,6 +12,7 @@ class Project extends Model
     use HasFactory;
 
     protected $fillable = [
+        'project_proposal_id',
         'nama_project',
         'deskripsi',
         'pengajuan_anggaran_id',
@@ -42,6 +43,11 @@ class Project extends Model
     ];
 
     // Relations
+    public function projectProposal(): BelongsTo
+    {
+        return $this->belongsTo(ProjectProposal::class, 'project_proposal_id');
+    }
+
     public function pengajuanAnggaran(): BelongsTo
     {
         return $this->belongsTo(PengajuanAnggaran::class, 'pengajuan_anggaran_id');

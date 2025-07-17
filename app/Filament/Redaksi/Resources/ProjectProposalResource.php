@@ -20,9 +20,9 @@ class ProjectProposalResource extends Resource
     protected static ?string $model = ProjectProposal::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-check';
-    protected static ?string $navigationGroup = 'Project Management';
+    protected static ?string $navigationGroup = 'Review & Approval';
     protected static ?string $navigationLabel = 'Review Proposals';
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
     {
@@ -189,8 +189,7 @@ class ProjectProposalResource extends Resource
                         'pending' => 'Pending',
                         'approved' => 'Approved',
                         'rejected' => 'Rejected',
-                    ])
-                    ->default('pending'),
+                    ]),
 
                 Tables\Filters\SelectFilter::make('kategori')
                     ->options([
@@ -280,6 +279,7 @@ class ProjectProposalResource extends Resource
     {
         return [
             'index' => Pages\ListProjectProposals::route('/'),
+            'view' => Pages\ViewProjectProposal::route('/{record}'),
             'edit' => Pages\EditProjectProposal::route('/{record}/edit'),
         ];
     }

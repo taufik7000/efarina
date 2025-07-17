@@ -167,4 +167,23 @@ class ProjectProposalObserver
             return collect();
         }
     }
+
+    private function getProposalUrl(ProjectProposal $proposal, $panel = 'redaksi'): string
+    {
+        // URL sesuai dengan panel yang benar
+        $baseUrl = config('app.url');
+        
+        // Untuk redaksi panel
+        if ($panel === 'redaksi') {
+            return "{$baseUrl}/redaksi/project-proposals/{$proposal->id}/view";
+        }
+        
+        // Untuk team panel
+        if ($panel === 'team') {
+            return "{$baseUrl}/team/project-proposals/{$proposal->id}";
+        }
+        
+        // Fallback
+        return "{$baseUrl}/admin/project-proposals/{$proposal->id}";
+    }
 }
