@@ -14,7 +14,7 @@ enum ProjectStatus: string
 
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::DRAFT => 'Draft',
             self::PLANNING => 'Planning',
             self::IN_PROGRESS => 'In Progress',
@@ -26,7 +26,7 @@ enum ProjectStatus: string
 
     public function color(): string
     {
-        return match($this) {
+        return match ($this) {
             self::DRAFT => 'warning',
             self::PLANNING => 'secondary',
             self::IN_PROGRESS => 'primary',
@@ -36,13 +36,13 @@ enum ProjectStatus: string
         };
     }
 
-    public function icon(): string
+    public function getIcon(): string
     {
-        return match($this) {
-            self::DRAFT => 'heroicon-o-document',
-            self::PLANNING => 'heroicon-o-calendar',
-            self::IN_PROGRESS => 'heroicon-o-play',
-            self::REVIEW => 'heroicon-o-eye',
+        return match ($this) {
+            self::DRAFT => 'heroicon-o-pencil-square',
+            self::PLANNING => 'heroicon-o-clipboard-document-list',
+            self::IN_PROGRESS => 'heroicon-o-arrow-path',
+            self::REVIEW => 'heroicon-o-magnifying-glass',
             self::COMPLETED => 'heroicon-o-check-circle',
             self::CANCELLED => 'heroicon-o-x-circle',
         };

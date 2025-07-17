@@ -169,4 +169,21 @@ public function create(User $user): bool
 
         return false;
     }
+
+    public function addComment(User $user, Task $task): bool
+    {
+        // Izinkan jika pengguna adalah Project Manager dari proyek terkait.
+        if ($task->project && $user->id === $task->project->project_manager_id) {
+            return true;
+        }
+
+        // Izinkan jika pengguna adalah bagian dari tim proyek.
+        // Pastikan kolom 'team_members' berisi array ID.
+        if ($task->project && is_array($task->project->team_members)) {
+            return in_array($user->id, $task->project->team_members);
+        }
+
+        // Tolak jika tidak memenuhi kondisi di atas.
+        return false;
+    }
 }

@@ -314,18 +314,26 @@
                                                 {{ $comment->user->name }}
                                             </h4>
 
-                                            {{-- User role badge --}}
-                                            @if($comment->user->id === $record->project->project_manager_id)
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300">
-                                                    <x-heroicon-s-star class="w-3 h-3 mr-1"/>
-                                                    Project Manager
-                                                </span>
-                                            @elseif($comment->user->id === $record->assigned_to)
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
-                                                    <x-heroicon-s-user class="w-3 h-3 mr-1"/>
-                                                    Assignee
-                                                </span>
-                                            @endif
+@if($comment->user->hasRole('redaksi'))
+    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300">
+        <x-heroicon-s-user-circle class="w-3 h-3 mr-1"/>
+        Pimimpinan Redaksi
+    </span>
+
+{{-- 2. Cek apakah user adalah Project Manager --}}
+@elseif($comment->user->id === $record->project->project_manager_id)
+    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300">
+        <x-heroicon-s-star class="w-3 h-3 mr-1"/>
+        Project Manager
+    </span>
+
+{{-- 3. Cek apakah user adalah orang yang ditugaskan (assignee) --}}
+@elseif($comment->user->id === $record->assigned_to_id) {{-- <- Perbaikan dari assigned_to menjadi assigned_to_id --}}
+    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
+        <x-heroicon-s-user class="w-3 h-3 mr-1"/>
+        Assignee
+    </span>
+@endif
 
                                             {{-- Timestamp --}}
                                             <span class="text-sm text-gray-500 dark:text-gray-400">

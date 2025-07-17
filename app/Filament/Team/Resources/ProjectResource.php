@@ -230,6 +230,7 @@ class ProjectResource extends Resource
 
                 Tables\Columns\BadgeColumn::make('prioritas')
                     ->label('Prioritas')
+                    ->formatStateUsing(fn (string $state): string => ucwords(str_replace('_', ' ', $state)))
                     ->colors([
                         'secondary' => 'low',
                         'warning' => 'medium',
@@ -239,9 +240,19 @@ class ProjectResource extends Resource
 
                 Tables\Columns\BadgeColumn::make('status')
                     ->label('Status')
+                    ->formatStateUsing(fn (string $state): string => ucwords(str_replace('_', ' ', $state)))
+                    ->icon(fn (string $state): string => match ($state) {
+                        'draft' => 'heroicon-o-pencil-square',
+                        'planning' => 'heroicon-o-clipboard-document-list',
+                        'in_progress' => 'heroicon-o-arrow-path',
+                        'review' => 'heroicon-o-magnifying-glass',
+                        'completed' => 'heroicon-o-check-circle',
+                        'cancelled' => 'heroicon-o-x-circle',
+                        default => 'heroicon-o-question-mark-circle',
+                    })
                     ->colors([
                         'warning' => 'draft',
-                        'secondary' => 'planning',
+                        'primary' => 'planning',
                         'primary' => 'in_progress',
                         'info' => 'review',
                         'success' => 'completed',

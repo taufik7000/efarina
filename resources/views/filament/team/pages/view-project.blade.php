@@ -15,32 +15,103 @@
 
     <div class="space-y-6">
         {{-- Header Info --}}
-        <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl text-white p-6 shadow-lg">
-            <div class="flex justify-between items-start">
-                <div class="flex-1">
-                    <h1 class="text-3xl font-bold mb-2">{{ $record->nama_project }}</h1>
-                    <div class="flex items-center space-x-4 text-white/80">
-                        <div class="flex items-center space-x-2">
-                            <x-heroicon-o-user class="h-5 w-5" />
-                            <span>Penanggungjawab: {{ $record->projectManager->name ?? 'Belum ditentukan' }}</span>
+<div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 relative overflow-hidden">
+    <!-- Background Pattern -->
+    <div class="absolute inset-0 bg-gradient-to-br from-slate-50 to-gray-50 opacity-50"></div>
+    <div class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 rounded-full -translate-y-48 translate-x-48"></div>
+    
+    <div class="relative z-10">
+        <div class="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-8">
+            <!-- Bagian Kiri - Informasi Utama -->
+            <div class="flex-1 space-y-6">
+                <div class="space-y-3">
+                    <h1 class="text-4xl font-bold text-gray-900 leading-tight">
+                        {{ $record->nama_project }}
+                    </h1>
+                    <div class="h-1 w-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full"></div>
+                </div>
+                
+                <!-- Info Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                    <div class="flex items-center space-x-4 bg-gray-50 rounded-xl p-4 border border-gray-100 hover:shadow-md transition-shadow">
+                        <div class="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                            <x-heroicon-o-user class="h-6 w-6 text-blue-600" />
                         </div>
-                        <div class="flex items-center space-x-2">
-                            <x-heroicon-o-calendar class="h-5 w-5" />
-                            <span>{{ $record->tanggal_mulai?->format('d M Y') }} - {{ $record->tanggal_selesai?->format('d M Y') }}</span>
+                        <div>
+                            <div class="text-gray-500 text-sm font-medium">Penanggungjawab</div>
+                            <div class="text-gray-900 font-semibold">{{ $record->projectManager->name ?? 'Belum ditentukan' }}</div>
                         </div>
-                        <div class="flex items-center space-x-2">
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/20 text-white">
-                                {{ ucfirst(str_replace('_', ' ', $record->status)) }}
-                            </span>
+                    </div>
+                    
+                    <div class="flex items-center space-x-4 bg-gray-50 rounded-xl p-4 border border-gray-100 hover:shadow-md transition-shadow">
+                        <div class="flex-shrink-0 w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
+                            <x-heroicon-o-calendar class="h-6 w-6 text-emerald-600" />
+                        </div>
+                        <div>
+                            <div class="text-gray-500 text-sm font-medium">Periode Project</div>
+                            <div class="text-gray-900 font-semibold text-sm">
+                                {{ $record->tanggal_mulai?->format('d M Y') }} - {{ $record->tanggal_selesai?->format('d M Y') }}
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="text-right">
-                    <div class="text-2xl font-bold">{{ $record->progress_percentage }}%</div>
-                    <div class="text-white/70 text-sm">Progress</div>
+            </div>
+            
+            <!-- Bagian Kanan - Progress & Status -->
+            <div class="flex flex-col items-center lg:items-end space-y-6">
+                <!-- Progress Circle -->
+                <div class="relative">
+                    <div class="w-32 h-32 relative">
+                        <svg class="w-32 h-32 transform -rotate-90" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="45" stroke="#f1f5f9" stroke-width="4" fill="none" />
+                            <circle cx="50" cy="50" r="45" stroke="url(#progressGradient)" stroke-width="4" fill="none" 
+                                    stroke-linecap="round" stroke-dasharray="283" 
+                                    stroke-dashoffset="{{ 283 - (283 * $record->progress_percentage / 100) }}" 
+                                    class="transition-all duration-1000 ease-out" />
+                            <defs>
+                                <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+                                    <stop offset="100%" style="stop-color:#6366f1;stop-opacity:1" />
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <div class="text-center">
+                                <div class="text-3xl font-bold text-gray-900">{{ $record->progress_percentage }}%</div>
+                                <div class="text-gray-500 text-sm font-medium">Progress</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Status Badge -->
+                <div class="text-center lg:text-right">
+                    <div class="text-gray-500 text-sm font-medium mb-2">Status Project</div>
+                    <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold 
+                               bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg
+                               hover:shadow-xl transition-shadow">
+                        <div class="w-2 h-2 bg-white rounded-full mr-2"></div>
+                        {{ ucfirst(str_replace('_', ' ', $record->status)) }}
+                    </span>
                 </div>
             </div>
         </div>
+        
+        <!-- Progress Bar -->
+        <div class="mt-8 pt-6 border-t border-gray-200">
+            <div class="flex justify-between items-center mb-3">
+                <span class="text-gray-600 font-medium">Progress Keseluruhan</span>
+                <span class="text-gray-900 font-semibold">{{ $record->progress_percentage }}% Complete</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                <div class="bg-gradient-to-r from-blue-500 to-indigo-500 h-3 rounded-full transition-all duration-1000 ease-out shadow-sm relative" 
+                     style="width: {{ $record->progress_percentage }}%">
+                    <div class="absolute inset-0 bg-white/20 rounded-full"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {{-- Left Column - Main Content --}}
