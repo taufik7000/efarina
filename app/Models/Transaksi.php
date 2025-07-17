@@ -172,4 +172,29 @@ class Transaksi extends Model
     {
         return $this->isProjectProposal() && $this->status === 'pending';
     }
+
+    /**
+ * Update total_amount berdasarkan sum dari items
+ */
+public function updateTotalFromItems(): void
+{
+    $totalFromItems = $this->items()->sum('subtotal');
+    $this->update(['total_amount' => $totalFromItems]);
+}
+
+/**
+ * Method untuk recalculate total amount
+ */
+public function recalculateTotal(): void
+{
+    $this->updateTotalFromItems();
+}
+
+/**
+ * Get total amount dari items (untuk validasi)
+ */
+public function getCalculatedTotalAttribute(): float
+{
+    return $this->items()->sum('subtotal');
+}
 }

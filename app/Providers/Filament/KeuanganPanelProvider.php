@@ -29,6 +29,7 @@ class KeuanganPanelProvider extends PanelProvider
                 'primary' => Color::Amber,
             ])
             ->databaseNotifications()
+            ->viteTheme('resources/css/filament/keuangan/theme.css')
             ->discoverResources(in: app_path('Filament/Keuangan/Resources'), for: 'App\\Filament\\Keuangan\\Resources')
             ->resources([
                 // Shared Budget Resources untuk Direktur
@@ -38,6 +39,7 @@ class KeuanganPanelProvider extends PanelProvider
                 \App\Filament\Resources\BudgetSubcategoryResource::class,
                 \App\Filament\Resources\BudgetAllocationResource::class,
                 \App\Filament\Resources\TransaksiResource::class,
+                \App\Filament\Team\Resources\PengajuanAnggaranResource::class,
             ])
             ->discoverPages(in: app_path('Filament/Keuangan/Pages'), for: 'App\\Filament\\Keuangan\\Pages')
             ->pages([

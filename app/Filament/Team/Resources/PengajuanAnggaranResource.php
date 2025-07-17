@@ -371,12 +371,11 @@ class PengajuanAnggaranResource extends Resource
                     ->query(fn (Builder $query): Builder => 
                         $query->where('tanggal_dibutuhkan', '<=', now()->addDays(7))
                     ),
-
                 Tables\Filters\Filter::make('my_requests')
                     ->label('Pengajuan Saya')
-                    ->query(fn (Builder $query): Builder => $query->where('created_by', auth()->id()))
-                    ->default(),
-            ])
+                    ->query(fn(Builder $query): Builder => $query->where('created_by', auth()->id())),
+
+                    ])
             ->actions([
                 // Submit untuk approval
                 Tables\Actions\Action::make('submit')
@@ -472,48 +471,89 @@ class PengajuanAnggaranResource extends Resource
 
                 // Keuangan/Direktur Actions
                 Tables\Actions\ActionGroup::make([
-                    Tables\Actions\Action::make('keuangan_approve')
-                        ->label('Setujui (Final)')
-                        ->icon('heroicon-o-check-badge')
-                        ->color('success')
-                        ->visible(fn ($record) => 
-                            $record->status === 'pending_keuangan' && 
-                            auth()->check() && auth()->user()->hasRole(['keuangan', 'direktur', 'admin'])
-                        )
-                        ->form([
-                            Forms\Components\Textarea::make('keuangan_notes')
-                                ->label('Catatan Keuangan')
-                                ->placeholder('Tambahkan catatan (opsional)')
-                                ->rows(3),
-                        ])
-                        ->action(function (PengajuanAnggaran $record, array $data): void {
-                            // Create transaksi when approved
-                            DB::transaction(function () use ($record, $data) {
-                                $record->update([
-                                    'status' => 'approved',
-                                    'keuangan_approved_by' => auth()->id(),
-                                    'keuangan_approved_at' => now(),
-                                    'keuangan_notes' => $data['keuangan_notes'] ?? null,
-                                ]);
+ Tables\Actions\Action::make('keuangan_approve')
+    ->label('Setujui (Final)')
+    ->icon('heroicon-o-check-badge')
+    ->color('success')
+    ->visible(fn ($record) => 
+        $record->status === 'pending_keuangan' && 
+        auth()->check() && auth()->user()->hasRole(['keuangan', 'direktur', 'admin'])
+    )
+    ->form([
+        Forms\Components\Textarea::make('keuangan_notes')
+            ->label('Catatan Keuangan')
+            ->placeholder('Tambahkan catatan (opsional)')
+            ->rows(3),
+    ])
+    ->action(function (PengajuanAnggaran $record, array $data): void {
+        DB::transaction(function () use ($record, $data) {
+            // 1. Update status pengajuan
+            $record->update([
+                'status' => 'approved',
+                'keuangan_approved_by' => auth()->id(),
+                'keuangan_approved_at' => now(),
+                'keuangan_notes' => $data['keuangan_notes'] ?? null,
+            ]);
 
-                                // Update budget allocations
-                                foreach ($record->detail_items as $item) {
-                                    $allocation = BudgetAllocation::where('budget_subcategory_id', $item['budget_subcategory_id'])
-                                        ->whereHas('budgetPlan', fn($q) => $q->where('status', 'active'))
-                                        ->first();
+            // 2. Create transaksi pengeluaran
+            $transaksi = \App\Models\Transaksi::create([
+                'nomor_transaksi' => self::generateNomorTransaksi(),
+                'jenis_transaksi' => 'pengeluaran',
+                'tanggal_transaksi' => now(),
+                'nama_transaksi' => 'Pengeluaran: ' . $record->judul_pengajuan,
+                'deskripsi' => $record->deskripsi,
+                'total_amount' => $record->total_anggaran,
+                'status' => 'approved',
+                'metode_pembayaran' => 'transfer',
+                'project_id' => $record->project_id,
+                'pengajuan_anggaran_id' => $record->id,
+                'created_by' => auth()->id(),
+                'approved_by' => auth()->id(),
+                'approved_at' => now(),
+                'workflow_type' => 'pengajuan_anggaran',
+                'catatan_approval' => 'Disetujui melalui pengajuan anggaran: ' . $record->nomor_pengajuan,
+            ]);
 
-                                    if ($allocation) {
-                                        $allocation->increment('used_amount', $item['total_price']);
-                                    }
-                                }
-                            });
-                            
-                            Notification::make()
-                                ->title('Pengajuan Final Approved!')
-                                ->body("Pengajuan '{$record->judul_pengajuan}' telah disetujui dan budget dialokasikan.")
-                                ->success()
-                                ->send();
-                        }),
+            // 3. Create transaksi items
+            foreach ($record->detail_items as $item) {
+                \App\Models\TransaksiItem::create([
+                    'transaksi_id' => $transaksi->id,
+                    'nama_item' => $item['item_name'] ?? $item['nama_item'] ?? 'Item',
+                    'kuantitas' => $item['quantity'] ?? $item['kuantitas'] ?? 1,
+                    'harga_satuan' => $item['unit_price'] ?? $item['harga_satuan'] ?? 0,
+                    'subtotal' => $item['total_price'] ?? 0,
+                    'satuan' => 'pcs',
+                    'deskripsi_item' => $item['description'] ?? $item['spesifikasi'] ?? null,
+                ]);
+            }
+
+            // 4. Update budget allocations
+            foreach ($record->detail_items as $item) {
+                if (isset($item['budget_subcategory_id'])) {
+                    $allocation = BudgetAllocation::where('budget_subcategory_id', $item['budget_subcategory_id'])
+                        ->whereHas('budgetPlan', fn($q) => $q->where('status', 'active'))
+                        ->first();
+
+                    if ($allocation) {
+                        $allocation->increment('used_amount', $item['total_price']);
+                        
+                        // Link transaksi ke budget allocation
+                        if (!$transaksi->budget_allocation_id) {
+                            $transaksi->update(['budget_allocation_id' => $allocation->id]);
+                        }
+                    }
+                }
+            }
+        });
+        
+        Notification::make()
+            ->title('Pengajuan Final Approved!')
+            ->body("Pengajuan '{$record->judul_pengajuan}' telah disetujui, budget dialokasikan, dan transaksi pengeluaran dibuat.")
+            ->success()
+            ->send();
+    }),
+
+
 
                     Tables\Actions\Action::make('keuangan_reject')
                         ->label('Tolak (Final)')
@@ -607,38 +647,39 @@ class PengajuanAnggaranResource extends Resource
         ];
     }
 
-    public static function getEloquentQuery(): Builder
-    {
-        $user = auth()->user();
+public static function getEloquentQuery(): Builder
+{
+    $user = auth()->user();
 
-        if (!$user) {
-            return parent::getEloquentQuery()->whereRaw('1 = 0');
-        }
-
-        // Admin bisa lihat semua
-        if ($user->hasRole(['admin'])) {
-            return parent::getEloquentQuery();
-        }
-
-        // Redaksi bisa lihat yang pending redaksi + semua yang sudah lewat redaksi  
-        if ($user->hasRole(['redaksi'])) {
-            return parent::getEloquentQuery()
-                ->where(function ($query) {
-                    $query->where('status', 'pending_redaksi')
-                          ->orWhereIn('status', ['pending_keuangan', 'approved', 'rejected']);
-                });
-        }
-
-        // Keuangan/Direktur bisa lihat yang pending keuangan + approved/rejected
-        if ($user->hasRole(['keuangan', 'direktur'])) {
-            return parent::getEloquentQuery()
-                ->whereIn('status', ['pending_keuangan', 'approved', 'rejected']);
-        }
-
-        // Team hanya bisa lihat pengajuan mereka sendiri
-        return parent::getEloquentQuery()
-            ->where('created_by', $user->id);
+    if (!$user) {
+        return parent::getEloquentQuery()->whereRaw('1 = 0');
     }
+
+    // Admin bisa lihat semua
+    if ($user->hasRole(['admin'])) {
+        return parent::getEloquentQuery();
+    }
+
+    // Redaksi bisa lihat semua pengajuan kecuali yang masih draft
+    if ($user->hasRole(['redaksi'])) {
+        return parent::getEloquentQuery()
+            ->whereIn('status', ['pending_redaksi', 'pending_keuangan', 'approved', 'rejected']);
+    }
+
+    // Keuangan/Direktur bisa lihat pengajuan yang sudah lewat tahap redaksi
+    if ($user->hasRole(['keuangan', 'direktur'])) {
+        return parent::getEloquentQuery()
+            ->whereIn('status', ['pending_keuangan', 'approved', 'rejected']);
+    }
+
+    // Team bisa lihat pengajuan mereka sendiri semua status
+    // + pengajuan yang sudah approved dari team lain (untuk referensi)
+    return parent::getEloquentQuery()
+        ->where(function ($query) use ($user) {
+            $query->where('created_by', $user->id)
+                  ->orWhere('status', 'approved');
+        });
+}
 
     public static function getNavigationBadge(): ?string
     {
@@ -663,4 +704,18 @@ class PengajuanAnggaranResource extends Resource
     {
         return 'warning';
     }
+
+private static function generateNomorTransaksi(): string
+{
+    $prefix = 'TRX-OUT';
+    $year = now()->format('Y');
+    $month = now()->format('m');
+    
+    $counter = \App\Models\Transaksi::whereYear('tanggal_transaksi', now()->year)
+                     ->whereMonth('tanggal_transaksi', now()->month)
+                     ->where('jenis_transaksi', 'pengeluaran')
+                     ->count() + 1;
+    
+    return $prefix . '/' . $year . '/' . $month . '/' . str_pad($counter, 4, '0', STR_PAD_LEFT);
+}
 }

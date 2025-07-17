@@ -1,5 +1,4 @@
 <?php
-// app/Filament/Resources/TransaksiResource.php
 
 namespace App\Filament\Resources;
 
@@ -13,6 +12,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Notifications\Notification;
+use Illuminate\Database\Eloquent\Builder;
 
 class TransaksiResource extends Resource
 {
@@ -62,7 +62,7 @@ class TransaksiResource extends Resource
                             ->options([
                                 'draft' => 'Draft',
                                 'pending' => 'Menunggu Approval',
-                                'approved' => 'Disetujui',
+                                'approved' => 'Menunggu Pembayaran',
                                 'rejected' => 'Ditolak',
                                 'completed' => 'Selesai',
                             ])
@@ -106,7 +106,7 @@ class TransaksiResource extends Resource
                         Forms\Components\TextInput::make('nomor_referensi')
                             ->label('Nomor Referensi')
                             ->maxLength(255)
-                            ->placeholder('No. Invoice, Kwitansi, dll'),
+                            ->placeholder('No. invoice, kwitansi, dll'),
                     ])
                     ->columns(2),
 
@@ -204,6 +204,13 @@ class TransaksiResource extends Resource
             ]);
     }
 
+    public static function getTabs(): array
+    {
+        return [
+            // Tab "Semua" tidak perlu lagi karena ini adalah default view
+        ];
+    }
+
     public static function table(Table $table): Table
     {
         return $table
@@ -227,7 +234,7 @@ class TransaksiResource extends Resource
                 Tables\Columns\TextColumn::make('jenis_transaksi')
                     ->label('Jenis')
                     ->badge()
-                    ->color(fn ($record) => $record->jenis_color)
+                    ->color(fn ($record) => $record->jenis_transaksi === 'pemasukan' ? 'success' : 'danger')
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'pemasukan' => 'Pemasukan',
                         'pengeluaran' => 'Pengeluaran',
@@ -248,11 +255,18 @@ class TransaksiResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->color(fn ($record) => $record->status_color)
+                    ->color(fn (string $state) => match ($state) {
+                        'draft' => 'gray',
+                        'pending' => 'warning',
+                        'approved' => 'info',
+                        'completed' => 'success',
+                        'rejected' => 'danger',
+                        default => 'gray',
+                    })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'draft' => 'Draft',
-                        'pending' => 'Pending',
-                        'approved' => 'Disetujui',
+                        'pending' => 'Menunggu Approval',
+                        'approved' => 'Menunggu Pembayaran',
                         'rejected' => 'Ditolak',
                         'completed' => 'Selesai',
                         default => $state,
@@ -269,19 +283,19 @@ class TransaksiResource extends Resource
                         'credit' => 'Credit',
                         'e_wallet' => 'E-Wallet',
                         'cek' => 'Cek',
-                        default => $state ?? '-',
+                        default => $state ?? 'Tidak ada',
                     }),
+
+                Tables\Columns\TextColumn::make('project.nama_project')
+                    ->label('Project')
+                    ->limit(20)
+                    ->placeholder('Tidak ada'),
 
                 Tables\Columns\TextColumn::make('createdBy.name')
                     ->label('Dibuat Oleh')
-                    ->toggleable(isToggledHiddenByDefault: true),
-
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Dibuat')
-                    ->dateTime('d M Y')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->placeholder('Tidak ada'),
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 Tables\Filters\SelectFilter::make('jenis_transaksi')
                     ->label('Jenis Transaksi')
@@ -294,19 +308,20 @@ class TransaksiResource extends Resource
                     ->label('Status')
                     ->options([
                         'draft' => 'Draft',
-                        'pending' => 'Pending',
-                        'approved' => 'Disetujui',
+                        'pending' => 'Menunggu Approval',
+                        'approved' => 'Menunggu Pembayaran',
                         'rejected' => 'Ditolak',
                         'completed' => 'Selesai',
-                    ]),
+                    ])
+                    ->multiple(),
 
                 Tables\Filters\SelectFilter::make('metode_pembayaran')
                     ->label('Metode Pembayaran')
                     ->options([
                         'cash' => 'Tunai',
-                        'transfer' => 'Transfer Bank',
-                        'debit' => 'Kartu Debit',
-                        'credit' => 'Kartu Kredit',
+                        'transfer' => 'Transfer',
+                        'debit' => 'Debit',
+                        'credit' => 'Credit',
                         'e_wallet' => 'E-Wallet',
                         'cek' => 'Cek',
                     ]),
@@ -318,7 +333,7 @@ class TransaksiResource extends Resource
                         Forms\Components\DatePicker::make('sampai_tanggal')
                             ->label('Sampai Tanggal'),
                     ])
-                    ->query(function ($query, array $data) {
+                    ->query(function (Builder $query, array $data): Builder {
                         return $query
                             ->when($data['dari_tanggal'], fn ($q) => $q->whereDate('tanggal_transaksi', '>=', $data['dari_tanggal']))
                             ->when($data['sampai_tanggal'], fn ($q) => $q->whereDate('tanggal_transaksi', '<=', $data['sampai_tanggal']));
@@ -326,9 +341,110 @@ class TransaksiResource extends Resource
 
                 Tables\Filters\Filter::make('pending_approval')
                     ->label('Perlu Approval')
-                    ->query(fn ($query) => $query->where('status', 'pending')),
+                    ->query(fn (Builder $query): Builder => $query->where('status', 'pending')),
+
+                Tables\Filters\Filter::make('draft')
+                    ->label('Draft')
+                    ->query(fn (Builder $query): Builder => $query->where('status', 'draft')),
+
+                Tables\Filters\Filter::make('approved')
+                    ->label('Menunggu Pembayaran')
+                    ->query(fn (Builder $query): Builder => $query->where('status', 'approved')),
+
+                Tables\Filters\Filter::make('completed')
+                    ->label('Selesai')
+                    ->query(fn (Builder $query): Builder => $query->where('status', 'completed')),
+
+                Tables\Filters\Filter::make('rejected')
+                    ->label('Ditolak')
+                    ->query(fn (Builder $query): Builder => $query->where('status', 'rejected')),
             ])
             ->actions([
+                // Action untuk Mark as Paid (dari approved ke completed)
+                Tables\Actions\Action::make('mark_paid')
+                    ->label('Tandai Terbayar')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->visible(fn ($record) => $record->status === 'approved' && 
+                             auth()->user()->hasRole(['admin', 'super-admin', 'keuangan']))
+                    ->form([
+                        Forms\Components\Select::make('metode_pembayaran')
+                            ->label('Metode Pembayaran')
+                            ->options([
+                                'cash' => 'Tunai',
+                                'transfer' => 'Transfer Bank',
+                                'debit' => 'Kartu Debit',
+                                'credit' => 'Kartu Kredit',
+                                'e_wallet' => 'E-Wallet',
+                                'cek' => 'Cek',
+                            ])
+                            ->required(),
+                        Forms\Components\TextInput::make('nomor_referensi')
+                            ->label('Nomor Referensi')
+                            ->placeholder('No. transaksi, no. cek, dll'),
+                        Forms\Components\FileUpload::make('bukti_transfer')
+                            ->label('Bukti Transfer/Pembayaran')
+                            ->image()
+                            ->directory('bukti-pembayaran')
+                            ->imageEditor()
+                            ->imageEditorAspectRatios([
+                                '16:9',
+                                '4:3',
+                                '1:1',
+                            ])
+                            ->maxSize(5120) // 5MB
+                            ->acceptedFileTypes(['image/*', 'application/pdf'])
+                            ->helperText('Upload foto bukti transfer atau dokumen pembayaran (Max: 5MB)')
+                            ->required(),
+                        Forms\Components\Textarea::make('catatan_pembayaran')
+                            ->label('Catatan Pembayaran')
+                            ->placeholder('Tambahkan catatan pembayaran jika diperlukan')
+                            ->rows(3),
+                    ])
+                    ->action(function ($record, array $data) {
+                        // Simpan bukti transfer ke attachments
+                        $attachments = $record->attachments ?? [];
+                        
+                        // Debug: pastikan file tersimpan dengan benar
+                        if (isset($data['bukti_transfer'])) {
+                            $fileName = $data['bukti_transfer'];
+                            
+                            // Tambahkan ke array attachments dengan metadata lengkap
+                            $attachments[] = [
+                                'type' => 'bukti_pembayaran',
+                                'filename' => $fileName, // Ini sudah termasuk path dari directory
+                                'original_name' => $fileName,
+                                'uploaded_by' => auth()->user()->name,
+                                'uploaded_at' => now()->toISOString(),
+                                'description' => 'Bukti pembayaran - ' . $data['metode_pembayaran'],
+                                'file_size' => null, // Bisa ditambahkan jika diperlukan
+                                'mime_type' => null,  // Bisa ditambahkan jika diperlukan
+                            ];
+                        }
+                        
+                        $record->update([
+                            'status' => 'completed',
+                            'metode_pembayaran' => $data['metode_pembayaran'],
+                            'nomor_referensi' => $data['nomor_referensi'] ?? null,
+                            'attachments' => $attachments,
+                            'catatan_approval' => ($record->catatan_approval ?? '') . 
+                                "\n\n=== PEMBAYARAN DIKONFIRMASI ===\n" .
+                                "Tanggal: " . now()->format('d M Y H:i') . "\n" .
+                                "Metode: " . $data['metode_pembayaran'] . "\n" .
+                                "No. Referensi: " . ($data['nomor_referensi'] ?? '-') . "\n" .
+                                "Dikonfirmasi oleh: " . auth()->user()->name . "\n" .
+                                "Catatan: " . ($data['catatan_pembayaran'] ?? 'Tidak ada catatan') . "\n" .
+                                "Bukti transfer: " . ($data['bukti_transfer'] ? 'Tersedia' : 'Tidak ada'),
+                        ]);
+                        
+                        Notification::make()
+                            ->title('Pembayaran Dikonfirmasi')
+                            ->body("Transaksi {$record->nomor_transaksi} telah ditandai sebagai terbayar")
+                            ->success()
+                            ->send();
+                    }),
+
+                // Action untuk Approve
                 Tables\Actions\Action::make('approve')
                     ->label('Setujui')
                     ->icon('heroicon-o-check-circle')
@@ -341,13 +457,20 @@ class TransaksiResource extends Resource
                             ->rows(3),
                     ])
                     ->action(function ($record, array $data) {
-                        $record->approve(auth()->id(), $data['catatan_approval'] ?? null);
+                        $record->update([
+                            'status' => 'approved',
+                            'approved_at' => now(),
+                            'approved_by' => auth()->id(),
+                            'catatan_approval' => $data['catatan_approval'] ?? null,
+                        ]);
+                        
                         Notification::make()
                             ->title('Transaksi berhasil disetujui')
                             ->success()
                             ->send();
                     }),
 
+                // Action untuk Reject
                 Tables\Actions\Action::make('reject')
                     ->label('Tolak')
                     ->icon('heroicon-o-x-circle')
@@ -361,52 +484,38 @@ class TransaksiResource extends Resource
                             ->rows(3),
                     ])
                     ->action(function ($record, array $data) {
-                        $record->reject(auth()->id(), $data['catatan_approval']);
+                        $record->update([
+                            'status' => 'rejected',
+                            'approved_at' => now(),
+                            'approved_by' => auth()->id(),
+                            'catatan_approval' => $data['catatan_approval'],
+                        ]);
+                        
                         Notification::make()
                             ->title('Transaksi ditolak')
-                            ->success()
-                            ->send();
-                    }),
-
-                Tables\Actions\Action::make('complete')
-                    ->label('Selesaikan')
-                    ->icon('heroicon-o-check-badge')
-                    ->color('info')
-                    ->visible(fn ($record) => $record->status === 'approved' && 
-                             auth()->user()->hasRole(['admin', 'super-admin', 'keuangan']))
-                    ->requiresConfirmation()
-                    ->action(function ($record) {
-                        $record->complete();
-                        Notification::make()
-                            ->title('Transaksi diselesaikan & budget allocation terupdate')
-                            ->success()
+                            ->warning()
                             ->send();
                     }),
 
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make()
-                    ->visible(fn ($record) => auth()->user()->hasRole(['admin', 'super-admin', 'direktur', 'keuangan']) &&
+                    ->visible(fn ($record) => auth()->user()->hasRole(['admin', 'super-admin', 'keuangan']) &&
                              in_array($record->status, ['draft', 'pending'])),
-                Tables\Actions\DeleteAction::make()
-                    ->visible(fn ($record) => auth()->user()->hasRole(['admin', 'super-admin', 'direktur']) &&
-                             $record->status === 'draft'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
-                        ->visible(fn () => auth()->user()->hasRole(['admin', 'super-admin', 'direktur'])),
+                        ->visible(fn () => auth()->user()->hasRole(['admin', 'super-admin']))
+                        ->requiresConfirmation(),
                 ]),
-            ])
-            ->defaultSort('tanggal_transaksi', 'desc')
-            ->groups([
-                Tables\Grouping\Group::make('jenis_transaksi')
-                    ->label('Jenis Transaksi'),
-                Tables\Grouping\Group::make('status')
-                    ->label('Status'),
-                Tables\Grouping\Group::make('tanggal_transaksi')
-                    ->label('Tanggal')
-                    ->date(),
             ]);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            //
+        ];
     }
 
     public static function getPages(): array
@@ -419,4 +528,31 @@ class TransaksiResource extends Resource
         ];
     }
 
+    public static function getNavigationBadge(): ?string
+    {
+        $user = auth()->user();
+        
+        if (!$user) {
+            return null;
+        }
+        
+        // Badge untuk direktur/admin - pending approval
+        if ($user->hasRole(['admin', 'super-admin', 'direktur'])) {
+            $count = static::getModel()::where('status', 'pending')->count();
+            return $count > 0 ? (string) $count : null;
+        }
+        
+        // Badge untuk keuangan - approved (menunggu pembayaran)
+        if ($user->hasRole(['keuangan'])) {
+            $count = static::getModel()::where('status', 'approved')->count();
+            return $count > 0 ? (string) $count : null;
+        }
+        
+        return null;
+    }
+
+    public static function getNavigationBadgeColor(): string|array|null
+    {
+        return 'warning';
+    }
 }

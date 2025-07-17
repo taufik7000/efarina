@@ -17,7 +17,8 @@ export default ({ mode }) => {
                     'resources/js/app.js',
                     'resources/css/filament/team/theme.css',
                     'resources/css/filament/direktur/theme.css',
-                    'resources/css/filament/redaksi/theme.css'
+                    'resources/css/filament/redaksi/theme.css',
+                    'resources/css/filament/keuangan/theme.css'
                 ],
                 
                 // INI ADALAH BAGIAN KUNCINYA:

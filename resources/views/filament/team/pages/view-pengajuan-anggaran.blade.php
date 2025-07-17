@@ -111,33 +111,25 @@
                             <div class="p-6">
                                 <div class="flex items-start justify-between">
                                     <div class="flex-1">
-                                        <div class="flex items-center space-x-3 mb-2">
-                                            <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">{{ $item['item_name'] }}</h4>
-                                            
-                                            {{-- Budget Category Badge --}}
-                                            @if(isset($item['budget_category_id']))
-                                                @php
-                                                    $category = \App\Models\BudgetCategory::find($item['budget_category_id']);
-                                                    $subcategory = \App\Models\BudgetSubcategory::find($item['budget_subcategory_id']);
-                                                @endphp
-                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200">
-                                                    {{ $category?->nama_kategori }} {{ $subcategory ? '- ' . $subcategory->nama_subkategori : '' }}
-                                                </span>
-                                            @endif
+                                        <div class="flex items-center space-x-2 mb-2">
+                                            <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-600 text-xs font-medium dark:bg-blue-900/50 dark:text-blue-400">
+                                                {{ $index + 1 }}
+                                            </span>
+                                            <h4 class="font-medium text-gray-900 dark:text-gray-100">{{ $item['item_name'] ?? $item['nama_item'] ?? 'Item' }}</h4>
                                         </div>
                                         
-                                        @if($item['description'])
-                                            <p class="text-gray-600 dark:text-gray-400 text-sm mb-3">{{ $item['description'] }}</p>
+                                        @if($item['description'] ?? $item['spesifikasi'] ?? false)
+                                            <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">{{ $item['description'] ?? $item['spesifikasi'] }}</p>
                                         @endif
                                         
-                                        <div class="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
+                                        <div class="flex items-center space-x-4 text-sm text-gray-500">
                                             <div class="flex items-center space-x-1">
-                                                <x-heroicon-o-calculator class="h-4 w-4" />
-                                                <span>Qty: {{ $item['quantity'] ?? 1 }}</span>
+                                                <span>Qty:</span>
+                                                <span class="font-medium">{{ $item['quantity'] ?? $item['kuantitas'] ?? 1 }}</span>
                                             </div>
                                             <div class="flex items-center space-x-1">
-                                                <x-heroicon-o-banknotes class="h-4 w-4" />
-                                                <span>@ Rp {{ number_format($item['unit_price'] ?? 0, 0, ',', '.') }}</span>
+                                                <span>Harga:</span>
+                                                <span class="font-medium">Rp {{ number_format($item['unit_price'] ?? $item['harga_satuan'] ?? 0, 0, ',', '.') }}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -165,252 +157,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-
-            {{-- Sidebar --}}
-            <div class="space-y-6">
-                {{-- Status & Timeline --}}
-                <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Status & Timeline</h3>
-                    
-                    <div class="space-y-4">
-                        {{-- Current Status --}}
-                        <div class="flex items-center space-x-3">
-                            <div class="w-3 h-3 rounded-full {{ $this->getStatusColor() === 'success' ? 'bg-green-500' : ($this->getStatusColor() === 'danger' ? 'bg-red-500' : ($this->getStatusColor() === 'warning' ? 'bg-yellow-500' : 'bg-gray-400')) }}"></div>
-                            <div>
-                                <p class="font-medium text-gray-900 dark:text-gray-100">{{ $this->getStatusLabel() }}</p>
-                                <p class="text-sm text-gray-500">Status saat ini</p>
-                            </div>
-                        </div>
-
-                        {{-- Timeline Steps --}}
-                        <div class="space-y-3 ml-1.5">
-                            {{-- Draft --}}
-                            <div class="flex items-center space-x-3">
-                                <div class="w-2 h-2 rounded-full bg-green-500"></div>
-                                <div class="text-sm">
-                                    <span class="text-gray-900 dark:text-gray-100">Draft dibuat</span>
-                                    <p class="text-gray-500">{{ $record->created_at->format('d M Y, H:i') }}</p>
-                                </div>
-                            </div>
-
-                            {{-- Redaksi Approval --}}
-                            <div class="flex items-center space-x-3">
-                                <div class="w-2 h-2 rounded-full {{ in_array($record->status, ['pending_keuangan', 'approved']) ? 'bg-green-500' : ($record->status === 'pending_redaksi' ? 'bg-yellow-500' : 'bg-gray-300') }}"></div>
-                                <div class="text-sm">
-                                    <span class="text-gray-900 dark:text-gray-100">Review Redaksi</span>
-                                    @if($record->redaksi_approved_at)
-                                        <p class="text-gray-500">{{ $record->redaksi_approved_at->format('d M Y, H:i') }}</p>
-                                    @elseif($record->status === 'pending_redaksi')
-                                        <p class="text-yellow-600">Menunggu review</p>
-                                    @else
-                                        <p class="text-gray-400">Belum diproses</p>
-                                    @endif
-                                </div>
-                            </div>
-
-                            {{-- Keuangan Approval --}}
-                            <div class="flex items-center space-x-3">
-                                <div class="w-2 h-2 rounded-full {{ $record->status === 'approved' ? 'bg-green-500' : ($record->status === 'pending_keuangan' ? 'bg-yellow-500' : 'bg-gray-300') }}"></div>
-                                <div class="text-sm">
-                                    <span class="text-gray-900 dark:text-gray-100">Approval Keuangan</span>
-                                    @if($record->keuangan_approved_at)
-                                        <p class="text-gray-500">{{ $record->keuangan_approved_at->format('d M Y, H:i') }}</p>
-                                    @elseif($record->status === 'pending_keuangan')
-                                        <p class="text-yellow-600">Menunggu approval</p>
-                                    @else
-                                        <p class="text-gray-400">Belum diproses</p>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Actions --}}
-                @if($this->canUserTakeAction())
-                    <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Tindakan</h3>
-                        
-                        @if($record->status === 'pending_redaksi' && auth()->user()->hasRole(['redaksi', 'admin']))
-                            <div class="space-y-3">
-                                <button wire:click="approveRedaksi" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                                    ✅ Setujui (Redaksi)
-                                </button>
-                                <button wire:click="rejectRedaksi" class="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                                    ❌ Tolak (Redaksi)
-                                </button>
-                            </div>
-                        @endif
-
-                        @if($record->status === 'pending_keuangan' && auth()->user()->hasRole(['keuangan', 'direktur', 'admin']))
-                            <div class="space-y-3">
-                                <button wire:click="approveKeuangan" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                                    ✅ Setujui Final
-                                </button>
-                                <button wire:click="rejectKeuangan" class="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                                    ❌ Tolak Final
-                                </button>
-                            </div>
-                        @endif
-                    </div>
-                @endif
-            </div>
-        </div>
-    </div>
-
-    {{-- Modals --}}
-    {{-- Approve Redaksi Modal --}}
-    <x-filament::modal id="approve-redaksi-modal" width="md">
-        <x-slot name="heading">
-            Setujui Pengajuan (Redaksi)
-        </x-slot>
-        
-        <x-slot name="description">
-            Pengajuan akan diteruskan ke keuangan untuk final approval.
-        </x-slot>
-        
-        <div class="space-y-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Catatan (Opsional)
-                </label>
-                <textarea 
-                    wire:model="redaksi_notes" 
-                    rows="3" 
-                    class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-800 rounded-lg"
-                    placeholder="Tambahkan catatan..."
-                ></textarea>
-            </div>
-        </div>
-        
-        <x-slot name="footerActions">
-            <x-filament::button wire:click="confirmApproveRedaksi" color="success">
-                Setujui
-            </x-filament::button>
-            
-            <x-filament::button wire:click="$dispatch('close-modal', { id: 'approve-redaksi-modal' })" color="gray">
-                Batal
-            </x-filament::button>
-        </x-slot>
-    </x-filament::modal>
-
-    {{-- Reject Redaksi Modal --}}
-    <x-filament::modal id="reject-redaksi-modal" width="md">
-        <x-slot name="heading">
-            Tolak Pengajuan (Redaksi)
-        </x-slot>
-        
-        <x-slot name="description">
-            Mohon berikan alasan penolakan yang jelas.
-        </x-slot>
-        
-        <div class="space-y-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Alasan Penolakan *
-                </label>
-                <textarea 
-                    wire:model="redaksi_notes" 
-                    rows="4" 
-                    class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-800 rounded-lg"
-                    placeholder="Jelaskan alasan penolakan..."
-                    required
-                ></textarea>
-            </div>
-        </div>
-        
-        <x-slot name="footerActions">
-            <x-filament::button wire:click="confirmRejectRedaksi" color="danger">
-                Tolak Pengajuan
-            </x-filament::button>
-            
-            <x-filament::button wire:click="$dispatch('close-modal', { id: 'reject-redaksi-modal' })" color="gray">
-                Batal
-            </x-filament::button>
-        </x-slot>
-    </x-filament::modal>
-
-    {{-- Approve Keuangan Modal --}}
-    <x-filament::modal id="approve-keuangan-modal" width="md">
-        <x-slot name="heading">
-            Final Approval (Keuangan)
-        </x-slot>
-        
-        <x-slot name="description">
-            Pengajuan akan disetujui dan budget allocation akan diupdate.
-        </x-slot>
-        
-        <div class="space-y-4">
-            <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                <h4 class="font-medium text-blue-900 dark:text-blue-100 mb-2">Ringkasan:</h4>
-                <p class="text-blue-800 dark:text-blue-200 text-sm">
-                    Total anggaran: <strong>Rp {{ number_format($record->total_anggaran, 0, ',', '.') }}</strong><br>
-                    Jumlah item: <strong>{{ count($record->detail_items) }}</strong>
-                </p>
-            </div>
-            
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Catatan (Opsional)
-                </label>
-                <textarea 
-                    wire:model="keuangan_notes" 
-                    rows="3" 
-                    class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-800 rounded-lg"
-                    placeholder="Tambahkan catatan..."
-                ></textarea>
-            </div>
-        </div>
-        
-        <x-slot name="footerActions">
-            <x-filament::button wire:click="confirmApproveKeuangan" color="success">
-                Final Approve
-            </x-filament::button>
-            
-            <x-filament::button wire:click="$dispatch('close-modal', { id: 'approve-keuangan-modal' })" color="gray">
-                Batal
-            </x-filament::button>
-        </x-slot>
-    </x-filament::modal>
-
-    {{-- Reject Keuangan Modal --}}
-    <x-filament::modal id="reject-keuangan-modal" width="md">
-        <x-slot name="heading">
-            Tolak Pengajuan (Keuangan)
-        </x-slot>
-        
-        <x-slot name="description">
-            Mohon berikan alasan penolakan yang jelas.
-        </x-slot>
-        
-        <div class="space-y-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Alasan Penolakan *
-                </label>
-                <textarea 
-                    wire:model="keuangan_notes" 
-                    rows="4" 
-                    class="w-full border-gray-300 dark:border-gray-600 dark:bg-gray-800 rounded-lg"
-                    placeholder="Jelaskan alasan penolakan..."
-                    required
-                ></textarea>
-            </div>
-        </div>
-        
-        <x-slot name="footerActions">
-            <x-filament::button wire:click="confirmRejectKeuangan" color="danger">
-                Tolak Pengajuan
-            </x-filament::button>
-            
-            <x-filament::button wire:click="$dispatch('close-modal', { id: 'reject-keuangan-modal' })" color="gray">
-                Batal
-            </x-filament::button>
-        </x-slot>
-    </x-filament::modal>
-                    </div>
-                @endif
 
                 {{-- Approval Notes --}}
                 @if($record->redaksi_notes || $record->keuangan_notes)
@@ -432,6 +178,56 @@
                         @endif
                     </div>
                 @endif
+            </div>
+
+            {{-- Sidebar --}}
+            <div class="space-y-6">
+                {{-- Status & Timeline --}}
+                <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Status & Timeline</h3>
+                    
+                    <div class="space-y-4">
+                        {{-- Current Status --}}
+                        <div class="flex items-center space-x-3">
+                            <div class="w-3 h-3 rounded-full {{ $this->getStatusColor() === 'success' ? 'bg-green-500' : ($this->getStatusColor() === 'danger' ? 'bg-red-500' : ($this->getStatusColor() === 'warning' ? 'bg-yellow-500' : 'bg-blue-500')) }}"></div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $this->getStatusLabel() }}</p>
+                                <p class="text-xs text-gray-500">Status saat ini</p>
+                            </div>
+                        </div>
+
+                        {{-- Timeline --}}
+                        <div class="space-y-3">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Dibuat</p>
+                                    <p class="text-xs text-gray-500">{{ $record->created_at->format('d M Y H:i') }}</p>
+                                </div>
+                            </div>
+
+                            @if($record->redaksi_approved_at)
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                                    <div class="flex-1">
+                                        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Disetujui Redaksi</p>
+                                        <p class="text-xs text-gray-500">{{ $record->redaksi_approved_at->format('d M Y H:i') }}</p>
+                                    </div>
+                                </div>
+                            @endif
+
+                            @if($record->keuangan_approved_at)
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                                    <div class="flex-1">
+                                        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Disetujui Keuangan</p>
+                                        <p class="text-xs text-gray-500">{{ $record->keuangan_approved_at->format('d M Y H:i') }}</p>
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
 
                 {{-- Summary Info --}}
                 <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-100 dark:bg-gray-800 dark:border-gray-700">

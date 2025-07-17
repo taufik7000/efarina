@@ -53,7 +53,7 @@ class ViewTransaksi extends ViewRecord
                                     TextEntry::make('jenis_transaksi')
                                         ->label('Jenis Transaksi')
                                         ->badge()
-                                        ->color(fn ($record) => $record->jenis_color)
+                                        ->color(fn ($record) => $record->jenis_transaksi === 'pemasukan' ? 'success' : 'danger')
                                         ->formatStateUsing(fn (string $state): string => match ($state) {
                                             'pemasukan' => 'Pemasukan',
                                             'pengeluaran' => 'Pengeluaran',
@@ -66,6 +66,26 @@ class ViewTransaksi extends ViewRecord
                                         ->size('lg')
                                         ->weight('bold')
                                         ->color(fn ($record) => $record->jenis_transaksi === 'pemasukan' ? 'success' : 'danger'),
+
+                                    TextEntry::make('status')
+                                        ->label('Status')
+                                        ->badge()
+                                        ->color(fn (string $state) => match ($state) {
+                                            'draft' => 'gray',
+                                            'pending' => 'warning',
+                                            'approved' => 'info',
+                                            'completed' => 'success',
+                                            'rejected' => 'danger',
+                                            default => 'gray',
+                                        })
+                                        ->formatStateUsing(fn (string $state): string => match ($state) {
+                                            'draft' => 'Draft',
+                                            'pending' => 'Menunggu Approval',
+                                            'approved' => 'Menunggu Pembayaran',
+                                            'rejected' => 'Ditolak',
+                                            'completed' => 'Selesai',
+                                            default => $state,
+                                        }),
 
                                     TextEntry::make('deskripsi')
                                         ->label('Deskripsi')
@@ -98,65 +118,125 @@ class ViewTransaksi extends ViewRecord
 
                                             TextEntry::make('deskripsi_item')
                                                 ->label('Keterangan')
+                                                ->placeholder('Tidak ada keterangan')
                                                 ->columnSpanFull()
-                                                ->placeholder('Tidak ada keterangan'),
+                                                ->visible(fn ($record) => !empty($record->deskripsi_item)),
                                         ])
                                         ->columns(4)
                                         ->contained(false),
                                 ])
                                 ->visible(fn ($record) => $record->items->count() > 0),
-                            
-                            Section::make('Timeline Transaksi')
+
+                            // Lampiran dengan handling untuk array dan string
+                            Section::make('Lampiran & Bukti Pembayaran')
                                 ->schema([
-                                    RepeatableEntry::make('histories')
+                                    // Untuk attachments array (bukti pembayaran dari action)
+                                    RepeatableEntry::make('attachments')
                                         ->label('')
                                         ->schema([
-                                            TextEntry::make('action_description')
-                                                ->label('')
-                                                ->weight('bold')
-                                                ->color(fn($record) => match ($record->status_to) {
-                                                    'approved' => 'success',
-                                                    'rejected' => 'danger',
-                                                    'completed' => 'info',
-                                                    'pending' => 'warning',
+                                            TextEntry::make('type')
+                                                ->label('Jenis')
+                                                ->badge()
+                                                ->formatStateUsing(fn (?string $state): string => match ($state) {
+                                                    'bukti_pembayaran' => 'Bukti Pembayaran',
+                                                    'invoice' => 'Invoice',
+                                                    'receipt' => 'Kwitansi',
+                                                    default => 'Lampiran',
+                                                })
+                                                ->color(fn (?string $state): string => match ($state) {
+                                                    'bukti_pembayaran' => 'success',
+                                                    'invoice' => 'info',
+                                                    'receipt' => 'warning',
                                                     default => 'gray',
                                                 }),
 
-                                            TextEntry::make('actionBy.name')
-                                                ->label('Oleh')
+                                            TextEntry::make('description')
+                                                ->label('Deskripsi')
+                                                ->placeholder('Tidak ada deskripsi'),
+
+                                            TextEntry::make('uploaded_by')
+                                                ->label('Diupload oleh')
                                                 ->badge()
                                                 ->color('gray'),
 
-                                            TextEntry::make('action_at')
-                                                ->label('Waktu')
-                                                ->dateTime('d M Y H:i')
-                                                ->since(),
+                                            TextEntry::make('uploaded_at')
+                                                ->label('Tanggal Upload')
+                                                ->formatStateUsing(fn (?string $state): string => 
+                                                    $state ? \Carbon\Carbon::parse($state)->format('d M Y H:i') : 'Tidak diketahui'
+                                                ),
 
-                                            TextEntry::make('notes')
-                                                ->label('Catatan')
-                                                ->placeholder('Tidak ada catatan')
-                                                ->columnSpanFull()
-                                                ->visible(fn($record) => !empty($record->notes)),
+                                            // Tampilkan gambar bukti pembayaran
+                                            ImageEntry::make('filename')
+                                                ->label('Preview')
+                                                ->disk('public')
+                                                ->height(200)
+                                                ->width(300)
+                                                ->extraAttributes(['class' => 'rounded-lg shadow-sm'])
+                                                ->visible(fn ($record) => 
+                                                    isset($record['filename']) && 
+                                                    is_string($record['filename']) &&
+                                                    in_array(strtolower(pathinfo($record['filename'], PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif', 'webp'])
+                                                ),
+
+                                            // Link download untuk file PDF atau non-image
+                                            TextEntry::make('filename')
+                                                ->label('Download File')
+                                                ->formatStateUsing(fn (?string $state): string => 
+                                                    $state ? '📎 ' . basename($state) : 'File tidak tersedia'
+                                                )
+                                                ->url(fn ($record) => 
+                                                    isset($record['filename']) ? asset('storage/' . $record['filename']) : null
+                                                )
+                                                ->openUrlInNewTab()
+                                                ->color('primary')
+                                                ->visible(fn ($record) => 
+                                                    isset($record['filename']) && 
+                                                    is_string($record['filename']) &&
+                                                    !in_array(strtolower(pathinfo($record['filename'], PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif', 'webp'])
+                                                ),
                                         ])
-                                        ->columns(3)
-                                        ->contained(false),
+                                        ->columns(2)
+                                        ->contained(false)
+                                        ->visible(fn ($record) => 
+                                            !empty($record->attachments) && 
+                                            is_array($record->attachments) && 
+                                            count($record->attachments) > 0
+                                        ),
+
+                                    // Fallback untuk attachments string (legacy atau direct upload)
+                                    ImageEntry::make('attachments')
+                                        ->label('Lampiran')
+                                        ->disk('public')
+                                        ->height(200)
+                                        ->width(300)
+                                        ->extraAttributes(['class' => 'rounded-lg shadow-sm'])
+                                        ->visible(fn ($record) => 
+                                            !empty($record->attachments) && 
+                                            is_string($record->attachments)
+                                        ),
+
+                                    // Pesan jika tidak ada lampiran
+                                    TextEntry::make('no_attachments')
+                                        ->label('')
+                                        ->formatStateUsing(fn (): string => '📎 Tidak ada lampiran')
+                                        ->color('gray')
+                                        ->visible(fn ($record) => 
+                                            empty($record->attachments) || 
+                                            (is_array($record->attachments) && count($record->attachments) === 0)
+                                        ),
                                 ])
                                 ->collapsible(),
 
-                            Section::make('Lampiran')
+                            Section::make('Catatan Approval')
                                 ->schema([
-                                    ImageEntry::make('attachments')
+                                    TextEntry::make('catatan_approval')
                                         ->label('')
-                                        ->disk('public')
-                                        ->height(150)
-                                        ->width(200)
-                                        ->square()
-                                        ->stacked()
-                                        ->limit(3)
-                                        ->limitedRemainingText()
-                                        ->placeholder('Tidak ada lampiran'),
+                                        ->formatStateUsing(fn (?string $state): string => 
+                                            $state ? nl2br(e($state)) : 'Tidak ada catatan'
+                                        )
+                                        ->html(),
                                 ])
-                                ->visible(fn ($record) => !empty($record->attachments)),
+                                ->visible(fn ($record) => !empty($record->catatan_approval)),
                         ])
                         ->columnSpan(2),
 
@@ -165,34 +245,17 @@ class ViewTransaksi extends ViewRecord
                         ->schema([
                             Section::make('Status & Approval')
                                 ->schema([
-                                    TextEntry::make('status')
-                                        ->label('Status')
-                                        ->badge()
-                                        ->size('lg')
-                                        ->color(fn ($record) => $record->status_color)
-                                        ->formatStateUsing(fn (string $state): string => match ($state) {
-                                            'draft' => 'Draft',
-                                            'pending' => 'Pending',
-                                            'approved' => 'Disetujui',
-                                            'rejected' => 'Ditolak',
-                                            'completed' => 'Selesai',
-                                            default => $state,
-                                        }),
-
-                                    TextEntry::make('approvedBy.name')
-                                        ->label('Disetujui Oleh')
-                                        ->placeholder('Belum disetujui')
-                                        ->visible(fn ($record) => $record->approved_by),
-
                                     TextEntry::make('approved_at')
                                         ->label('Tanggal Approval')
                                         ->dateTime('d F Y H:i')
+                                        ->placeholder('Belum disetujui')
                                         ->visible(fn ($record) => $record->approved_at),
 
-                                    TextEntry::make('catatan_approval')
-                                        ->label('Catatan Approval')
-                                        ->placeholder('Tidak ada catatan')
-                                        ->visible(fn ($record) => $record->catatan_approval),
+                                    TextEntry::make('approvedBy.name')
+                                        ->label('Disetujui Oleh')
+                                        ->badge()
+                                        ->color('success')
+                                        ->visible(fn ($record) => $record->approved_at),
                                 ]),
 
                             Section::make('Budget & Project')
@@ -204,6 +267,11 @@ class ViewTransaksi extends ViewRecord
                                     TextEntry::make('project.nama_project')
                                         ->label('Project Terkait')
                                         ->placeholder('Tidak terkait project'),
+
+                                    TextEntry::make('pengajuanAnggaran.nomor_pengajuan')
+                                        ->label('No. Pengajuan Anggaran')
+                                        ->placeholder('Tidak dari pengajuan')
+                                        ->visible(fn ($record) => $record->pengajuan_anggaran_id),
                                 ]),
 
                             Section::make('Pembayaran')
