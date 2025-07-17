@@ -223,25 +223,10 @@ class ProjectResource extends Resource
                     ->label('Nama Project')
                     ->searchable()
                     ->sortable(),
-
-                Tables\Columns\TextColumn::make('projectManager.name')
-                    ->label('Project Manager')
-                    ->sortable(),
-
-                Tables\Columns\BadgeColumn::make('prioritas')
-                    ->label('Prioritas')
-                    ->formatStateUsing(fn (string $state): string => ucwords(str_replace('_', ' ', $state)))
-                    ->colors([
-                        'secondary' => 'low',
-                        'warning' => 'medium',
-                        'danger' => 'high',
-                        'danger' => 'urgent',
-                    ]),
-
                 Tables\Columns\BadgeColumn::make('status')
                     ->label('Status')
-                    ->formatStateUsing(fn (string $state): string => ucwords(str_replace('_', ' ', $state)))
-                    ->icon(fn (string $state): string => match ($state) {
+                    ->formatStateUsing(fn(string $state): string => ucwords(str_replace('_', ' ', $state)))
+                    ->icon(fn(string $state): string => match ($state) {
                         'draft' => 'heroicon-o-pencil-square',
                         'planning' => 'heroicon-o-clipboard-document-list',
                         'in_progress' => 'heroicon-o-arrow-path',
@@ -259,15 +244,19 @@ class ProjectResource extends Resource
                         'danger' => 'cancelled',
                     ]),
 
-                Tables\Columns\TextColumn::make('tanggal_mulai')
-                    ->label('Mulai')
-                    ->date()
+                Tables\Columns\TextColumn::make('projectManager.name')
+                    ->label('Project Manager')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('tanggal_selesai')
-                    ->label('Selesai')
-                    ->date()
-                    ->sortable(),
+                Tables\Columns\ViewColumn::make('team_members')
+                    ->label('Members')
+                    ->view('filament.team.columns.project-members')
+                    ->sortable(false)
+                    ->searchable(false),
+
+                Tables\Columns\ViewColumn::make('progress_percentage')
+                    ->label('Progress')
+                    ->view('filament.team.columns.project-progress'),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat')

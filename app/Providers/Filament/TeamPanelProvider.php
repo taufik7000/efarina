@@ -29,7 +29,7 @@ class TeamPanelProvider extends PanelProvider
             ->id('team')
             ->path('team')
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::Blue,
             ])
             ->databaseNotifications()
             ->databaseNotificationsPolling('5s')

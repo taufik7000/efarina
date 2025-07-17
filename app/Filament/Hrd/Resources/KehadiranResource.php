@@ -16,8 +16,9 @@ class KehadiranResource extends Resource
     protected static ?string $model = User::class;
     
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-check';
-    protected static ?string $navigationLabel = 'Kehadiran Hari Ini';
-    protected static ?string $pluralModelLabel = 'Kehadiran Hari Ini';
+    protected static ?string $navigationGroup = 'Absensi Karyawan';
+    protected static ?string $navigationLabel = 'Absensi Hari Ini';
+    protected static ?string $pluralModelLabel = 'Absensi Hari Ini';
     protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
