@@ -5,7 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany; // 👈 TAMBAHKAN INI
+use Illuminate\Database\Eloquent\Relations\HasMany; 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
@@ -140,6 +140,42 @@ public function createdTransaksis(): HasMany
 public function approvedTransaksis(): HasMany
 {
     return $this->hasMany(Transaksi::class, 'approved_by');
+}
+
+// News yang ditulis user sebagai author
+public function authoredNews(): HasMany
+{
+    return $this->hasMany(News::class, 'author_id');
+}
+
+// News yang diedit user sebagai editor
+public function editedNews(): HasMany
+{
+    return $this->hasMany(News::class, 'editor_id');
+}
+
+// News categories yang dibuat user
+public function createdNewsCategories(): HasMany
+{
+    return $this->hasMany(NewsCategory::class, 'created_by');
+}
+
+// News tags yang dibuat user
+public function createdNewsTags(): HasMany
+{
+    return $this->hasMany(NewsTag::class, 'created_by');
+}
+
+// Helper method untuk cek apakah user bisa manage news
+public function canManageNews(): bool
+{
+    return $this->hasRole(['admin', 'redaksi']);
+}
+
+// Helper method untuk cek apakah user bisa publish news
+public function canPublishNews(): bool
+{
+    return $this->hasRole(['admin', 'redaksi']);
 }
 
 

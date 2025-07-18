@@ -38,7 +38,7 @@
                             <x-heroicon-o-user class="h-6 w-6 text-blue-600" />
                         </div>
                         <div>
-                            <div class="text-gray-500 text-sm font-medium">Penanggungjawab</div>
+                            <div class="text-gray-500 text-sm font-medium">Lead: </div>
                             <div class="text-gray-900 font-semibold">{{ $record->projectManager->name ?? 'Belum ditentukan' }}</div>
                         </div>
                     </div>
