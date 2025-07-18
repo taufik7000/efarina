@@ -152,76 +152,77 @@ class YoutubeVideoResource extends Resource
             ->columns(3);
     }
 
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\ImageColumn::make('thumbnail_hq')
-                    ->label('Thumbnail')
-                    ->size(80)
-                    ->getStateUsing(fn($record) => $record->thumbnail_url ?: $record->thumbnail_hq),
+public static function table(Table $table): Table
+{
+    return $table
+        ->columns([
+            Tables\Columns\ImageColumn::make('thumbnail_hq')
+                ->label('Thumbnail')
+                ->size(80)
+                ->getStateUsing(fn($record) => $record->thumbnail_url ?: $record->thumbnail_hq),
 
-                Tables\Columns\TextColumn::make('title')
-                    ->label('Judul')
-                    ->searchable()
-                    ->sortable()
-                    ->limit(50)
-                    ->wrap()
-                    ->weight('medium'),
+            Tables\Columns\TextColumn::make('title')
+                ->label('Judul')
+                ->searchable()
+                ->sortable()
+                ->limit(50)
+                ->wrap()
+                ->weight('medium'),
 
-                Tables\Columns\TextColumn::make('channel_title')
-                    ->label('Channel')
-                    ->searchable()
-                    ->sortable()
-                    ->toggleable(),
+            Tables\Columns\TextColumn::make('channel_title')
+                ->label('Channel')
+                ->searchable()
+                ->sortable()
+                ->toggleable(),
 
-                Tables\Columns\TextColumn::make('category.nama_kategori')
-                    ->label('Kategori')
-                    ->badge()
-                    ->color(fn($record) => $record->category?->color ?
-                        \Filament\Support\Colors\Color::hex($record->category->color) :
-                        'gray')
-                    ->sortable(),
+            // Kategori ditampilkan sesuai permintaan
+            Tables\Columns\TextColumn::make('category.nama_kategori')
+                ->label('Kategori')
+                ->badge()
+                ->color(fn($record) => $record->category?->color ?
+                    \Filament\Support\Colors\Color::hex($record->category->color) :
+                    'gray')
+                ->sortable(),
 
-                Tables\Columns\TextColumn::make('formatted_duration')
-                    ->label('Durasi')
-                    ->alignCenter()
-                    ->sortable('duration_seconds'),
+            Tables\Columns\TextColumn::make('formatted_view_count')
+                ->label('Views')
+                ->alignCenter()
+                ->sortable('view_count')
+                ->weight('medium'),
 
-                Tables\Columns\TextColumn::make('formatted_view_count')
-                    ->label('Views')
-                    ->alignCenter()
-                    ->sortable('view_count')
-                    ->weight('medium'),
+            Tables\Columns\IconColumn::make('is_featured')
+                ->label('Unggulan')
+                ->boolean()
+                ->trueIcon('heroicon-o-star')
+                ->falseIcon('heroicon-o-star')
+                ->trueColor('warning')
+                ->falseColor('gray'),
 
-                Tables\Columns\IconColumn::make('is_featured')
-                    ->label('Unggulan')
-                    ->boolean()
-                    ->trueIcon('heroicon-o-star')
-                    ->falseIcon('heroicon-o-star')
-                    ->trueColor('warning')
-                    ->falseColor('gray'),
+            Tables\Columns\IconColumn::make('is_active')
+                ->label('Status')
+                ->boolean()
+                ->trueIcon('heroicon-o-check-circle')
+                ->falseIcon('heroicon-o-x-circle')
+                ->trueColor('success')
+                ->falseColor('danger'),
 
-                Tables\Columns\IconColumn::make('is_active')
-                    ->label('Status')
-                    ->boolean()
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-x-circle')
-                    ->trueColor('success')
-                    ->falseColor('danger'),
+            Tables\Columns\TextColumn::make('published_at')
+                ->label('Publish')
+                ->date('d M Y')
+                ->sortable()
+                ->toggleable(),
 
-                Tables\Columns\TextColumn::make('published_at')
-                    ->label('Publish')
-                    ->date('d M Y')
-                    ->sortable()
-                    ->toggleable(),
+            // Kolom Tanggal Dibuat ditambahkan
+            Tables\Columns\TextColumn::make('created_at')
+                ->label('Tanggal Dibuat')
+                ->dateTime('d M Y H:i')
+                ->sortable(),
 
-                Tables\Columns\TextColumn::make('last_sync_at')
-                    ->label('Last Sync')
-                    ->dateTime('d M Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
+            Tables\Columns\TextColumn::make('last_sync_at')
+                ->label('Last Sync')
+                ->dateTime('d M Y H:i')
+                ->sortable(),
+        ])
             ->filters([
                 Tables\Filters\SelectFilter::make('video_category_id')
                     ->label('Kategori')
@@ -289,8 +290,6 @@ class YoutubeVideoResource extends Resource
                     ->color('info'),
 
                 Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
             ])
             ->headerActions([
                 Tables\Actions\Action::make('import_videos')

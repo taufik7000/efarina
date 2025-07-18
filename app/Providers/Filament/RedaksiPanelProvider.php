@@ -37,9 +37,6 @@ class RedaksiPanelProvider extends PanelProvider
                 \App\Filament\Team\Resources\ProjectResource::class,
             ])
             ->discoverPages(in: app_path('Filament/Redaksi/Pages'), for: 'App\\Filament\\Redaksi\\Pages')
-            ->pages([
-                Pages\Dashboard::class,
-            ])
             ->discoverWidgets(in: app_path('Filament/Redaksi/Widgets'), for: 'App\\Filament\\Redaksi\\Widgets')
             ->widgets([
             ])
