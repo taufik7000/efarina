@@ -6,6 +6,7 @@ use App\Models\YoutubeVideo;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class YouTubeService
 {
@@ -445,5 +446,206 @@ public function fetchVideoDetails(string $videoId): ?array
         Log::error('YouTube API exception: ' . $e->getMessage());
         return null;
     }
+}
+
+public function fetchChannelPlaylists(string $channelId, int $maxResults = 50): array
+{
+    try {
+        $allPlaylists = [];
+        $nextPageToken = null;
+        
+        do {
+            $params = [
+                'part' => 'snippet,contentDetails',
+                'channelId' => $channelId,
+                'maxResults' => min($maxResults, 50),
+                'key' => $this->apiKey,
+            ];
+            
+            if ($nextPageToken) {
+                $params['pageToken'] = $nextPageToken;
+            }
+            
+            $response = Http::timeout(30)->get("{$this->baseUrl}/playlists", $params);
+            
+            if (!$response->successful()) {
+                Log::error('YouTube Playlists API error: ' . $response->body());
+                break;
+            }
+            
+            $data = $response->json();
+            
+            if (!empty($data['items'])) {
+                foreach ($data['items'] as $item) {
+                    // Skip uploads playlist (usually named "Uploads")
+                    if (Str::lower($item['snippet']['title']) === 'uploads') {
+                        continue;
+                    }
+                    
+                    $allPlaylists[] = [
+                        'playlist_id' => $item['id'],
+                        'title' => $item['snippet']['title'],
+                        'description' => $item['snippet']['description'] ?? '',
+                        'channel_id' => $item['snippet']['channelId'],
+                        'channel_title' => $item['snippet']['channelTitle'],
+                        'published_at' => Carbon::parse($item['snippet']['publishedAt']),
+                        'video_count' => $item['contentDetails']['itemCount'] ?? 0,
+                        'privacy_status' => $item['status']['privacyStatus'] ?? 'public',
+                        'thumbnail_url' => $item['snippet']['thumbnails']['high']['url'] ?? null,
+                    ];
+                }
+            }
+            
+            $nextPageToken = $data['nextPageToken'] ?? null;
+            
+            if (count($allPlaylists) >= $maxResults) {
+                break;
+            }
+            
+        } while ($nextPageToken);
+        
+        // Filter out system playlists and sort by title
+        $filteredPlaylists = collect($allPlaylists)
+            ->filter(function ($playlist) {
+                $title = Str::lower($playlist['title']);
+                $excludeKeywords = ['uploads', 'liked videos', 'watch later', 'favorites'];
+                
+                foreach ($excludeKeywords as $keyword) {
+                    if (Str::contains($title, $keyword)) {
+                        return false;
+                    }
+                }
+                
+                return true;
+            })
+            ->sortBy('title')
+            ->values()
+            ->toArray();
+        
+        Log::info("Fetched " . count($filteredPlaylists) . " playlists for channel: {$channelId}");
+        
+        return $filteredPlaylists;
+        
+    } catch (\Exception $e) {
+        Log::error('YouTube Playlists fetch exception: ' . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Get detailed playlist information
+ */
+public function getDetailedPlaylistInfo(string $playlistId): ?array
+{
+    try {
+        $response = Http::timeout(10)->get("{$this->baseUrl}/playlists", [
+            'part' => 'snippet,contentDetails,status',
+            'id' => $playlistId,
+            'key' => $this->apiKey,
+        ]);
+
+        if ($response->successful()) {
+            $data = $response->json();
+            if (!empty($data['items'])) {
+                $playlist = $data['items'][0];
+                return [
+                    'playlist_id' => $playlist['id'],
+                    'title' => $playlist['snippet']['title'],
+                    'description' => $playlist['snippet']['description'] ?? '',
+                    'channel_id' => $playlist['snippet']['channelId'],
+                    'channel_title' => $playlist['snippet']['channelTitle'],
+                    'published_at' => Carbon::parse($playlist['snippet']['publishedAt']),
+                    'video_count' => $playlist['contentDetails']['itemCount'] ?? 0,
+                    'privacy_status' => $playlist['status']['privacyStatus'] ?? 'public',
+                    'thumbnail_url' => $playlist['snippet']['thumbnails']['high']['url'] ?? null,
+                    'tags' => $playlist['snippet']['tags'] ?? [],
+                    'default_language' => $playlist['snippet']['defaultLanguage'] ?? null,
+                ];
+            }
+        }
+
+        return null;
+    } catch (\Exception $e) {
+        Log::error("Error getting detailed playlist info {$playlistId}: " . $e->getMessage());
+        return null;
+    }
+}
+
+/**
+ * Bulk import playlists and create categories
+ */
+public function importPlaylistsAsCategories(string $channelId, bool $createCategories = true): array
+{
+    try {
+        $playlists = $this->fetchChannelPlaylists($channelId);
+        $results = [
+            'playlists_found' => count($playlists),
+            'categories_created' => 0,
+            'categories_updated' => 0,
+            'videos_assigned' => 0,
+            'errors' => []
+        ];
+        
+        foreach ($playlists as $playlist) {
+            try {
+                // Check if category already exists
+                $existingCategory = VideoCategory::where('nama_kategori', $playlist['title'])
+                                                ->orWhere('slug', Str::slug($playlist['title']))
+                                                ->first();
+                
+                if ($existingCategory) {
+                    // Update existing category
+                    $existingCategory->update([
+                        'deskripsi' => "Kategori untuk playlist: {$playlist['title']}",
+                    ]);
+                    $results['categories_updated']++;
+                    $categoryId = $existingCategory->id;
+                } else if ($createCategories) {
+                    // Create new category
+                    $newCategory = VideoCategory::create([
+                        'nama_kategori' => $playlist['title'],
+                        'slug' => Str::slug($playlist['title']),
+                        'deskripsi' => "Kategori untuk playlist: {$playlist['title']}",
+                        'color' => $this->generateRandomColor(),
+                        'is_active' => true,
+                        'sort_order' => VideoCategory::max('sort_order') + 1,
+                    ]);
+                    $results['categories_created']++;
+                    $categoryId = $newCategory->id;
+                } else {
+                    continue;
+                }
+                
+                // Assign videos to category
+                $videoCount = YoutubeVideo::where('playlist_id', $playlist['playlist_id'])
+                                        ->whereNull('video_category_id')
+                                        ->update(['video_category_id' => $categoryId]);
+                
+                $results['videos_assigned'] += $videoCount;
+                
+            } catch (\Exception $e) {
+                $results['errors'][] = "Error processing playlist '{$playlist['title']}': " . $e->getMessage();
+            }
+        }
+        
+        return $results;
+        
+    } catch (\Exception $e) {
+        Log::error("Error importing playlists as categories: " . $e->getMessage());
+        throw $e;
+    }
+}
+
+/**
+ * Generate random color for categories
+ */
+private function generateRandomColor(): string
+{
+    $colors = [
+        '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+        '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#6366f1'
+    ];
+    
+    return $colors[array_rand($colors)];
 }
 }

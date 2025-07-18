@@ -42,20 +42,57 @@ class NewsResource extends Resource
                                 Forms\Components\TextInput::make('judul')
                                     ->label('Judul Berita')
                                     ->required()
-                                    ->maxLength(255)
                                     ->live(onBlur: true)
-                                    ->afterStateUpdated(fn ($state, Forms\Set $set) => 
-                                        $set('slug', Str::slug($state))
-                                    ),
+                                    ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
+                                        // Hanya auto-generate slug jika slug masih kosong atau sama dengan slug auto-generated sebelumnya
+                                        $currentSlug = $get('slug');
+
+                                        if (empty($currentSlug) || $currentSlug === Str::slug($get('original_title') ?? '')) {
+                                            $newSlug = self::truncateSlug($state, 50);
+                                            $set('slug', $newSlug);
+                                        }
+
+                                        // Simpan judul asli untuk referensi
+                                        $set('original_title', $state);
+                                    })
+                                    ->validationMessages([
+                                        'required' => 'Judul berita harus diisi.',
+                                    ]),
 
                                 Forms\Components\TextInput::make('slug')
                                     ->label('Slug URL')
                                     ->required()
-                                    ->maxLength(255)
+                                    ->maxLength(50)
                                     ->unique(ignoreRecord: true)
-                                    ->readOnly()
-                                    ->dehydrated()
-                                    ->helperText('URL otomatis berdasarkan judul'),
+                                    ->live(onBlur: true)
+                                    ->suffixAction(
+                                        Forms\Components\Actions\Action::make('regenerate_slug')
+                                            ->icon('heroicon-m-arrow-path')
+                                            ->tooltip('Generate ulang slug dari judul')
+                                            ->action(function (Forms\Set $set, Forms\Get $get) {
+                                                $judul = $get('judul');
+                                                if ($judul) {
+                                                    $newSlug = self::truncateSlug($judul, 50);
+                                                    $set('slug', $newSlug);
+                                                }
+                                            })
+                                    )
+                                    ->afterStateUpdated(function ($state, Forms\Set $set, $component) {
+                                        // Validasi dan format slug yang diinput manual
+                                        if ($state) {
+                                            $cleanSlug = self::cleanSlug($state, 50);
+                                            if ($cleanSlug !== $state) {
+                                                $set('slug', $cleanSlug);
+                                            }
+                                        }
+                                    })
+                                    ->helperText('URL berita (max 50 karakter). Klik ⟳ untuk generate ulang dari judul.')
+                                    ->placeholder('slug-url-berita')
+                                    ->validationMessages([
+                                        'required' => 'Slug URL harus diisi.',
+                                        'unique' => 'Slug URL sudah digunakan.',
+                                        'max' => 'Slug URL maksimal 50 karakter.',
+                                    ]),
 
                                 Forms\Components\Textarea::make('excerpt')
                                     ->label('Ringkasan/Excerpt')
@@ -501,4 +538,35 @@ class NewsResource extends Resource
         return parent::getEloquentQuery()
             ->with(['category', 'tags', 'author']);
     }
+
+    private static function truncateSlug(string $text, int $maxLength = 50): string
+{
+    $slug = Str::slug($text);
+    
+    if (strlen($slug) <= $maxLength) {
+        return $slug;
+    }
+    
+    // Potong pada batas kata terdekat
+    $truncated = substr($slug, 0, $maxLength);
+    $lastHyphen = strrpos($truncated, '-');
+    
+    if ($lastHyphen !== false && $lastHyphen > 20) {
+        $truncated = substr($truncated, 0, $lastHyphen);
+    }
+    
+    return rtrim($truncated, '-');
+}
+
+private static function cleanSlug(string $slug, int $maxLength = 50): string
+{
+    // Bersihkan dan format slug yang diinput manual
+    $cleaned = Str::slug($slug);
+    
+    if (strlen($cleaned) > $maxLength) {
+        $cleaned = self::truncateSlug($cleaned, $maxLength);
+    }
+    
+    return $cleaned;
+}
 }
