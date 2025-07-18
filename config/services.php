@@ -35,4 +35,16 @@ return [
         ],
     ],
 
+        /*
+    |--------------------------------------------------------------------------
+    | YouTube API Configuration
+    |--------------------------------------------------------------------------
+    */
+    'youtube' => [
+        'api_key' => env('YOUTUBE_API_KEY'),
+        'default_channel_id' => env('YOUTUBE_CHANNEL_ID'),
+        'import_limit' => env('YOUTUBE_IMPORT_LIMIT', 10),
+        'sync_interval_hours' => env('YOUTUBE_SYNC_INTERVAL', 6),
+    ],
+
 ];
