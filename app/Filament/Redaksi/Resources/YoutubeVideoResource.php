@@ -159,7 +159,7 @@ class YoutubeVideoResource extends Resource
                 Tables\Columns\ImageColumn::make('thumbnail_hq')
                     ->label('Thumbnail')
                     ->size(80)
-                    ->getStateUsing(fn ($record) => $record->thumbnail_url ?: $record->thumbnail_hq),
+                    ->getStateUsing(fn($record) => $record->thumbnail_url ?: $record->thumbnail_hq),
 
                 Tables\Columns\TextColumn::make('title')
                     ->label('Judul')
@@ -178,8 +178,8 @@ class YoutubeVideoResource extends Resource
                 Tables\Columns\TextColumn::make('category.nama_kategori')
                     ->label('Kategori')
                     ->badge()
-                    ->color(fn ($record) => $record->category?->color ? 
-                        \Filament\Support\Colors\Color::hex($record->category->color) : 
+                    ->color(fn($record) => $record->category?->color ?
+                        \Filament\Support\Colors\Color::hex($record->category->color) :
                         'gray')
                     ->sortable(),
 
@@ -188,6 +188,11 @@ class YoutubeVideoResource extends Resource
                     ->alignCenter()
                     ->sortable('duration_seconds'),
 
+                Tables\Columns\TextColumn::make('formatted_view_count')
+                    ->label('Views')
+                    ->alignCenter()
+                    ->sortable('view_count')
+                    ->weight('medium'),
 
                 Tables\Columns\IconColumn::make('is_featured')
                     ->label('Unggulan')
@@ -237,19 +242,19 @@ class YoutubeVideoResource extends Resource
 
                 Tables\Filters\Filter::make('uncategorized')
                     ->label('Belum Dikategorikan')
-                    ->query(fn (Builder $query): Builder => $query->whereNull('video_category_id'))
+                    ->query(fn(Builder $query): Builder => $query->whereNull('video_category_id'))
                     ->toggle(),
 
                 Tables\Filters\Filter::make('recent')
                     ->label('Video Terbaru (7 hari)')
-                    ->query(fn (Builder $query): Builder => $query->where('published_at', '>=', now()->subDays(7)))
+                    ->query(fn(Builder $query): Builder => $query->where('published_at', '>=', now()->subDays(7)))
                     ->toggle(),
             ])
             ->actions([
                 Tables\Actions\Action::make('watch')
                     ->label('Tonton')
                     ->icon('heroicon-o-play')
-                    ->url(fn (YoutubeVideo $record) => $record->watch_url)
+                    ->url(fn(YoutubeVideo $record) => $record->watch_url)
                     ->openUrlInNewTab()
                     ->color('success'),
 
@@ -260,7 +265,7 @@ class YoutubeVideoResource extends Resource
                         try {
                             $youtubeService = app(YouTubeService::class);
                             $videoDetails = $youtubeService->fetchVideoDetails($record->video_id);
-                            
+
                             if ($videoDetails) {
                                 $record->updateFromApiData($videoDetails);
                                 Notification::make()
@@ -296,7 +301,7 @@ class YoutubeVideoResource extends Resource
                             ->label('Video URL atau ID')
                             ->required()
                             ->placeholder('https://youtube.com/watch?v=... atau video_id'),
-                        
+
                         Forms\Components\Select::make('category_id')
                             ->label('Kategori (Opsional)')
                             ->options(VideoCategory::active()->ordered()->pluck('nama_kategori', 'id'))
@@ -305,7 +310,7 @@ class YoutubeVideoResource extends Resource
                     ->action(function (array $data) {
                         try {
                             $videoId = YoutubeVideo::extractVideoId($data['video_url']);
-                            
+
                             if (!$videoId) {
                                 Notification::make()
                                     ->title('URL video tidak valid')
@@ -316,11 +321,11 @@ class YoutubeVideoResource extends Resource
 
                             $youtubeService = app(YouTubeService::class);
                             $video = $youtubeService->importVideo($videoId);
-                            
+
                             if ($video && isset($data['category_id'])) {
                                 $video->update(['video_category_id' => $data['category_id']]);
                             }
-                            
+
                             if ($video) {
                                 Notification::make()
                                     ->title('Video berhasil diimpor: ' . $video->title)
@@ -339,6 +344,8 @@ class YoutubeVideoResource extends Resource
                                 ->send();
                         }
                     }),
+
+
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -355,7 +362,7 @@ class YoutubeVideoResource extends Resource
                             foreach ($records as $record) {
                                 $record->update(['video_category_id' => $data['category_id']]);
                             }
-                            
+
                             Notification::make()
                                 ->title('Kategori berhasil diupdate untuk ' . count($records) . ' video')
                                 ->success()
@@ -369,7 +376,7 @@ class YoutubeVideoResource extends Resource
                             foreach ($records as $record) {
                                 $record->update(['is_featured' => !$record->is_featured]);
                             }
-                            
+
                             Notification::make()
                                 ->title('Status unggulan berhasil diupdate')
                                 ->success()
@@ -382,7 +389,7 @@ class YoutubeVideoResource extends Resource
                         ->action(function ($records) {
                             $youtubeService = app(YouTubeService::class);
                             $synced = 0;
-                            
+
                             foreach ($records as $record) {
                                 try {
                                     $videoDetails = $youtubeService->fetchVideoDetails($record->video_id);
@@ -394,7 +401,7 @@ class YoutubeVideoResource extends Resource
                                     // Continue to next video
                                 }
                             }
-                            
+
                             Notification::make()
                                 ->title("{$synced} video berhasil disinkronkan")
                                 ->success()
