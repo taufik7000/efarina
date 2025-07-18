@@ -74,7 +74,7 @@
                     <a href="#" class="px-4 h-12 flex items-center text-white text-sm font-medium hover:bg-blue-900 transition-colors border-l border-blue-800">
                         Efarina Daily
                     </a>
-                    <a href="#" class="px-4 h-12 flex items-center text-white text-sm font-medium hover:bg-blue-900 transition-colors border-l border-blue-800">
+                    <a href="/video" class="px-4 h-12 flex items-center text-white text-sm font-medium hover:bg-blue-900 transition-colors border-l border-blue-800">
                         VIDEO
                     </a>
                     <a href="#" class="px-4 h-12 flex items-center text-white text-sm font-medium hover:bg-blue-900 transition-colors border-l border-blue-800">
