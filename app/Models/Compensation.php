@@ -91,30 +91,30 @@ class Compensation extends Model
     }
 
     // Methods
-    public function use(Carbon $compensationDate, ?string $notes = null): bool
-    {
-        if (!$this->canBeUsed()) {
-            return false;
-        }
-
-        $this->update([
-            'status' => 'used',
-            'compensation_date' => $compensationDate,
-            'notes' => $notes,
-        ]);
-
-        // Create kehadiran record untuk hari kompensasi
-        Kehadiran::create([
-            'user_id' => $this->user_id,
-            'tanggal' => $compensationDate,
-            'status' => 'Kompensasi Libur',
-            'compensation_id' => $this->id,
-            'notes' => "Kompensasi libur dari kerja tanggal {$this->work_date->format('d M Y')}",
-            'metode_absen' => 'system_generated',
-        ]);
-
-        return true;
+public function use(Carbon $compensationDate, ?string $notes = null): bool
+{
+    if (!$this->canBeUsed()) {
+        return false;
     }
+
+    // Update status compensation
+    $this->update([
+        'status' => 'used',
+        'compensation_date' => $compensationDate,
+        'notes' => $notes,
+    ]);
+
+    // Create kehadiran record untuk hari kompensasi
+    Kehadiran::create([
+        'user_id' => $this->user_id,
+        'tanggal' => $compensationDate,
+        'status' => 'Kompensasi Libur',
+        'compensation_id' => $this->id,  // 🔥 LINK KE COMPENSATION
+        'metode_absen' => 'sistem', // Otomatis dari sistem
+    ]);
+
+    return true;
+}
 
     public function markExpired(): bool
     {
