@@ -7,6 +7,7 @@ use Filament\Resources\Pages\Page;
 use App\Models\User;
 use App\Models\Kehadiran;
 use App\Models\LeaveRequest;
+use App\Models\Compensation;
 use Carbon\Carbon;
 use Filament\Resources\Pages\Concerns\InteractsWithRecord;
 
@@ -45,11 +46,11 @@ class ViewKehadiran extends Page
         $tanggalAwal = Carbon::create($this->tahun, $this->bulan, 1);
         $jumlahHari = $tanggalAwal->daysInMonth;
         
-        // Ambil data kehadiran
+        // Ambil data kehadiran dengan relasi compensation
         $dataKehadiran = Kehadiran::where('user_id', $this->record->id)
                                   ->whereYear('tanggal', $this->tahun)
                                   ->whereMonth('tanggal', $this->bulan)
-                                  ->with('leaveRequest')
+                                  ->with(['leaveRequest', 'compensation']) // 🔥 TAMBAH RELASI COMPENSATION
                                   ->get()
                                   ->keyBy(fn ($item) => Carbon::parse($item->tanggal)->day);
 
@@ -64,6 +65,13 @@ class ViewKehadiran extends Page
                                     })
                                     ->get();
 
+        // 🔥 TAMBAH DATA COMPENSATIONS UNTUK BULAN INI
+        $compensations = Compensation::where('user_id', $this->record->id)
+                                   ->whereYear('work_date', $this->tahun)
+                                   ->whereMonth('work_date', $this->bulan)
+                                   ->orderBy('work_date', 'desc')
+                                   ->get();
+
         $summary = [
             'hadir' => 0, 
             'terlambat' => 0, 
@@ -71,7 +79,8 @@ class ViewKehadiran extends Page
             'cuti' => 0, 
             'sakit' => 0, 
             'izin' => 0,
-            'libur' => 0
+            'libur' => 0,
+            'kompensasi' => 0  // 🔥 TAMBAH SUMMARY KOMPENSASI
         ];
         
         $days = [];
@@ -106,6 +115,12 @@ class ViewKehadiran extends Page
                     'leave_type' => $kehadiranHariIni->leaveRequest?->leave_type_name ?? null,
                     'leave_reason' => $kehadiranHariIni->leaveRequest?->reason ?? null,
                     'metode_absen' => $kehadiranHariIni->metode_absen,
+                    // 🔥 TAMBAH INFO COMPENSATION
+                    'compensation_info' => $kehadiranHariIni->compensation ? [
+                        'work_date' => $kehadiranHariIni->compensation->work_date->format('d M Y'),
+                        'work_reason' => $kehadiranHariIni->compensation->work_reason,
+                        'work_hours' => $kehadiranHariIni->compensation->work_hours
+                    ] : null,
                 ];
             } else {
                 // Jika tidak ada data kehadiran
@@ -120,6 +135,7 @@ class ViewKehadiran extends Page
                         'leave_type' => null,
                         'leave_reason' => null,
                         'metode_absen' => null,
+                        'compensation_info' => null,
                     ];
                     $summary['libur']++;
                 } else {
@@ -137,6 +153,7 @@ class ViewKehadiran extends Page
                             'leave_type' => $isOnLeave['type'],
                             'leave_reason' => $isOnLeave['reason'],
                             'metode_absen' => 'system_generated',
+                            'compensation_info' => null,
                         ];
                         $summary['cuti']++;
                     } else {
@@ -152,6 +169,7 @@ class ViewKehadiran extends Page
                                 'leave_type' => null,
                                 'leave_reason' => null,
                                 'metode_absen' => null,
+                                'compensation_info' => null,
                             ];
                             $summary['absen']++;
                         } else {
@@ -165,6 +183,7 @@ class ViewKehadiran extends Page
                                 'leave_type' => null,
                                 'leave_reason' => null,
                                 'metode_absen' => null,
+                                'compensation_info' => null,
                             ];
                         }
                     }
@@ -181,6 +200,14 @@ class ViewKehadiran extends Page
         $leaveQuotaUsed = $this->record->getUsedLeaveQuotaInMonth($this->tahun, $this->bulan);
         $leaveQuotaRemaining = $this->record->getRemainingLeaveQuotaInMonth($this->tahun, $this->bulan);
 
+        // 🔥 TAMBAH COMPENSATION STATS
+        $compensation_stats = [
+            'available_days' => $this->record->getTotalAvailableCompensationDays(),
+            'used_this_month' => $summary['kompensasi'],
+            'total_earned_this_month' => $compensations->where('status', 'earned')->count(),
+            'expiring_soon' => $this->record->getExpiringCompensations(30)->count(),
+        ];
+
         return [
             'weeks' => array_chunk($days, 7),
             'summary' => $summary,
@@ -193,6 +220,8 @@ class ViewKehadiran extends Page
             ],
             'namaBulan' => $tanggalAwal->translatedFormat('F'),
             'leave_requests' => $leaveRequests,
+            'compensations' => $compensations, // 🔥 TAMBAH DATA COMPENSATIONS
+            'compensation_stats' => $compensation_stats, // 🔥 TAMBAH STATS COMPENSATIONS
         ];
     }
 
@@ -205,6 +234,7 @@ class ViewKehadiran extends Page
             'Cuti' => 'C',
             'Sakit' => 'S',
             'Izin' => 'I',
+            'Kompensasi Libur' => 'K', // 🔥 TAMBAH STATUS KOMPENSASI
             default => '-'
         };
     }
@@ -218,6 +248,7 @@ class ViewKehadiran extends Page
             'Cuti' => 'cuti',
             'Sakit' => 'sakit',
             'Izin' => 'izin',
+            'Kompensasi Libur' => 'kompensasi', // 🔥 TAMBAH MAPPING STATUS
             default => 'absen'
         };
     }

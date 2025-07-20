@@ -1,5 +1,4 @@
 <x-filament-panels::page>
-<div>
     {{-- Filter Bulan dan Tahun --}}
     <div class="flex items-center gap-4 p-4 mb-6 bg-white rounded-lg shadow dark:bg-gray-800">
         <div class="w-1/4">
@@ -47,7 +46,6 @@
                     <span class="text-xs font-bold text-blue-700 dark:text-blue-300">CUTI</span>
                     <p class="text-lg font-extrabold text-blue-800 dark:text-blue-200">{{ $summary['cuti'] }}</p>
                 </div>
-                {{-- 🔥 TAMBAHAN: KOMPENSASI CARD --}}
                 <div class="px-3 py-2 bg-indigo-100 rounded-lg dark:bg-indigo-900">
                     <span class="text-xs font-bold text-indigo-700 dark:text-indigo-300">KOMPENSASI</span>
                     <p class="text-lg font-extrabold text-indigo-800 dark:text-indigo-200">{{ $summary['kompensasi'] ?? 0 }}</p>
@@ -73,7 +71,6 @@
                 <span class="text-gray-600 dark:text-gray-400">Kuota Cuti Terpakai</span>
                 <p class="text-lg font-bold text-gray-900 dark:text-gray-100">{{ $statistics['leave_quota_used'] }}/{{ $statistics['leave_quota_total'] }} hari</p>
             </div>
-            {{-- 🔥 TAMBAHAN: KOMPENSASI TERSEDIA --}}
             <div class="p-3 bg-gray-50 rounded-lg dark:bg-gray-700">
                 <span class="text-gray-600 dark:text-gray-400">Kompensasi Tersedia</span>
                 <p class="text-lg font-bold {{ isset($compensation_stats) && $compensation_stats['available_days'] > 0 ? 'text-indigo-600' : 'text-gray-900 dark:text-gray-100' }}">
@@ -119,14 +116,9 @@
                 <div class="w-4 h-4 bg-purple-200 border border-purple-300 rounded"></div> 
                 I: Izin
             </span>
-            {{-- 🔥 TAMBAHAN: LEGEND KOMPENSASI --}}
             <span class="flex items-center gap-1">
                 <div class="w-4 h-4 bg-indigo-200 border border-indigo-300 rounded"></div> 
                 K: Kompensasi
-            </span>
-            <span class="flex items-center gap-1">
-                <div class="w-4 h-4 bg-teal-200 border border-teal-300 rounded"></div> 
-                W: Kerja Libur
             </span>
             <span class="flex items-center gap-1">
                 <div class="w-4 h-4 bg-gray-200 border border-gray-300 rounded"></div> 
@@ -155,8 +147,7 @@
                                 'C' => 'bg-blue-100 dark:bg-blue-800 border-blue-300 hover:bg-blue-200',
                                 'S' => 'bg-orange-100 dark:bg-orange-800 border-orange-300 hover:bg-orange-200',
                                 'I' => 'bg-purple-100 dark:bg-purple-800 border-purple-300 hover:bg-purple-200',
-                                'K' => 'bg-indigo-100 dark:bg-indigo-800 border-indigo-300 hover:bg-indigo-200', // 🔥 Kompensasi
-                                'W' => 'bg-teal-100 dark:bg-teal-800 border-teal-300 hover:bg-teal-200', // 🔥 Kerja Libur
+                                'K' => 'bg-indigo-100 dark:bg-indigo-800 border-indigo-300 hover:bg-indigo-200',
                                 'L' => 'bg-gray-100 dark:bg-gray-700 border-gray-300',
                                 default => 'bg-gray-50 dark:bg-gray-900 border-gray-200',
                             };
@@ -168,8 +159,7 @@
                                 'C' => 'text-blue-800 dark:text-blue-200',
                                 'S' => 'text-orange-800 dark:text-orange-200',
                                 'I' => 'text-purple-800 dark:text-purple-200',
-                                'K' => 'text-indigo-800 dark:text-indigo-200', // 🔥 Kompensasi
-                                'W' => 'text-teal-800 dark:text-teal-200', // 🔥 Kerja Libur
+                                'K' => 'text-indigo-800 dark:text-indigo-200',
                                 'L' => 'text-gray-600 dark:text-gray-400',
                                 default => 'text-gray-800 dark:text-gray-200',
                             };
@@ -187,8 +177,8 @@
                                 @endif
                             </div>
                             
-                            {{-- 🔥 INDICATOR UNTUK KOMPENSASI --}}
-                            @if($day['compensation_info'])
+                            {{-- Indicator untuk Kompensasi --}}
+                            @if(isset($day['compensation_info']) && $day['compensation_info'])
                                 <div class="absolute top-1 right-1 w-2 h-2 bg-indigo-500 rounded-full" title="Kompensasi: {{ $day['compensation_info']['work_reason'] ?? 'Kompensasi libur' }}"></div>
                             @elseif($day['leave_type'])
                                 <div class="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full" title="{{ $day['leave_type'] }}"></div>
@@ -203,7 +193,7 @@
         </div>
     </div>
 
-    {{-- 🔥 SECTION BARU: RIWAYAT KOMPENSASI BULAN INI --}}
+    {{-- Riwayat Kompensasi Bulan Ini --}}
     @if(isset($compensations) && $compensations->count() > 0)
     <div class="p-6 mb-6 bg-white rounded-lg shadow dark:bg-gray-800">
         <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Riwayat Kompensasi Bulan Ini</h3>
@@ -320,7 +310,6 @@
                     <span class="text-gray-600 dark:text-gray-400">Total Cuti/Izin:</span>
                     <span class="font-semibold text-blue-600">{{ $summary['cuti'] + $summary['sakit'] + $summary['izin'] }} hari</span>
                 </div>
-                {{-- 🔥 TAMBAHAN: KOMPENSASI SUMMARY --}}
                 <div class="flex justify-between">
                     <span class="text-gray-600 dark:text-gray-400">Kompensasi Digunakan:</span>
                     <span class="font-semibold text-indigo-600">{{ $summary['kompensasi'] ?? 0 }} hari</span>
@@ -386,7 +375,7 @@
             </div>
         </div>
 
-        {{-- 🔥 COMPENSATION CARD BARU --}}
+        {{-- Compensation Card --}}
         <div class="p-6 bg-white rounded-lg shadow dark:bg-gray-800">
             <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Status Kompensasi</h3>
             @if(isset($compensation_stats))
@@ -452,115 +441,116 @@
             </div>
         </div>
     </div>
-</div>
 
-<script>
-    function showDayDetail(day) {
-        const modal = document.getElementById('dayDetailModal');
-        const content = document.getElementById('dayDetailContent');
-        
-        let detailHtml = `
-            <div class="space-y-3">
-                <div>
-                    <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Tanggal:</span>
-                    <p class="text-gray-900 dark:text-gray-100">${day.date} ${document.querySelector('h2').textContent.split(' - ')[1]}</p>
-                </div>
-                <div>
-                    <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Status:</span>
-                    <p class="text-gray-900 dark:text-gray-100">${day.status_full}</p>
-                </div>
-                <div>
-                    <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Jam Masuk:</span>
-                    <p class="text-gray-900 dark:text-gray-100">${day.jam_masuk}</p>
-                </div>
-                <div>
-                    <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Jam Pulang:</span>
-                    <p class="text-gray-900 dark:text-gray-100">${day.jam_pulang}</p>
-                </div>
-        `;
-        
-        if (day.metode_absen) {
-            detailHtml += `
-                <div>
-                    <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Metode Absen:</span>
-                    <p class="text-gray-900 dark:text-gray-100">${getMetodeAbsenLabel(day.metode_absen)}</p>
-                </div>
-            `;
-        }
-        
-        // 🔥 TAMBAHAN: INFO KOMPENSASI
-        if (day.compensation_info) {
-            detailHtml += `
-                <div>
-                    <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Info Kompensasi:</span>
-                    <div class="mt-1 p-2 bg-indigo-50 rounded text-sm">
-                        <p class="text-indigo-900">Dari kerja: ${day.compensation_info.work_date}</p>
-                        <p class="text-indigo-700">Alasan: ${day.compensation_info.work_reason}</p>
-                        <p class="text-indigo-600">Jam kerja: ${day.compensation_info.work_hours} jam</p>
+    {{-- JavaScript untuk Modal --}}
+    <script>
+        function showDayDetail(day) {
+            const modal = document.getElementById('dayDetailModal');
+            const content = document.getElementById('dayDetailContent');
+            
+            let detailHtml = `
+                <div class="space-y-3">
+                    <div>
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Tanggal:</span>
+                        <p class="text-gray-900 dark:text-gray-100">${day.date} ${document.querySelector('h2').textContent.split(' - ')[1]}</p>
                     </div>
-                </div>
+                    <div>
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Status:</span>
+                        <p class="text-gray-900 dark:text-gray-100">${day.status_full}</p>
+                    </div>
+                    <div>
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Jam Masuk:</span>
+                        <p class="text-gray-900 dark:text-gray-100">${day.jam_masuk}</p>
+                    </div>
+                    <div>
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Jam Pulang:</span>
+                        <p class="text-gray-900 dark:text-gray-100">${day.jam_pulang}</p>
+                    </div>
             `;
+            
+            if (day.metode_absen) {
+                detailHtml += `
+                    <div>
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Metode Absen:</span>
+                        <p class="text-gray-900 dark:text-gray-100">${getMetodeAbsenLabel(day.metode_absen)}</p>
+                    </div>
+                `;
+            }
+            
+            // INFO KOMPENSASI
+            if (day.compensation_info) {
+                detailHtml += `
+                    <div>
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Info Kompensasi:</span>
+                        <div class="mt-1 p-2 bg-indigo-50 rounded text-sm">
+                            <p class="text-indigo-900">Dari kerja: ${day.compensation_info.work_date}</p>
+                            <p class="text-indigo-700">Alasan: ${day.compensation_info.work_reason}</p>
+                            <p class="text-indigo-600">Jam kerja: ${day.compensation_info.work_hours} jam</p>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            if (day.leave_type) {
+                detailHtml += `
+                    <div>
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Jenis Cuti:</span>
+                        <p class="text-gray-900 dark:text-gray-100">${day.leave_type}</p>
+                    </div>
+                `;
+            }
+            
+            if (day.leave_reason) {
+                detailHtml += `
+                    <div>
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Alasan:</span>
+                        <p class="text-gray-900 dark:text-gray-100">${day.leave_reason}</p>
+                    </div>
+                `;
+            }
+            
+            if (day.notes) {
+                detailHtml += `
+                    <div>
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Catatan:</span>
+                        <p class="text-gray-900 dark:text-gray-100">${day.notes}</p>
+                    </div>
+                `;
+            }
+            
+            detailHtml += '</div>';
+            
+            content.innerHTML = detailHtml;
+            modal.classList.remove('hidden');
         }
         
-        if (day.leave_type) {
-            detailHtml += `
-                <div>
-                    <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Jenis Cuti:</span>
-                    <p class="text-gray-900 dark:text-gray-100">${day.leave_type}</p>
-                </div>
-            `;
+        function closeDayDetail() {
+            document.getElementById('dayDetailModal').classList.add('hidden');
         }
         
-        if (day.leave_reason) {
-            detailHtml += `
-                <div>
-                    <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Alasan:</span>
-                    <p class="text-gray-900 dark:text-gray-100">${day.leave_reason}</p>
-                </div>
-            `;
+        function getMetodeAbsenLabel(metode) {
+            switch(metode) {
+                case 'qrcode': return 'QR Code';
+                case 'manual_hrd': return 'Manual HRD';
+                case 'system_generated': return 'System (Cuti/Kompensasi)';
+                case 'bulk_manual_hrd': return 'Bulk Manual HRD';
+                case 'sistem': return 'Sistem';
+                default: return metode || 'Unknown';
+            }
         }
         
-        if (day.notes) {
-            detailHtml += `
-                <div>
-                    <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Catatan:</span>
-                    <p class="text-gray-900 dark:text-gray-100">${day.notes}</p>
-                </div>
-            `;
-        }
+        // Close modal when clicking outside
+        document.getElementById('dayDetailModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeDayDetail();
+            }
+        });
         
-        detailHtml += '</div>';
-        
-        content.innerHTML = detailHtml;
-        modal.classList.remove('hidden');
-    }
-    
-    function closeDayDetail() {
-        document.getElementById('dayDetailModal').classList.add('hidden');
-    }
-    
-    function getMetodeAbsenLabel(metode) {
-        switch(metode) {
-            case 'qrcode': return 'QR Code';
-            case 'manual_hrd': return 'Manual HRD';
-            case 'system_generated': return 'System (Cuti/Kompensasi)';
-            case 'bulk_manual_hrd': return 'Bulk Manual HRD';
-            default: return metode || 'Unknown';
-        }
-    }
-    
-    // Close modal when clicking outside
-    document.getElementById('dayDetailModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeDayDetail();
-        }
-    });
-    
-    // Close modal with Escape key
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            closeDayDetail();
-        }
-    });
-</script>
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeDayDetail();
+            }
+        });
+    </script>
 </x-filament-panels::page>

@@ -110,7 +110,8 @@ public function use(Carbon $compensationDate, ?string $notes = null): bool
         'tanggal' => $compensationDate,
         'status' => 'Kompensasi Libur',
         'compensation_id' => $this->id,  // 🔥 LINK KE COMPENSATION
-        'metode_absen' => 'sistem', // Otomatis dari sistem
+        'notes' => $notes,
+        'metode_absen' => 'system_generated', // 🔥 PERBAIKI NAMA METODE
     ]);
 
     return true;
