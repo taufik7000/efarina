@@ -49,23 +49,81 @@ class PengajuanAnggaranResource extends Resource
                                         return $query->whereRaw('1 = 0');
                                     }
                                     
-                                    // Admin dan Redaksi bisa pilih semua project
+                                    // 🔥 FILTER UTAMA: Exclude project dengan status 'completed' dan 'cancelled'
+                                    $query->whereNotIn('status', ['completed', 'cancelled']);
+                                    
+                                    // Role-based filtering
                                     if ($user->hasRole(['admin', 'redaksi'])) {
+                                        // Admin dan redaksi bisa pilih semua project yang tidak completed/cancelled
                                         return $query;
                                     }
                                     
-                                    // Team hanya bisa pilih project yang mereka terlibat
-                                    return $query->where(function ($q) use ($user) {
-                                        $q->where('created_by', $user->id)
-                                          ->orWhere('project_manager_id', $user->id)
-                                          ->orWhereJsonContains('team_members', (string) $user->id);
-                                    });
+                                    if ($user->hasRole('team')) {
+                                        // Team hanya bisa pilih project yang terkait dengan mereka
+                                        return $query->where(function ($subQuery) use ($user) {
+                                            $subQuery->where('project_manager_id', $user->id)
+                                                ->orWhere('created_by', $user->id)
+                                                ->orWhereJsonContains('team_members', (string) $user->id);
+                                        });
+                                    }
+                                    
+                                    // Role lain tidak bisa pilih project apapun
+                                    return $query->whereRaw('1 = 0');
                                 }
                             )
                             ->searchable()
                             ->preload()
-                            ->placeholder('Pilih project (opsional)')
-                            ->helperText('Kosongkan jika pengajuan tidak terkait project spesifik'),
+                            ->placeholder('Pilih project yang sedang berjalan')
+                            ->helperText('Hanya project yang masih aktif (belum selesai) yang dapat dipilih')
+                            ->getOptionLabelFromRecordUsing(function ($record) {
+                                // Tampilkan nama project dengan status dan deadline jika ada
+                                $label = $record->nama_project;
+                                
+                                // Tambah status badge
+                                $statusBadge = match($record->status) {
+                                    'draft' => '📝 Draft',
+                                    'planning' => '📋 Planning', 
+                                    'in_progress' => '🚀 In Progress',
+                                    'review' => '👁️ Review',
+                                    default => ucfirst($record->status)
+                                };
+                                
+                                $label .= " ({$statusBadge})";
+                                
+                                // Tambah deadline jika ada
+                                if ($record->tanggal_selesai) {
+                                    $deadline = $record->tanggal_selesai->format('d M Y');
+                                    $label .= " - Deadline: {$deadline}";
+                                }
+                                
+                                return $label;
+                            })
+                            ->getSearchResultsUsing(function (string $search) {
+                                $user = auth()->user();
+                                
+                                $query = Project::where('nama_project', 'like', "%{$search}%")
+                                    ->whereNotIn('status', ['completed', 'cancelled']) // 🔥 Filter completed project
+                                    ->orderBy('nama_project');
+                                
+                                // Apply role-based filtering untuk search
+                                if ($user->hasRole(['admin', 'redaksi'])) {
+                                    return $query->limit(50)->get();
+                                }
+                                
+                                if ($user->hasRole('team')) {
+                                    $query->where(function ($subQuery) use ($user) {
+                                        $subQuery->where('project_manager_id', $user->id)
+                                            ->orWhere('created_by', $user->id)
+                                            ->orWhereJsonContains('team_members', (string) $user->id);
+                                    });
+                                    
+                                    return $query->limit(50)->get();
+                                }
+                                
+                                return collect(); // Empty collection untuk role lain
+                            })
+                            ->reactive()
+                            ->columnSpan(1),
 
                         Forms\Components\DatePicker::make('tanggal_dibutuhkan')
                             ->label('Tanggal Dibutuhkan')
@@ -101,7 +159,7 @@ class PengajuanAnggaranResource extends Resource
                                         return BudgetCategory::active()
                                             ->whereHas('allocations', function ($q) {
                                                 $q->whereHas('budgetPlan', fn($query) => $query->where('status', 'active'))
-                                                  ->whereRaw('allocated_amount > used_amount');
+                                                    ->whereRaw('allocated_amount > used_amount');
                                             })
                                             ->pluck('nama_kategori', 'id');
                                     })
@@ -109,18 +167,19 @@ class PengajuanAnggaranResource extends Resource
                                     ->required()
                                     ->live()
                                     ->columnSpan(2)
-                                    ->afterStateUpdated(fn (callable $set) => $set('budget_subcategory_id', null)),
+                                    ->afterStateUpdated(fn(callable $set) => $set('budget_subcategory_id', null)),
 
                                 Forms\Components\Select::make('budget_subcategory_id')
                                     ->label('Sub Kategori')
                                     ->options(function (callable $get) {
                                         $categoryId = $get('budget_category_id');
-                                        if (!$categoryId) return [];
+                                        if (!$categoryId)
+                                            return [];
 
                                         return BudgetSubcategory::whereHas('allocations', function ($q) {
-                                                $q->whereHas('budgetPlan', fn($query) => $query->where('status', 'active'))
-                                                  ->whereRaw('allocated_amount > used_amount');
-                                            })
+                                            $q->whereHas('budgetPlan', fn($query) => $query->where('status', 'active'))
+                                                ->whereRaw('allocated_amount > used_amount');
+                                        })
                                             ->where('budget_category_id', $categoryId)
                                             ->pluck('nama_subkategori', 'id');
                                     })
@@ -153,8 +212,8 @@ class PengajuanAnggaranResource extends Resource
                                     ->live()
                                     ->columnSpan(2)
                                     ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get, ?string $state) {
-                                        $quantity = (float)($state ?: 1);
-                                        $unitPrice = (float)($get('unit_price') ?: 0);
+                                        $quantity = (float) ($state ?: 1);
+                                        $unitPrice = (float) ($get('unit_price') ?: 0);
                                         $set('total_price', $quantity * $unitPrice);
                                     }),
 
@@ -166,8 +225,8 @@ class PengajuanAnggaranResource extends Resource
                                     ->live()
                                     ->columnSpan(2)
                                     ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get, ?string $state) {
-                                        $quantity = (float)($get('quantity') ?: 1);
-                                        $unitPrice = (float)($state ?: 0);
+                                        $quantity = (float) ($get('quantity') ?: 1);
+                                        $unitPrice = (float) ($state ?: 0);
                                         $set('total_price', $quantity * $unitPrice);
                                     }),
 
@@ -187,8 +246,9 @@ class PengajuanAnggaranResource extends Resource
                             ->reorderableWithButtons()
                             ->collapsible()
                             ->cloneable()
-                            ->itemLabel(fn (array $state): ?string => 
-                                ($state['item_name'] ?? 'Item Baru') . 
+                            ->itemLabel(
+                                fn(array $state): ?string =>
+                                ($state['item_name'] ?? 'Item Baru') .
                                 (isset($state['total_price']) ? ' - Rp ' . number_format($state['total_price'], 0, ',', '.') : '')
                             )
                             ->live(),
@@ -206,13 +266,13 @@ class PengajuanAnggaranResource extends Resource
                                 // Calculate total saat form load
                                 $items = $get('detail_items') ?? [];
                                 $total = 0;
-                                
+
                                 if (is_array($items)) {
                                     foreach ($items as $item) {
                                         $total += (float) ($item['total_price'] ?? 0);
                                     }
                                 }
-                                
+
                                 $component->state($total);
                             })
                             ->reactive()
@@ -238,9 +298,10 @@ class PengajuanAnggaranResource extends Resource
                         Forms\Components\Placeholder::make('workflow_status')
                             ->label('Status Workflow')
                             ->content(function ($record) {
-                                if (!$record) return '📝 Draft - Belum diajukan';
-                                
-                                return match($record->status) {
+                                if (!$record)
+                                    return '📝 Draft - Belum diajukan';
+
+                                return match ($record->status) {
                                     'draft' => '📝 Draft - Belum diajukan',
                                     'pending_redaksi' => '👥 Menunggu approval redaksi',
                                     'pending_keuangan' => '💰 Menunggu approval keuangan/direktur',
@@ -254,16 +315,16 @@ class PengajuanAnggaranResource extends Resource
                             ->label('Catatan Redaksi')
                             ->disabled()
                             ->rows(2)
-                            ->visible(fn ($record) => $record && $record->redaksi_notes),
+                            ->visible(fn($record) => $record && $record->redaksi_notes),
 
                         Forms\Components\Textarea::make('keuangan_notes')
                             ->label('Catatan Keuangan/Direktur')
                             ->disabled()
                             ->rows(2)
-                            ->visible(fn ($record) => $record && $record->keuangan_notes),
+                            ->visible(fn($record) => $record && $record->keuangan_notes),
                     ])
                     ->columns(1)
-                    ->visible(fn ($context) => $context === 'edit' || $context === 'view'),
+                    ->visible(fn($context) => $context === 'edit' || $context === 'view'),
             ]);
     }
 
@@ -310,7 +371,7 @@ class PengajuanAnggaranResource extends Resource
                         'success' => 'approved',
                         'danger' => 'rejected',
                     ])
-                    ->formatStateUsing(fn ($state) => match($state) {
+                    ->formatStateUsing(fn($state) => match ($state) {
                         'draft' => 'Draft',
                         'pending_redaksi' => 'Pending Redaksi',
                         'pending_keuangan' => 'Pending Keuangan',
@@ -323,7 +384,7 @@ class PengajuanAnggaranResource extends Resource
                     ->label('Tgl Dibutuhkan')
                     ->date('d M Y')
                     ->sortable()
-                    ->color(fn ($record) => $record->tanggal_dibutuhkan->isPast() ? 'danger' : 'primary'),
+                    ->color(fn($record) => $record->tanggal_dibutuhkan->isPast() ? 'danger' : 'primary'),
 
                 Tables\Columns\TextColumn::make('createdBy.name')
                     ->label('Dibuat Oleh')
@@ -340,7 +401,7 @@ class PengajuanAnggaranResource extends Resource
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'draft' => 'Draft',
-                        'pending_redaksi' => 'Pending Redaksi', 
+                        'pending_redaksi' => 'Pending Redaksi',
                         'pending_keuangan' => 'Pending Keuangan',
                         'approved' => 'Disetujui',
                         'rejected' => 'Ditolak',
@@ -362,28 +423,30 @@ class PengajuanAnggaranResource extends Resource
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
-                            ->when($data['from'], fn ($q) => $q->whereDate('tanggal_dibutuhkan', '>=', $data['from']))
-                            ->when($data['until'], fn ($q) => $q->whereDate('tanggal_dibutuhkan', '<=', $data['until']));
+                            ->when($data['from'], fn($q) => $q->whereDate('tanggal_dibutuhkan', '>=', $data['from']))
+                            ->when($data['until'], fn($q) => $q->whereDate('tanggal_dibutuhkan', '<=', $data['until']));
                     }),
 
                 Tables\Filters\Filter::make('urgent')
                     ->label('Urgent (< 7 hari)')
-                    ->query(fn (Builder $query): Builder => 
+                    ->query(
+                        fn(Builder $query): Builder =>
                         $query->where('tanggal_dibutuhkan', '<=', now()->addDays(7))
                     ),
                 Tables\Filters\Filter::make('my_requests')
                     ->label('Pengajuan Saya')
                     ->query(fn(Builder $query): Builder => $query->where('created_by', auth()->id())),
 
-                    ])
+            ])
             ->actions([
                 // Submit untuk approval
                 Tables\Actions\Action::make('submit')
                     ->label('Ajukan ke Redaksi')
                     ->icon('heroicon-o-paper-airplane')
                     ->color('success')
-                    ->visible(fn ($record) => 
-                        $record->status === 'draft' && 
+                    ->visible(
+                        fn($record) =>
+                        $record->status === 'draft' &&
                         $record->created_by === auth()->id()
                     )
                     ->requiresConfirmation()
@@ -394,7 +457,7 @@ class PengajuanAnggaranResource extends Resource
                             'status' => 'pending_redaksi',
                             'tanggal_pengajuan' => now(),
                         ]);
-                        
+
                         Notification::make()
                             ->title('Pengajuan Terkirim')
                             ->body("Pengajuan '{$record->judul_pengajuan}' telah dikirim ke redaksi untuk review.")
@@ -408,8 +471,9 @@ class PengajuanAnggaranResource extends Resource
                         ->label('Setujui (Redaksi)')
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
-                        ->visible(fn ($record) => 
-                            $record->status === 'pending_redaksi' && 
+                        ->visible(
+                            fn($record) =>
+                            $record->status === 'pending_redaksi' &&
                             auth()->check() && auth()->user()->hasRole(['redaksi', 'admin'])
                         )
                         ->form([
@@ -425,7 +489,7 @@ class PengajuanAnggaranResource extends Resource
                                 'redaksi_approved_at' => now(),
                                 'redaksi_notes' => $data['redaksi_notes'] ?? null,
                             ]);
-                            
+
                             Notification::make()
                                 ->title('Pengajuan Disetujui Redaksi')
                                 ->body("Pengajuan diteruskan ke keuangan/direktur untuk final approval.")
@@ -437,8 +501,9 @@ class PengajuanAnggaranResource extends Resource
                         ->label('Tolak (Redaksi)')
                         ->icon('heroicon-o-x-circle')
                         ->color('danger')
-                        ->visible(fn ($record) => 
-                            $record->status === 'pending_redaksi' && 
+                        ->visible(
+                            fn($record) =>
+                            $record->status === 'pending_redaksi' &&
                             auth()->check() && auth()->user()->hasRole(['redaksi', 'admin'])
                         )
                         ->form([
@@ -454,7 +519,7 @@ class PengajuanAnggaranResource extends Resource
                                 'redaksi_approved_at' => now(),
                                 'redaksi_notes' => $data['redaksi_notes'],
                             ]);
-                            
+
                             Notification::make()
                                 ->title('Pengajuan Ditolak')
                                 ->body("Pengajuan ditolak oleh redaksi.")
@@ -462,96 +527,98 @@ class PengajuanAnggaranResource extends Resource
                                 ->send();
                         }),
                 ])
-                ->label('Redaksi')
-                ->color('warning')
-                ->visible(fn ($record) => 
-                    $record->status === 'pending_redaksi' && 
-                    auth()->check() && auth()->user()->hasRole(['redaksi', 'admin'])
-                ),
+                    ->label('Redaksi')
+                    ->color('warning')
+                    ->visible(
+                        fn($record) =>
+                        $record->status === 'pending_redaksi' &&
+                        auth()->check() && auth()->user()->hasRole(['redaksi', 'admin'])
+                    ),
 
                 // Keuangan/Direktur Actions
                 Tables\Actions\ActionGroup::make([
- Tables\Actions\Action::make('keuangan_approve')
-    ->label('Setujui (Final)')
-    ->icon('heroicon-o-check-badge')
-    ->color('success')
-    ->visible(fn ($record) => 
-        $record->status === 'pending_keuangan' && 
-        auth()->check() && auth()->user()->hasRole(['keuangan', 'direktur', 'admin'])
-    )
-    ->form([
-        Forms\Components\Textarea::make('keuangan_notes')
-            ->label('Catatan Keuangan')
-            ->placeholder('Tambahkan catatan (opsional)')
-            ->rows(3),
-    ])
-    ->action(function (PengajuanAnggaran $record, array $data): void {
-        DB::transaction(function () use ($record, $data) {
-            // 1. Update status pengajuan
-            $record->update([
-                'status' => 'approved',
-                'keuangan_approved_by' => auth()->id(),
-                'keuangan_approved_at' => now(),
-                'keuangan_notes' => $data['keuangan_notes'] ?? null,
-            ]);
+                    Tables\Actions\Action::make('keuangan_approve')
+                        ->label('Setujui (Final)')
+                        ->icon('heroicon-o-check-badge')
+                        ->color('success')
+                        ->visible(
+                            fn($record) =>
+                            $record->status === 'pending_keuangan' &&
+                            auth()->check() && auth()->user()->hasRole(['keuangan', 'direktur', 'admin'])
+                        )
+                        ->form([
+                            Forms\Components\Textarea::make('keuangan_notes')
+                                ->label('Catatan Keuangan')
+                                ->placeholder('Tambahkan catatan (opsional)')
+                                ->rows(3),
+                        ])
+                        ->action(function (PengajuanAnggaran $record, array $data): void {
+                            DB::transaction(function () use ($record, $data) {
+                                // 1. Update status pengajuan
+                                $record->update([
+                                    'status' => 'approved',
+                                    'keuangan_approved_by' => auth()->id(),
+                                    'keuangan_approved_at' => now(),
+                                    'keuangan_notes' => $data['keuangan_notes'] ?? null,
+                                ]);
 
-            // 2. Create transaksi pengeluaran
-            $transaksi = \App\Models\Transaksi::create([
-                'nomor_transaksi' => self::generateNomorTransaksi(),
-                'jenis_transaksi' => 'pengeluaran',
-                'tanggal_transaksi' => now(),
-                'nama_transaksi' => 'Pengeluaran: ' . $record->judul_pengajuan,
-                'deskripsi' => $record->deskripsi,
-                'total_amount' => $record->total_anggaran,
-                'status' => 'approved',
-                'metode_pembayaran' => 'transfer',
-                'project_id' => $record->project_id,
-                'pengajuan_anggaran_id' => $record->id,
-                'created_by' => auth()->id(),
-                'approved_by' => auth()->id(),
-                'approved_at' => now(),
-                'workflow_type' => 'pengajuan_anggaran',
-                'catatan_approval' => 'Disetujui melalui pengajuan anggaran: ' . $record->nomor_pengajuan,
-            ]);
+                                // 2. Create transaksi pengeluaran
+                                $transaksi = \App\Models\Transaksi::create([
+                                    'nomor_transaksi' => self::generateNomorTransaksi(),
+                                    'jenis_transaksi' => 'pengeluaran',
+                                    'tanggal_transaksi' => now(),
+                                    'nama_transaksi' => 'Pengeluaran: ' . $record->judul_pengajuan,
+                                    'deskripsi' => $record->deskripsi,
+                                    'total_amount' => $record->total_anggaran,
+                                    'status' => 'approved',
+                                    'metode_pembayaran' => 'transfer',
+                                    'project_id' => $record->project_id,
+                                    'pengajuan_anggaran_id' => $record->id,
+                                    'created_by' => auth()->id(),
+                                    'approved_by' => auth()->id(),
+                                    'approved_at' => now(),
+                                    'workflow_type' => 'pengajuan_anggaran',
+                                    'catatan_approval' => 'Disetujui melalui pengajuan anggaran: ' . $record->nomor_pengajuan,
+                                ]);
 
-            // 3. Create transaksi items
-            foreach ($record->detail_items as $item) {
-                \App\Models\TransaksiItem::create([
-                    'transaksi_id' => $transaksi->id,
-                    'nama_item' => $item['item_name'] ?? $item['nama_item'] ?? 'Item',
-                    'kuantitas' => $item['quantity'] ?? $item['kuantitas'] ?? 1,
-                    'harga_satuan' => $item['unit_price'] ?? $item['harga_satuan'] ?? 0,
-                    'subtotal' => $item['total_price'] ?? 0,
-                    'satuan' => 'pcs',
-                    'deskripsi_item' => $item['description'] ?? $item['spesifikasi'] ?? null,
-                ]);
-            }
+                                // 3. Create transaksi items
+                                foreach ($record->detail_items as $item) {
+                                    \App\Models\TransaksiItem::create([
+                                        'transaksi_id' => $transaksi->id,
+                                        'nama_item' => $item['item_name'] ?? $item['nama_item'] ?? 'Item',
+                                        'kuantitas' => $item['quantity'] ?? $item['kuantitas'] ?? 1,
+                                        'harga_satuan' => $item['unit_price'] ?? $item['harga_satuan'] ?? 0,
+                                        'subtotal' => $item['total_price'] ?? 0,
+                                        'satuan' => 'pcs',
+                                        'deskripsi_item' => $item['description'] ?? $item['spesifikasi'] ?? null,
+                                    ]);
+                                }
 
-            // 4. Update budget allocations
-            foreach ($record->detail_items as $item) {
-                if (isset($item['budget_subcategory_id'])) {
-                    $allocation = BudgetAllocation::where('budget_subcategory_id', $item['budget_subcategory_id'])
-                        ->whereHas('budgetPlan', fn($q) => $q->where('status', 'active'))
-                        ->first();
+                                // 4. Update budget allocations
+                                foreach ($record->detail_items as $item) {
+                                    if (isset($item['budget_subcategory_id'])) {
+                                        $allocation = BudgetAllocation::where('budget_subcategory_id', $item['budget_subcategory_id'])
+                                            ->whereHas('budgetPlan', fn($q) => $q->where('status', 'active'))
+                                            ->first();
 
-                    if ($allocation) {
-                        $allocation->increment('used_amount', $item['total_price']);
-                        
-                        // Link transaksi ke budget allocation
-                        if (!$transaksi->budget_allocation_id) {
-                            $transaksi->update(['budget_allocation_id' => $allocation->id]);
-                        }
-                    }
-                }
-            }
-        });
-        
-        Notification::make()
-            ->title('Pengajuan Final Approved!')
-            ->body("Pengajuan '{$record->judul_pengajuan}' telah disetujui, budget dialokasikan, dan transaksi pengeluaran dibuat.")
-            ->success()
-            ->send();
-    }),
+                                        if ($allocation) {
+                                            $allocation->increment('used_amount', $item['total_price']);
+
+                                            // Link transaksi ke budget allocation
+                                            if (!$transaksi->budget_allocation_id) {
+                                                $transaksi->update(['budget_allocation_id' => $allocation->id]);
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+
+                            Notification::make()
+                                ->title('Pengajuan Final Approved!')
+                                ->body("Pengajuan '{$record->judul_pengajuan}' telah disetujui, budget dialokasikan, dan transaksi pengeluaran dibuat.")
+                                ->success()
+                                ->send();
+                        }),
 
 
 
@@ -559,8 +626,9 @@ class PengajuanAnggaranResource extends Resource
                         ->label('Tolak (Final)')
                         ->icon('heroicon-o-x-circle')
                         ->color('danger')
-                        ->visible(fn ($record) => 
-                            $record->status === 'pending_keuangan' && 
+                        ->visible(
+                            fn($record) =>
+                            $record->status === 'pending_keuangan' &&
                             auth()->check() && auth()->user()->hasRole(['keuangan', 'direktur', 'admin'])
                         )
                         ->form([
@@ -576,7 +644,7 @@ class PengajuanAnggaranResource extends Resource
                                 'keuangan_approved_at' => now(),
                                 'keuangan_notes' => $data['keuangan_notes'],
                             ]);
-                            
+
                             Notification::make()
                                 ->title('Pengajuan Ditolak')
                                 ->body("Pengajuan ditolak oleh keuangan/direktur.")
@@ -584,18 +652,20 @@ class PengajuanAnggaranResource extends Resource
                                 ->send();
                         }),
                 ])
-                ->label('Keuangan')
-                ->color('info')
-                ->visible(fn ($record) => 
-                    $record->status === 'pending_keuangan' && 
-                    auth()->check() && auth()->user()->hasRole(['keuangan', 'direktur', 'admin'])
-                ),
+                    ->label('Keuangan')
+                    ->color('info')
+                    ->visible(
+                        fn($record) =>
+                        $record->status === 'pending_keuangan' &&
+                        auth()->check() && auth()->user()->hasRole(['keuangan', 'direktur', 'admin'])
+                    ),
 
                 Tables\Actions\ViewAction::make(),
-                
+
                 Tables\Actions\EditAction::make()
-                    ->visible(fn ($record) => 
-                        $record->status === 'draft' && 
+                    ->visible(
+                        fn($record) =>
+                        $record->status === 'draft' &&
                         $record->created_by === auth()->id()
                     ),
 
@@ -608,17 +678,17 @@ class PengajuanAnggaranResource extends Resource
                             'nomor_pengajuan',
                             'status',
                             'redaksi_approved_by',
-                            'redaksi_approved_at', 
+                            'redaksi_approved_at',
                             'redaksi_notes',
                             'keuangan_approved_by',
                             'keuangan_approved_at',
                             'keuangan_notes',
                         ]);
-                        
+
                         $newRecord->judul_pengajuan = $record->judul_pengajuan . ' (Copy)';
                         $newRecord->status = 'draft';
                         $newRecord->save();
-                        
+
                         Notification::make()
                             ->title('Pengajuan Diduplikat')
                             ->body('Pengajuan berhasil diduplikat sebagai draft baru.')
@@ -629,7 +699,7 @@ class PengajuanAnggaranResource extends Resource
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
-                        ->visible(fn () => auth()->check() && auth()->user()->hasRole(['admin']))
+                        ->visible(fn() => auth()->check() && auth()->user()->hasRole(['admin']))
                         ->requiresConfirmation(),
                 ]),
             ])
@@ -647,56 +717,56 @@ class PengajuanAnggaranResource extends Resource
         ];
     }
 
-public static function getEloquentQuery(): Builder
-{
-    $user = auth()->user();
+    public static function getEloquentQuery(): Builder
+    {
+        $user = auth()->user();
 
-    if (!$user) {
-        return parent::getEloquentQuery()->whereRaw('1 = 0');
-    }
+        if (!$user) {
+            return parent::getEloquentQuery()->whereRaw('1 = 0');
+        }
 
-    // Admin bisa lihat semua
-    if ($user->hasRole(['admin'])) {
-        return parent::getEloquentQuery();
-    }
+        // Admin bisa lihat semua
+        if ($user->hasRole(['admin'])) {
+            return parent::getEloquentQuery();
+        }
 
-    // Redaksi bisa lihat semua pengajuan kecuali yang masih draft
-    if ($user->hasRole(['redaksi'])) {
+        // Redaksi bisa lihat semua pengajuan kecuali yang masih draft
+        if ($user->hasRole(['redaksi'])) {
+            return parent::getEloquentQuery()
+                ->whereIn('status', ['pending_redaksi', 'pending_keuangan', 'approved', 'rejected']);
+        }
+
+        // Keuangan/Direktur bisa lihat pengajuan yang sudah lewat tahap redaksi
+        if ($user->hasRole(['keuangan', 'direktur'])) {
+            return parent::getEloquentQuery()
+                ->whereIn('status', ['pending_keuangan', 'approved', 'rejected']);
+        }
+
+        // Team bisa lihat pengajuan mereka sendiri semua status
+        // + pengajuan yang sudah approved dari team lain (untuk referensi)
         return parent::getEloquentQuery()
-            ->whereIn('status', ['pending_redaksi', 'pending_keuangan', 'approved', 'rejected']);
+            ->where(function ($query) use ($user) {
+                $query->where('created_by', $user->id)
+                    ->orWhere('status', 'approved');
+            });
     }
-
-    // Keuangan/Direktur bisa lihat pengajuan yang sudah lewat tahap redaksi
-    if ($user->hasRole(['keuangan', 'direktur'])) {
-        return parent::getEloquentQuery()
-            ->whereIn('status', ['pending_keuangan', 'approved', 'rejected']);
-    }
-
-    // Team bisa lihat pengajuan mereka sendiri semua status
-    // + pengajuan yang sudah approved dari team lain (untuk referensi)
-    return parent::getEloquentQuery()
-        ->where(function ($query) use ($user) {
-            $query->where('created_by', $user->id)
-                  ->orWhere('status', 'approved');
-        });
-}
 
     public static function getNavigationBadge(): ?string
     {
         $user = auth()->user();
-        
+
         if (!$user) {
             return null;
         }
-        
+
         if ($user->hasRole(['redaksi'])) {
             return static::getModel()::where('status', 'pending_redaksi')->count() ?: null;
         }
-        
+
         if ($user->hasRole(['keuangan', 'direktur'])) {
             return static::getModel()::where('status', 'pending_keuangan')->count() ?: null;
         }
-        
+
         return null;
     }
 
@@ -705,17 +775,17 @@ public static function getEloquentQuery(): Builder
         return 'warning';
     }
 
-private static function generateNomorTransaksi(): string
-{
-    $prefix = 'TRX-OUT';
-    $year = now()->format('Y');
-    $month = now()->format('m');
-    
-    $counter = \App\Models\Transaksi::whereYear('tanggal_transaksi', now()->year)
-                     ->whereMonth('tanggal_transaksi', now()->month)
-                     ->where('jenis_transaksi', 'pengeluaran')
-                     ->count() + 1;
-    
-    return $prefix . '/' . $year . '/' . $month . '/' . str_pad($counter, 4, '0', STR_PAD_LEFT);
-}
+    private static function generateNomorTransaksi(): string
+    {
+        $prefix = 'TRX-OUT';
+        $year = now()->format('Y');
+        $month = now()->format('m');
+
+        $counter = \App\Models\Transaksi::whereYear('tanggal_transaksi', now()->year)
+            ->whereMonth('tanggal_transaksi', now()->month)
+            ->where('jenis_transaksi', 'pengeluaran')
+            ->count() + 1;
+
+        return $prefix . '/' . $year . '/' . $month . '/' . str_pad($counter, 4, '0', STR_PAD_LEFT);
+    }
 }

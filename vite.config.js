@@ -18,7 +18,8 @@ export default ({ mode }) => {
                     'resources/css/filament/team/theme.css',
                     'resources/css/filament/direktur/theme.css',
                     'resources/css/filament/redaksi/theme.css',
-                    'resources/css/filament/keuangan/theme.css'
+                    'resources/css/filament/keuangan/theme.css',
+                    'resources/css/filament/hrd/theme.css',
                 ],
                 
                 // INI ADALAH BAGIAN KUNCINYA:

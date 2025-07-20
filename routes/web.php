@@ -7,6 +7,7 @@ use App\Http\Controllers\SecureFileController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\VideoController;
+use App\Http\Controllers\SecureAttendanceController;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 

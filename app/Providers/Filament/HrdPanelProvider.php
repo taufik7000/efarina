@@ -28,6 +28,7 @@ class HrdPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
+            ->viteTheme('resources/css/filament/hrd/theme.css')
             ->databaseNotifications()
             ->discoverResources(in: app_path('Filament/Hrd/Resources'), for: 'App\\Filament\\Hrd\\Resources')
             ->discoverPages(in: app_path('Filament/Hrd/Pages'), for: 'App\\Filament\\Hrd\\Pages')

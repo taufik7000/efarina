@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
+use Carbon\Carbon;
 
 class User extends Authenticatable
 {
@@ -24,6 +25,8 @@ class User extends Authenticatable
         'email',
         'password',
         'jabatan_id',
+        'monthly_leave_quota',     // 🔥 TAMBAHAN BARU
+        'employment_start_date',   // 🔥 TAMBAHAN BARU
     ];
 
     /**
@@ -178,6 +181,62 @@ public function canPublishNews(): bool
     return $this->hasRole(['admin', 'redaksi']);
 }
 
+public function leaveRequests(): HasMany
+{
+    return $this->hasMany(LeaveRequest::class);
+}
+
+public function approvedLeaveRequests(): HasMany
+{
+    return $this->hasMany(LeaveRequest::class, 'approved_by');
+}
+
+/**
+ * Hitung kuota cuti yang sudah digunakan dalam bulan tertentu
+ */
+public function getUsedLeaveQuotaInMonth($year, $month): int
+{
+    return $this->leaveRequests()
+        ->approved()
+        ->inMonth($year, $month)
+        ->sum('total_days');
+}
+
+/**
+ * Hitung sisa kuota cuti dalam bulan tertentu
+ */
+public function getRemainingLeaveQuotaInMonth($year, $month): int
+{
+    $used = $this->getUsedLeaveQuotaInMonth($year, $month);
+    return max(0, $this->monthly_leave_quota - $used);
+}
+
+/**
+ * Cek apakah user masih punya kuota cuti untuk sejumlah hari
+ */
+public function hasLeaveQuotaFor($days, $year, $month): bool
+{
+    return $this->getRemainingLeaveQuotaInMonth($year, $month) >= $days;
+}
+
+/**
+ * Hitung total hari kerja dalam bulan (excluding Sundays)
+ */
+public function getWorkingDaysInMonth($year, $month): int
+{
+    $start = Carbon::create($year, $month, 1);
+    $end = $start->copy()->endOfMonth();
+    $workingDays = 0;
+
+    while ($start->lte($end)) {
+        if ($start->dayOfWeek !== Carbon::SUNDAY) {
+            $workingDays++;
+        }
+        $start->addDay();
+    }
+
+    return $workingDays;
+}
 
 
 }

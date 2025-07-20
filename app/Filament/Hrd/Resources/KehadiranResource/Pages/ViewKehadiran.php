@@ -6,6 +6,7 @@ use App\Filament\Hrd\Resources\KehadiranResource;
 use Filament\Resources\Pages\Page;
 use App\Models\User;
 use App\Models\Kehadiran;
+use App\Models\LeaveRequest;
 use Carbon\Carbon;
 use Filament\Resources\Pages\Concerns\InteractsWithRecord;
 
@@ -31,8 +32,6 @@ class ViewKehadiran extends Page
         return 'Laporan Bulanan: ' . $this->record->name;
     }
     
-    // --- PERBAIKAN DI SINI ---
-    // Mengubah visibilitas menjadi public
     public function getBreadcrumbs(): array
     {
         return [
@@ -46,17 +45,38 @@ class ViewKehadiran extends Page
         $tanggalAwal = Carbon::create($this->tahun, $this->bulan, 1);
         $jumlahHari = $tanggalAwal->daysInMonth;
         
+        // Ambil data kehadiran
         $dataKehadiran = Kehadiran::where('user_id', $this->record->id)
                                   ->whereYear('tanggal', $this->tahun)
                                   ->whereMonth('tanggal', $this->bulan)
+                                  ->with('leaveRequest')
                                   ->get()
                                   ->keyBy(fn ($item) => Carbon::parse($item->tanggal)->day);
 
-        $summary = ['hadir' => 0, 'terlambat' => 0, 'absen' => 0];
+        // Ambil data leave requests untuk bulan ini
+        $leaveRequests = LeaveRequest::where('user_id', $this->record->id)
+                                    ->where('status', 'approved')
+                                    ->where(function($query) use ($tanggalAwal) {
+                                        $query->whereMonth('start_date', $this->bulan)
+                                              ->whereYear('start_date', $this->tahun)
+                                              ->orWhereMonth('end_date', $this->bulan)
+                                              ->whereYear('end_date', $this->tahun);
+                                    })
+                                    ->get();
+
+        $summary = [
+            'hadir' => 0, 
+            'terlambat' => 0, 
+            'absen' => 0, 
+            'cuti' => 0, 
+            'sakit' => 0, 
+            'izin' => 0,
+            'libur' => 0
+        ];
+        
         $days = [];
 
         // Tambahkan hari kosong di awal untuk alignment kalender
-        // Carbon dayOfWeek: 0 = Minggu, 1 = Senin, ..., 6 = Sabtu
         $hariAwalBulan = $tanggalAwal->dayOfWeek;
         for ($i = 0; $i < $hariAwalBulan; $i++) {
             $days[] = null;
@@ -69,30 +89,149 @@ class ViewKehadiran extends Page
 
             if ($dataKehadiran->has($i)) {
                 $kehadiranHariIni = $dataKehadiran->get($i);
-                $status = $kehadiranHariIni->status === 'Terlambat' ? 'T' : 'H';
-                if ($status === 'H') $summary['hadir']++;
-                if ($status === 'T') $summary['terlambat']++;
-                $dayData = ['status' => $status, 'jam_masuk' => Carbon::parse($kehadiranHariIni->jam_masuk)->format('H:i')];
+                
+                // Tentukan status dan warna berdasarkan data kehadiran
+                $statusCode = $this->getStatusCode($kehadiranHariIni->status);
+                $summary[$this->getStatusKey($kehadiranHariIni->status)]++;
+                
+                $dayData = [
+                    'date' => $i,
+                    'status' => $statusCode,
+                    'status_full' => $kehadiranHariIni->status,
+                    'jam_masuk' => $kehadiranHariIni->jam_masuk ? 
+                        Carbon::parse($kehadiranHariIni->jam_masuk)->format('H:i') : '-',
+                    'jam_pulang' => $kehadiranHariIni->jam_pulang ? 
+                        Carbon::parse($kehadiranHariIni->jam_pulang)->format('H:i') : '-',
+                    'notes' => $kehadiranHariIni->notes,
+                    'leave_type' => $kehadiranHariIni->leaveRequest?->leave_type_name ?? null,
+                    'leave_reason' => $kehadiranHariIni->leaveRequest?->reason ?? null,
+                    'metode_absen' => $kehadiranHariIni->metode_absen,
+                ];
             } else {
+                // Jika tidak ada data kehadiran
                 if ($hari->isSunday()) {
-                    $dayData = ['status' => 'L', 'jam_masuk' => 'Libur'];
+                    $dayData = [
+                        'date' => $i,
+                        'status' => 'L',
+                        'status_full' => 'Libur',
+                        'jam_masuk' => 'Libur',
+                        'jam_pulang' => '-',
+                        'notes' => 'Hari Minggu',
+                        'leave_type' => null,
+                        'leave_reason' => null,
+                        'metode_absen' => null,
+                    ];
+                    $summary['libur']++;
                 } else {
-                    if ($hari->isPast() && !$hari->isToday()) {
-                        $dayData = ['status' => 'A', 'jam_masuk' => 'Absen'];
-                        $summary['absen']++;
+                    // Cek apakah hari ini seharusnya cuti berdasarkan leave request
+                    $isOnLeave = $this->checkIfOnLeave($hari, $leaveRequests);
+                    
+                    if ($isOnLeave) {
+                        $dayData = [
+                            'date' => $i,
+                            'status' => 'C',
+                            'status_full' => 'Cuti',
+                            'jam_masuk' => 'Cuti',
+                            'jam_pulang' => '-',
+                            'notes' => $isOnLeave['reason'],
+                            'leave_type' => $isOnLeave['type'],
+                            'leave_reason' => $isOnLeave['reason'],
+                            'metode_absen' => 'system_generated',
+                        ];
+                        $summary['cuti']++;
                     } else {
-                        $dayData = ['status' => '-', 'jam_masuk' => '-'];
+                        // Jika tanggal sudah lewat dan tidak ada data, dianggap absen
+                        if ($hari->isPast() && !$hari->isToday()) {
+                            $dayData = [
+                                'date' => $i,
+                                'status' => 'A',
+                                'status_full' => 'Alfa',
+                                'jam_masuk' => 'Absen',
+                                'jam_pulang' => '-',
+                                'notes' => 'Tidak ada catatan kehadiran',
+                                'leave_type' => null,
+                                'leave_reason' => null,
+                                'metode_absen' => null,
+                            ];
+                            $summary['absen']++;
+                        } else {
+                            $dayData = [
+                                'date' => $i,
+                                'status' => '-',
+                                'status_full' => 'Belum Absen',
+                                'jam_masuk' => '-',
+                                'jam_pulang' => '-',
+                                'notes' => null,
+                                'leave_type' => null,
+                                'leave_reason' => null,
+                                'metode_absen' => null,
+                            ];
+                        }
                     }
                 }
             }
             $days[] = $dayData;
         }
 
+        // Hitung statistik tambahan
+        $workingDays = $this->record->getWorkingDaysInMonth($this->tahun, $this->bulan);
+        $attendanceRate = $workingDays > 0 ? 
+            round((($summary['hadir'] + $summary['terlambat']) / $workingDays) * 100, 1) : 0;
+        
+        $leaveQuotaUsed = $this->record->getUsedLeaveQuotaInMonth($this->tahun, $this->bulan);
+        $leaveQuotaRemaining = $this->record->getRemainingLeaveQuotaInMonth($this->tahun, $this->bulan);
+
         return [
-            // Membagi array hari menjadi kelompok 7 hari (per minggu)
             'weeks' => array_chunk($days, 7),
             'summary' => $summary,
+            'statistics' => [
+                'working_days' => $workingDays,
+                'attendance_rate' => $attendanceRate,
+                'leave_quota_used' => $leaveQuotaUsed,
+                'leave_quota_remaining' => $leaveQuotaRemaining,
+                'leave_quota_total' => $this->record->monthly_leave_quota,
+            ],
             'namaBulan' => $tanggalAwal->translatedFormat('F'),
+            'leave_requests' => $leaveRequests,
         ];
+    }
+
+    private function getStatusCode($status): string
+    {
+        return match($status) {
+            'Tepat Waktu' => 'H',
+            'Terlambat' => 'T',
+            'Alfa' => 'A', 
+            'Cuti' => 'C',
+            'Sakit' => 'S',
+            'Izin' => 'I',
+            default => '-'
+        };
+    }
+
+    private function getStatusKey($status): string
+    {
+        return match($status) {
+            'Tepat Waktu' => 'hadir',
+            'Terlambat' => 'terlambat',
+            'Alfa' => 'absen',
+            'Cuti' => 'cuti',
+            'Sakit' => 'sakit',
+            'Izin' => 'izin',
+            default => 'absen'
+        };
+    }
+
+    private function checkIfOnLeave($date, $leaveRequests)
+    {
+        foreach ($leaveRequests as $leave) {
+            if ($date->between($leave->start_date, $leave->end_date)) {
+                return [
+                    'type' => $leave->leave_type_name,
+                    'reason' => $leave->reason
+                ];
+            }
+        }
+        return false;
     }
 }

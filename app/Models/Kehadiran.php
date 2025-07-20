@@ -45,4 +45,37 @@ class Kehadiran extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+
+    public function leaveRequest(): BelongsTo
+{
+    return $this->belongsTo(LeaveRequest::class);
+}
+
+public function getStatusColorAttribute(): string
+{
+    return match($this->status) {
+        'Tepat Waktu' => 'success',
+        'Terlambat' => 'warning', 
+        'Alfa' => 'danger',
+        'Cuti' => 'info',
+        'Sakit' => 'warning',
+        'Izin' => 'gray',
+        default => 'gray'
+    };
+}
+
+public function isPresent(): bool
+{
+    return in_array($this->status, ['Tepat Waktu', 'Terlambat']);
+}
+
+public function isAbsent(): bool
+{
+    return $this->status === 'Alfa';
+}
+
+public function isOnLeave(): bool
+{
+    return in_array($this->status, ['Cuti', 'Sakit', 'Izin']);
+}
 }
