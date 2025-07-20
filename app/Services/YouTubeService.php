@@ -648,4 +648,6 @@ private function generateRandomColor(): string
     
     return $colors[array_rand($colors)];
 }
+
+
 }
