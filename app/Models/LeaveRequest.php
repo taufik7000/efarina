@@ -25,6 +25,8 @@ class LeaveRequest extends Model
         'approved_at',
         'approval_notes',
         'rejection_reason',
+        'replacement_user_id',
+        'replacement_status', 
     ];
 
     protected $casts = [
@@ -37,6 +39,15 @@ class LeaveRequest extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Relasi ke user yang menggantikan.
+     */
+
+    public function replacementUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'replacement_user_id');
     }
 
     public function approver(): BelongsTo

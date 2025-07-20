@@ -6,6 +6,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use App\Filament\Resources\LeaveRequestResource;
 use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -35,13 +36,12 @@ class TeamPanelProvider extends PanelProvider
             ->databaseNotificationsPolling('5s')
             ->viteTheme('resources/css/filament/team/theme.css')
             ->discoverResources(in: app_path('Filament/Team/Resources'), for: 'App\\Filament\\Team\\Resources')
+            ->resources([
+                LeaveRequestResource::class,
+            ])
             ->discoverPages(in: app_path('Filament/Team/Pages'), for: 'App\\Filament\\Team\\Pages')
 
             ->discoverWidgets(in: app_path('Filament/Team/Widgets'), for: 'App\\Filament\\Team\\Widgets')
-            ->widgets([
-                Widgets\AccountWidget::class,
-                Widgets\FilamentInfoWidget::class,
-            ])
             
             ->middleware([
                 EncryptCookies::class,

@@ -22,15 +22,27 @@ class KehadiranResource extends Resource
     protected static ?string $model = User::class;
     
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-check';
-    protected static ?string $navigationGroup = 'Absensi Karyawan';
-    protected static ?string $navigationLabel = 'Absensi Hari Ini';
-    protected static ?string $pluralModelLabel = 'Absensi Hari Ini';
+    protected static ?string $navigationGroup = 'Manajemen Absensi';
+    protected static ?string $navigationLabel = 'Absensi';
+    protected static ?string $pluralModelLabel = 'Absensi';
     protected static ?int $navigationSort = 1;
+
+
+public static function getPluralModelLabel(): string
+{
+    Carbon::setLocale('id');
+    $tanggalHariIni = Carbon::now('Asia/Jakarta')->translatedFormat('l, d F Y');
+
+    return "Absensi Karyawan ({$tanggalHariIni})";
+}
+
 
     public static function form(Form $form): Form
     {
         return $form->schema([]);
     }
+
+    
 
     public static function table(Table $table): Table
     {
@@ -266,126 +278,124 @@ class KehadiranResource extends Resource
             ])
             ->actions([
                 // Action untuk tandai izin/sakit/kompensasi
-                Tables\Actions\Action::make('mark_manual_leave')
-                    ->label('Tandai Izin/Sakit')
-                    ->icon('heroicon-o-exclamation-triangle')
-                    ->color('warning')
-                    ->visible(function (User $record) {
-                        return !$record->kehadiran()
-                            ->whereDate('tanggal', today('Asia/Jakarta'))
-                            ->exists();
-                    })
-                    ->form([
-                        Forms\Components\Select::make('status')
-                            ->label('Status')
-                            ->options([
-                                'Sakit' => '🤒 Sakit',
-                                'Izin' => '📝 Izin',
-                                'Alfa' => '❌ Alfa (Tanpa Keterangan)',
-                                'Kompensasi Libur' => '🔄 Kompensasi Libur',
-                            ])
-                            ->required()
-                            ->reactive(),
-                        
-                        Forms\Components\Select::make('compensation_id')
-                            ->label('Pilih Kompensasi')
-                            ->visible(fn (Forms\Get $get) => $get('status') === 'Kompensasi Libur')
-                            ->options(function (User $record) {
-                                if (!method_exists($record, 'getAvailableCompensations')) {
-                                    return [];
-                                }
-                                
-                                return $record->getAvailableCompensations()
-                                    ->mapWithKeys(function ($comp) {
-                                        return [
-                                            $comp->id => "Kerja {$comp->work_date->format('d M Y')} - Exp: {$comp->expires_at->format('d M Y')}"
-                                        ];
-                                    });
-                            })
-                            ->placeholder('Pilih kompensasi yang akan digunakan')
-                            ->helperText('Kompensasi dari kerja di hari libur')
-                            ->required(fn (Forms\Get $get) => $get('status') === 'Kompensasi Libur'),
-                        
-                        Forms\Components\Textarea::make('notes')
-                            ->label('Keterangan')
-                            ->placeholder('Masukkan keterangan detail (opsional)')
-                            ->rows(3),
+          Tables\Actions\Action::make('mark_manual_leave')
+                ->label('Update Status')
+                ->icon('heroicon-o-exclamation-triangle')
+                ->color('warning')
+                ->visible(function (User $record) {
+                    // Hanya tampilkan jika belum ada record kehadiran hari ini
+                    return !$record->kehadiran()
+                        ->whereDate('tanggal', today('Asia/Jakarta'))
+                        ->exists();
+                })
+                ->form([
+                    Forms\Components\Select::make('status')
+                        ->label('Status')
+                        ->options([
+                            'Kompensasi Libur' => '🔄 Kompensasi Libur',
+                            'Sakit' => '🤒 Sakit',
+                            'Izin' => '📝 Izin',
+                            'Alfa' => '❌ Alfa (Tanpa Keterangan)',
+                        ])
+                        ->required()
+                        ->reactive(),
+                    
+                    Forms\Components\Select::make('compensation_id')
+                        ->label('Pilih Kompensasi yang Tersedia')
+                        ->visible(fn (Forms\Get $get) => $get('status') === 'Kompensasi Libur')
+                        ->options(function (User $record) {
+                            if (!method_exists($record, 'getAvailableCompensations')) {
+                                return [];
+                            }
+                            
+                            // Ambil kompensasi yang tersedia dan format untuk select options
+                            return $record->getAvailableCompensations()
+                                ->mapWithKeys(function ($comp) {
+                                    return [
+                                        $comp->id => "Dari kerja tgl {$comp->work_date->format('d M Y')} (Exp: {$comp->expires_at->format('d M Y')})"
+                                    ];
+                                });
+                        })
+                        ->placeholder('Pilih kompensasi yang akan digunakan')
+                        ->helperText('Hanya kompensasi yang valid dan belum kadaluarsa yang akan tampil.')
+                        ->required(fn (Forms\Get $get) => $get('status') === 'Kompensasi Libur'),
+                    
+                    Forms\Components\Textarea::make('notes')
+                        ->label('Keterangan')
+                        ->placeholder('Masukkan keterangan detail (opsional)')
+                        ->rows(3),
 
-                        Forms\Components\FileUpload::make('attachment')
-                            ->label('Lampiran')
-                            ->directory('manual-attendance')
-                            ->acceptedFileTypes(['pdf', 'jpg', 'jpeg', 'png'])
-                            ->maxSize(2048)
-                            ->helperText('Upload surat dokter atau bukti pendukung (opsional)')
-                            ->visible(fn (Forms\Get $get) => in_array($get('status'), ['Sakit', 'Izin'])),
-                    ])
-                    ->action(function (User $record, array $data) {
-                        // Cek kehadiran existing
-                        $existingAttendance = Kehadiran::where('user_id', $record->id)
-                            ->whereDate('tanggal', today('Asia/Jakarta'))
-                            ->first();
+                    Forms\Components\FileUpload::make('attachment')
+                        ->label('Lampiran')
+                        ->directory('manual-attendance')
+                        ->acceptedFileTypes(['pdf', 'jpg', 'jpeg', 'png'])
+                        ->maxSize(2048)
+                        ->helperText('Upload surat dokter atau bukti pendukung (opsional)')
+                        ->visible(fn (Forms\Get $get) => in_array($get('status'), ['Sakit', 'Izin'])),
+                ])
+                ->action(function (User $record, array $data) {
+                    $today = today('Asia/Jakarta');
 
-                        if ($existingAttendance) {
+                    // 1. Cek sekali lagi jika ada record kehadiran yang dibuat saat form terbuka
+                    $existingAttendance = Kehadiran::where('user_id', $record->id)
+                        ->whereDate('tanggal', $today)
+                        ->first();
+
+                    if ($existingAttendance) {
+                        Notification::make()
+                            ->title('Gagal')
+                            ->body('Karyawan ini sudah memiliki catatan kehadiran hari ini.')
+                            ->danger()
+                            ->send();
+                        return;
+                    }
+
+                    // 2. Logika khusus untuk Kompensasi Libur
+                    if ($data['status'] === 'Kompensasi Libur') {
+                        $compensation = Compensation::find($data['compensation_id']);
+                        
+                        // Validasi kompensasi
+                        if (!$compensation || !$compensation->canBeUsed()) {
                             Notification::make()
                                 ->title('Gagal')
-                                ->body('Karyawan ini sudah memiliki catatan kehadiran hari ini.')
+                                ->body('Kompensasi tidak valid atau sudah tidak bisa digunakan.')
                                 ->danger()
                                 ->send();
                             return;
                         }
-
-                        // Handle kompensasi
-                        if ($data['status'] === 'Kompensasi Libur') {
-                            if (!class_exists('App\Models\Compensation')) {
-                                Notification::make()
-                                    ->title('Error')
-                                    ->body('Model Compensation belum tersedia.')
-                                    ->danger()
-                                    ->send();
-                                return;
-                            }
-
-                            $compensation = Compensation::find($data['compensation_id']);
-                            
-                            if (!$compensation || !$compensation->canBeUsed()) {
-                                Notification::make()
-                                    ->title('Gagal')
-                                    ->body('Kompensasi tidak valid atau sudah tidak bisa digunakan.')
-                                    ->danger()
-                                    ->send();
-                                return;
-                            }
-                            
-                            if ($compensation->use(today('Asia/Jakarta'), $data['notes'])) {
-                                Notification::make()
-                                    ->title('Kompensasi Digunakan')
-                                    ->body("Kompensasi dari kerja tanggal {$compensation->work_date->format('d M Y')} berhasil digunakan.")
-                                    ->success()
-                                    ->send();
-                            } else {
-                                Notification::make()
-                                    ->title('Gagal')
-                                    ->body('Gagal menggunakan kompensasi.')
-                                    ->danger()
-                                    ->send();
-                            }
-                            return;
+                        
+                        // Panggil method `use()` pada model Compensation
+                        // Method ini akan menangani update status kompensasi DAN pembuatan record kehadiran
+                        if ($compensation->use($today, $data['notes'])) {
+                            Notification::make()
+                                ->title('Kompensasi Berhasil Digunakan')
+                                ->body("Status kehadiran {$record->name} telah diperbarui menjadi 'Kompensasi Libur'.")
+                                ->success()
+                                ->send();
+                        } else {
+                            Notification::make()
+                                ->title('Gagal')
+                                ->body('Terjadi kesalahan saat mencoba menggunakan kompensasi.')
+                                ->danger()
+                                ->send();
                         }
+                        return; // Selesai setelah menangani kompensasi
+                    }
 
-                        // Handle status lainnya
-                        Kehadiran::create([
-                            'user_id' => $record->id,
-                            'tanggal' => today('Asia/Jakarta'),
-                            'status' => $data['status'],
-                            'notes' => $data['notes'],
-                            'metode_absen' => 'manual_hrd',
-                        ]);
+                    // 3. Logika untuk status lain (Sakit, Izin, Alfa)
+                    Kehadiran::create([
+                        'user_id' => $record->id,
+                        'tanggal' => $today,
+                        'status' => $data['status'],
+                        'notes' => $data['notes'],
+                        'metode_absen' => 'manual_hrd',
+                    ]);
 
-                        Notification::make()
-                            ->title('Berhasil')
-                            ->body("Status kehadiran {$record->name} telah diperbarui menjadi {$data['status']}.")
-                            ->success()
-                            ->send();
+                    Notification::make()
+                        ->title('Berhasil')
+                        ->body("Status kehadiran {$record->name} telah diperbarui menjadi {$data['status']}.")
+                        ->success()
+                        ->send();
                     }),
 
                 // Action buat kompensasi dari kerja hari libur

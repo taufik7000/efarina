@@ -17,6 +17,7 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use App\Filament\Resources\LeaveRequestResource;
 
 class RedaksiPanelProvider extends PanelProvider
 {
@@ -35,6 +36,7 @@ class RedaksiPanelProvider extends PanelProvider
                 \App\Filament\Team\Resources\TaskResource::class,
                 \App\Filament\Team\Resources\PengajuanAnggaranResource::class,
                 \App\Filament\Team\Resources\ProjectResource::class,
+                LeaveRequestResource::class,
             ])
             ->discoverPages(in: app_path('Filament/Redaksi/Pages'), for: 'App\\Filament\\Redaksi\\Pages')
             ->discoverWidgets(in: app_path('Filament/Redaksi/Widgets'), for: 'App\\Filament\\Redaksi\\Widgets')

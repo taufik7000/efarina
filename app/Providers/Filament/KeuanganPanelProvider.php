@@ -17,6 +17,7 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use App\Filament\Resources\LeaveRequestResource;
 
 class KeuanganPanelProvider extends PanelProvider
 {
@@ -40,6 +41,7 @@ class KeuanganPanelProvider extends PanelProvider
                 \App\Filament\Resources\BudgetAllocationResource::class,
                 \App\Filament\Resources\TransaksiResource::class,
                 \App\Filament\Team\Resources\PengajuanAnggaranResource::class,
+                LeaveRequestResource::class,
             ])
             ->discoverPages(in: app_path('Filament/Keuangan/Pages'), for: 'App\\Filament\\Keuangan\\Pages')
             ->pages([

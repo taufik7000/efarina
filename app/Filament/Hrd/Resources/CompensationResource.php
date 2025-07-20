@@ -19,7 +19,7 @@ class CompensationResource extends Resource
     protected static ?string $model = Compensation::class;
     
     protected static ?string $navigationIcon = 'heroicon-o-arrow-path';
-    protected static ?string $navigationGroup = 'Absensi Karyawan';
+    protected static ?string $navigationGroup = 'Manajemen Absensi';
     protected static ?string $navigationLabel = 'Kompensasi Libur';
     protected static ?string $pluralModelLabel = 'Kompensasi Libur';
     protected static ?int $navigationSort = 4;

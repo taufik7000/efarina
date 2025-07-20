@@ -1,4 +1,5 @@
 <x-filament-panels::page>
+<div>
     {{-- Filter Bulan dan Tahun --}}
     <div class="flex items-center gap-4 p-4 mb-6 bg-white rounded-lg shadow dark:bg-gray-800">
         <div class="w-1/4">
@@ -32,7 +33,7 @@
                 </p>
             </div>
             
-            {{-- Quick Stats dengan Kompensasi --}}
+            {{-- Quick Stats --}}
             <div class="grid grid-cols-2 gap-4 text-center lg:grid-cols-5">
                 <div class="px-3 py-2 bg-green-100 rounded-lg dark:bg-green-900">
                     <span class="text-xs font-bold text-green-700 dark:text-green-300">HADIR</span>
@@ -46,9 +47,9 @@
                     <span class="text-xs font-bold text-blue-700 dark:text-blue-300">CUTI</span>
                     <p class="text-lg font-extrabold text-blue-800 dark:text-blue-200">{{ $summary['cuti'] }}</p>
                 </div>
-                <div class="px-3 py-2 bg-indigo-100 rounded-lg dark:bg-indigo-900">
+                 <div class="px-3 py-2 bg-indigo-100 rounded-lg dark:bg-indigo-900">
                     <span class="text-xs font-bold text-indigo-700 dark:text-indigo-300">KOMPENSASI</span>
-                    <p class="text-lg font-extrabold text-indigo-800 dark:text-indigo-200">{{ $summary['kompensasi'] ?? 0 }}</p>
+                    <p class="text-lg font-extrabold text-indigo-800 dark:text-indigo-200">{{ $summary['kompensasi'] }}</p>
                 </div>
                 <div class="px-3 py-2 bg-red-100 rounded-lg dark:bg-red-900">
                     <span class="text-xs font-bold text-red-700 dark:text-red-300">ABSEN</span>
@@ -57,8 +58,8 @@
             </div>
         </div>
 
-        {{-- Statistics Row dengan Kompensasi --}}
-        <div class="grid grid-cols-1 gap-4 mt-4 text-sm lg:grid-cols-5">
+        {{-- Statistics Row --}}
+        <div class="grid grid-cols-1 gap-4 mt-4 text-sm lg:grid-cols-4">
             <div class="p-3 bg-gray-50 rounded-lg dark:bg-gray-700">
                 <span class="text-gray-600 dark:text-gray-400">Tingkat Kehadiran</span>
                 <p class="text-lg font-bold text-gray-900 dark:text-gray-100">{{ $statistics['attendance_rate'] }}%</p>
@@ -70,12 +71,6 @@
             <div class="p-3 bg-gray-50 rounded-lg dark:bg-gray-700">
                 <span class="text-gray-600 dark:text-gray-400">Kuota Cuti Terpakai</span>
                 <p class="text-lg font-bold text-gray-900 dark:text-gray-100">{{ $statistics['leave_quota_used'] }}/{{ $statistics['leave_quota_total'] }} hari</p>
-            </div>
-            <div class="p-3 bg-gray-50 rounded-lg dark:bg-gray-700">
-                <span class="text-gray-600 dark:text-gray-400">Kompensasi Tersedia</span>
-                <p class="text-lg font-bold {{ isset($compensation_stats) && $compensation_stats['available_days'] > 0 ? 'text-indigo-600' : 'text-gray-900 dark:text-gray-100' }}">
-                    {{ $compensation_stats['available_days'] ?? 0 }} hari
-                </p>
             </div>
             <div class="p-3 bg-gray-50 rounded-lg dark:bg-gray-700">
                 <span class="text-gray-600 dark:text-gray-400">Sisa Kuota Cuti</span>
@@ -90,7 +85,7 @@
     <div class="p-6 mb-6 bg-white rounded-lg shadow dark:bg-gray-800">
         <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Kalender Kehadiran</h3>
         
-        {{-- Legend dengan Kompensasi --}}
+        {{-- Legend --}}
         <div class="flex flex-wrap items-center gap-4 mb-6 text-xs">
             <span class="flex items-center gap-1">
                 <div class="w-4 h-4 bg-green-200 border border-green-300 rounded"></div> 
@@ -136,120 +131,63 @@
             @endforeach
 
             {{-- Body Kalender --}}
-            @foreach ($weeks as $week)
-                @foreach ($week as $day)
-                    @if ($day)
-                        @php
-                            $colorClass = match($day['status']) {
-                                'H' => 'bg-green-100 dark:bg-green-800 border-green-300 hover:bg-green-200',
-                                'T' => 'bg-yellow-100 dark:bg-yellow-800 border-yellow-300 hover:bg-yellow-200',
-                                'A' => 'bg-red-100 dark:bg-red-800 border-red-300 hover:bg-red-200',
-                                'C' => 'bg-blue-100 dark:bg-blue-800 border-blue-300 hover:bg-blue-200',
-                                'S' => 'bg-orange-100 dark:bg-orange-800 border-orange-300 hover:bg-orange-200',
-                                'I' => 'bg-purple-100 dark:bg-purple-800 border-purple-300 hover:bg-purple-200',
-                                'K' => 'bg-indigo-100 dark:bg-indigo-800 border-indigo-300 hover:bg-indigo-200',
-                                'L' => 'bg-gray-100 dark:bg-gray-700 border-gray-300',
-                                default => 'bg-gray-50 dark:bg-gray-900 border-gray-200',
-                            };
-                            
-                            $textColorClass = match($day['status']) {
-                                'H' => 'text-green-800 dark:text-green-200',
-                                'T' => 'text-yellow-800 dark:text-yellow-200',
-                                'A' => 'text-red-800 dark:text-red-200',
-                                'C' => 'text-blue-800 dark:text-blue-200',
-                                'S' => 'text-orange-800 dark:text-orange-200',
-                                'I' => 'text-purple-800 dark:text-purple-200',
-                                'K' => 'text-indigo-800 dark:text-indigo-200',
-                                'L' => 'text-gray-600 dark:text-gray-400',
-                                default => 'text-gray-800 dark:text-gray-200',
-                            };
-                        @endphp
-                        
-                        <div class="relative p-2 border rounded-lg h-24 {{ $colorClass }} {{ $textColorClass }} cursor-pointer transition-colors duration-200"
-                             title="{{ $day['status_full'] }}: {{ $day['jam_masuk'] }}"
-                             onclick="showDayDetail({{ json_encode($day) }})">
-                            <div class="text-xs text-gray-500 dark:text-gray-400">{{ $day['date'] }}</div>
-                            <div class="mt-1">
-                                <p class="text-lg font-bold">{{ $day['status'] }}</p>
-                                <p class="text-xs truncate">{{ $day['jam_masuk'] }}</p>
-                                @if($day['jam_pulang'] !== '-' && $day['jam_pulang'])
-                                    <p class="text-xs text-gray-600 dark:text-gray-400">{{ $day['jam_pulang'] }}</p>
-                                @endif
-                            </div>
-                            
-                            {{-- Indicator untuk Kompensasi --}}
-                            @if(isset($day['compensation_info']) && $day['compensation_info'])
-                                <div class="absolute top-1 right-1 w-2 h-2 bg-indigo-500 rounded-full" title="Kompensasi: {{ $day['compensation_info']['work_reason'] ?? 'Kompensasi libur' }}"></div>
-                            @elseif($day['leave_type'])
-                                <div class="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full" title="{{ $day['leave_type'] }}"></div>
-                            @endif
-                        </div>
-                    @else
-                        {{-- Sel kosong untuk alignment --}}
-                        <div class="border border-transparent h-24"></div>
-                    @endif
-                @endforeach
-            @endforeach
-        </div>
-    </div>
+{{-- Body Kalender --}}
+@foreach ($weeks as $week)
+    @foreach ($week as $day)
+        @if ($day)
+            @php
+                $isHolidayOrLeave = in_array($day['status'], ['L', 'C', 'K']);
+                $colorClass = match($day['status']) {
+                    'H' => 'bg-green-100 dark:bg-green-800 border-green-300 hover:bg-green-200',
+                    'T' => 'bg-yellow-100 dark:bg-yellow-800 border-yellow-300 hover:bg-yellow-200',
+                    'A' => 'bg-red-100 dark:bg-red-800 border-red-300 hover:bg-red-200',
+                    'C' => 'bg-blue-100 dark:bg-blue-800 border-blue-300 hover:bg-blue-200',
+                    'S' => 'bg-orange-100 dark:bg-orange-800 border-orange-300 hover:bg-orange-200',
+                    'I' => 'bg-purple-100 dark:bg-purple-800 border-purple-300 hover:bg-purple-200',
+                    'K' => 'bg-indigo-100 dark:bg-indigo-800 border-indigo-300 hover:bg-indigo-200',
+                    'L' => 'bg-gray-200 dark:bg-gray-700 border-gray-300',
+                    default => 'bg-gray-50 dark:bg-gray-900 border-gray-200',
+                };
+            @endphp
 
-    {{-- Riwayat Kompensasi Bulan Ini --}}
-    @if(isset($compensations) && $compensations->count() > 0)
-    <div class="p-6 mb-6 bg-white rounded-lg shadow dark:bg-gray-800">
-        <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Riwayat Kompensasi Bulan Ini</h3>
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead class="bg-gray-50 dark:bg-gray-700">
-                    <tr>
-                        <th class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-300">Tanggal Kerja</th>
-                        <th class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-300">Jam Kerja</th>
-                        <th class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-300">Alasan</th>
-                        <th class="px-6 py-3 text-xs font-medium tracking-wider text-center text-gray-500 uppercase dark:text-gray-300">Status</th>
-                        <th class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-300">Digunakan</th>
-                        <th class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-300">Kadaluarsa</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
-                    @foreach($compensations as $compensation)
-                    <tr>
-                        <td class="px-6 py-4 text-sm text-gray-900 whitespace-nowrap dark:text-gray-100">
-                            {{ $compensation->work_date->format('d M Y') }}
-                            <span class="text-xs text-gray-500">({{ $compensation->work_date->translatedFormat('l') }})</span>
-                        </td>
-                        <td class="px-6 py-4 text-sm text-gray-900 whitespace-nowrap dark:text-gray-100">
-                            {{ \Carbon\Carbon::parse($compensation->work_start_time)->format('H:i') }} - 
-                            {{ \Carbon\Carbon::parse($compensation->work_end_time)->format('H:i') }}
-                            <div class="text-xs text-gray-500">{{ $compensation->work_hours }} jam</div>
-                        </td>
-                        <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                            {{ Str::limit($compensation->work_reason, 40) }}
-                        </td>
-                        <td class="px-6 py-4 text-center whitespace-nowrap">
-                            <span class="inline-flex px-2 text-xs font-semibold leading-5 rounded-full
-                                {{ $compensation->status === 'earned' ? 'text-green-800 bg-green-100 dark:bg-green-900 dark:text-green-200' : 
-                                   ($compensation->status === 'used' ? 'text-blue-800 bg-blue-100 dark:bg-blue-900 dark:text-blue-200' : 
-                                   'text-red-800 bg-red-100 dark:bg-red-900 dark:text-red-200') }}">
-                                {{ $compensation->status_name }}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 text-sm text-gray-900 whitespace-nowrap dark:text-gray-100">
-                            {{ $compensation->compensation_date ? $compensation->compensation_date->format('d M Y') : '-' }}
-                        </td>
-                        <td class="px-6 py-4 text-sm whitespace-nowrap">
-                            <span class="{{ $compensation->expires_at->isPast() ? 'text-red-600' : ($compensation->expires_at->diffInDays() <= 7 ? 'text-yellow-600' : 'text-gray-900 dark:text-gray-100') }}">
-                                {{ $compensation->expires_at->format('d M Y') }}
-                            </span>
-                            @if($compensation->expires_at->diffInDays() <= 7 && !$compensation->expires_at->isPast())
-                                <div class="text-xs text-yellow-600">{{ $compensation->expires_at->diffInDays() }} hari lagi</div>
-                            @endif
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
+            <div
+                wire:click="openModalForDate('{{ $day['full_date'] }}')"
+                title="{{ $day['holiday_name'] ?? $day['status_full'] }}"
+                class="relative p-2 border rounded-lg h-28 flex flex-col justify-between transition-all duration-200 ease-in-out transform hover:scale-105 hover:shadow-lg cursor-pointer {{ $colorClass }}">
+
+                {{-- Bagian Atas: Tanggal dan Ikon Edit --}}
+                <div class="flex justify-between items-start">
+                    <div class="text-sm font-bold text-gray-700 dark:text-gray-300">{{ $day['date'] }}</div>
+                    <div class="absolute top-1 right-1 p-1 rounded-full opacity-50 hover:opacity-100 hover:bg-gray-300 dark:hover:bg-gray-600">
+                         <x-heroicon-o-pencil-square class="w-4 h-4 text-gray-500 dark:text-gray-400"/>
+                    </div>
+                </div>
+
+                {{-- Bagian Tengah: Status Utama (e.g., L, H, A) --}}
+                <div class="text-center">
+                    <p class="text-3xl font-extrabold">{{ $day['status'] }}</p>
+                </div>
+
+                {{-- Bagian Bawah: Keterangan Tambahan --}}
+                <div class="text-center h-8">
+                    {{-- KODE PENTING YANG MENAMPILKAN NAMA LIBUR --}}
+                    @if($day['status'] === 'L' && !empty($day['holiday_name']))
+                        <p class="text-[10px] leading-tight font-semibold text-red-600 dark:text-red-400 break-words">
+                            {{ $day['holiday_name'] }}
+                        </p>
+                    @elseif(in_array($day['status'], ['H', 'T']))
+                         <p class="text-xs truncate">{{ $day['jam_masuk'] }}</p>
+                    @endif
+                </div>
+            </div>
+
+        @else
+            <div class="border border-transparent h-28"></div>
+        @endif
+    @endforeach
+@endforeach
         </div>
     </div>
-    @endif
 
     {{-- Riwayat Cuti Bulan Ini --}}
     @if(isset($leave_requests) && $leave_requests->count() > 0)
@@ -295,9 +233,54 @@
         </div>
     </div>
     @endif
+    
+    {{-- Riwayat Kompensasi Bulan Ini --}}
+    @if(isset($compensations) && $compensations->count() > 0)
+    <div class="p-6 mb-6 bg-white rounded-lg shadow dark:bg-gray-800">
+        <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Riwayat Kompensasi Libur Bulan Ini</h3>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-300">Tanggal Kerja Libur</th>
+                        <th class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-300">Alasan</th>
+                        <th class="px-6 py-3 text-xs font-medium tracking-wider text-center text-gray-500 uppercase dark:text-gray-300">Jam Kerja</th>
+                        <th class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-300">Status</th>
+                        <th class="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-gray-300">Tanggal Digunakan</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
+                    @foreach($compensations as $comp)
+                    <tr>
+                        <td class="px-6 py-4 text-sm text-gray-900 whitespace-nowrap dark:text-gray-100">
+                            {{ $comp->work_date->format('d M Y') }}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
+                            {{ Str::limit($comp->work_reason, 50) }}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-center text-gray-900 whitespace-nowrap dark:text-gray-100">
+                            {{ $comp->work_hours }} jam
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-900 whitespace-nowrap dark:text-gray-100">
+                            <span class="inline-flex px-2 text-xs font-semibold leading-5 rounded-full 
+                                {{ $comp->status === 'earned' ? 'bg-green-100 text-green-800' : ($comp->status === 'used' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800') }}">
+                                {{ $comp->status_name }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-900 whitespace-nowrap dark:text-gray-100">
+                            {{ $comp->compensation_date ? $comp->compensation_date->format('d M Y') : '-' }}
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
 
-    {{-- Summary Cards dengan Kompensasi --}}
-    <div class="grid grid-cols-1 gap-6 mb-6 lg:grid-cols-3">
+
+    {{-- Summary Cards --}}
+    <div class="grid grid-cols-1 gap-6 mb-6 lg:grid-cols-2">
         {{-- Monthly Summary --}}
         <div class="p-6 bg-white rounded-lg shadow dark:bg-gray-800">
             <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Ringkasan Bulanan</h3>
@@ -310,9 +293,9 @@
                     <span class="text-gray-600 dark:text-gray-400">Total Cuti/Izin:</span>
                     <span class="font-semibold text-blue-600">{{ $summary['cuti'] + $summary['sakit'] + $summary['izin'] }} hari</span>
                 </div>
-                <div class="flex justify-between">
-                    <span class="text-gray-600 dark:text-gray-400">Kompensasi Digunakan:</span>
-                    <span class="font-semibold text-indigo-600">{{ $summary['kompensasi'] ?? 0 }} hari</span>
+                 <div class="flex justify-between">
+                    <span class="text-gray-600 dark:text-gray-400">Total Kompensasi:</span>
+                    <span class="font-semibold text-indigo-600">{{ $summary['kompensasi'] }} hari</span>
                 </div>
                 <div class="flex justify-between">
                     <span class="text-gray-600 dark:text-gray-400">Total Absen:</span>
@@ -332,225 +315,42 @@
             </div>
         </div>
 
-        {{-- Leave Quota Card --}}
+        {{-- Leave Quota & Compensation Card --}}
         <div class="p-6 bg-white rounded-lg shadow dark:bg-gray-800">
-            <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Status Kuota Cuti</h3>
+            <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Status Kuota Cuti & Kompensasi</h3>
+            {{-- Kuota Cuti --}}
             <div class="space-y-3">
                 <div class="flex justify-between">
-                    <span class="text-gray-600 dark:text-gray-400">Kuota Total:</span>
-                    <span class="font-semibold">{{ $statistics['leave_quota_total'] }} hari/bulan</span>
+                    <span class="text-gray-600 dark:text-gray-400">Kuota Cuti/Bulan:</span>
+                    <span class="font-semibold">{{ $statistics['leave_quota_total'] }} hari</span>
                 </div>
                 <div class="flex justify-between">
-                    <span class="text-gray-600 dark:text-gray-400">Sudah Digunakan:</span>
-                    <span class="font-semibold text-orange-600">{{ $statistics['leave_quota_used'] }} hari</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-gray-600 dark:text-gray-400">Sisa Kuota:</span>
+                    <span class="text-gray-600 dark:text-gray-400">Sisa Kuota Cuti:</span>
                     <span class="font-semibold text-{{ $statistics['leave_quota_remaining'] > 1 ? 'green' : 'red' }}-600">
                         {{ $statistics['leave_quota_remaining'] }} hari
                     </span>
                 </div>
-                
-                {{-- Progress Bar --}}
-                <div class="mt-4">
-                    <div class="flex justify-between mb-1 text-sm">
-                        <span class="text-gray-600 dark:text-gray-400">Penggunaan Kuota</span>
-                        <span class="text-gray-900 dark:text-gray-100">
-                            {{ $statistics['leave_quota_total'] > 0 ? round(($statistics['leave_quota_used'] / $statistics['leave_quota_total']) * 100, 1) : 0 }}%
-                        </span>
-                    </div>
-                    <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                        <div class="bg-blue-600 h-2.5 rounded-full" 
-                             style="width: {{ $statistics['leave_quota_total'] > 0 ? min(($statistics['leave_quota_used'] / $statistics['leave_quota_total']) * 100, 100) : 0 }}%"></div>
-                    </div>
-                </div>
-
-                @if($statistics['leave_quota_remaining'] <= 1)
-                <div class="p-3 mt-4 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/20 dark:border-red-800">
-                    <p class="text-sm text-red-800 dark:text-red-200">
-                        ⚠️ Kuota cuti hampir habis! Sisa {{ $statistics['leave_quota_remaining'] }} hari.
-                    </p>
-                </div>
-                @endif
             </div>
-        </div>
-
-        {{-- Compensation Card --}}
-        <div class="p-6 bg-white rounded-lg shadow dark:bg-gray-800">
-            <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Status Kompensasi</h3>
-            @if(isset($compensation_stats))
+            <hr class="my-4">
+             {{-- Kuota Kompensasi --}}
             <div class="space-y-3">
                 <div class="flex justify-between">
                     <span class="text-gray-600 dark:text-gray-400">Kompensasi Tersedia:</span>
                     <span class="font-semibold text-indigo-600">{{ $compensation_stats['available_days'] }} hari</span>
                 </div>
                 <div class="flex justify-between">
-                    <span class="text-gray-600 dark:text-gray-400">Digunakan Bulan Ini:</span>
-                    <span class="font-semibold text-blue-600">{{ $compensation_stats['used_this_month'] }} hari</span>
+                    <span class="text-gray-600 dark:text-gray-400">Kompensasi Digunakan Bulan Ini:</span>
+                    <span class="font-semibold text-indigo-600">{{ $compensation_stats['used_this_month'] }} hari</span>
                 </div>
-                <div class="flex justify-between">
-                    <span class="text-gray-600 dark:text-gray-400">Diperoleh Bulan Ini:</span>
-                    <span class="font-semibold text-green-600">{{ $compensation_stats['total_earned_this_month'] }} hari</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-gray-600 dark:text-gray-400">Akan Expired:</span>
-                    <span class="font-semibold text-{{ $compensation_stats['expiring_soon'] > 0 ? 'yellow' : 'gray' }}-600">
-                        {{ $compensation_stats['expiring_soon'] }} hari
-                    </span>
-                </div>
-                
-                @if($compensation_stats['expiring_soon'] > 0)
+                 @if($compensation_stats['expiring_soon'] > 0)
                 <div class="p-3 mt-4 bg-yellow-50 border border-yellow-200 rounded-lg dark:bg-yellow-900/20 dark:border-yellow-800">
                     <p class="text-sm text-yellow-800 dark:text-yellow-200">
-                        ⏰ Ada {{ $compensation_stats['expiring_soon'] }} kompensasi yang akan kadaluarsa dalam 30 hari!
-                    </p>
-                </div>
-                @endif
-
-                @if($compensation_stats['available_days'] > 0)
-                <div class="p-3 mt-4 bg-indigo-50 border border-indigo-200 rounded-lg dark:bg-indigo-900/20 dark:border-indigo-800">
-                    <p class="text-sm text-indigo-800 dark:text-indigo-200">
-                        💡 Anda memiliki {{ $compensation_stats['available_days'] }} hari kompensasi yang bisa digunakan untuk tidak masuk kerja.
+                        ⚠️ {{ $compensation_stats['expiring_soon'] }} hari kompensasi akan hangus dalam 30 hari!
                     </p>
                 </div>
                 @endif
             </div>
-            @else
-            <div class="text-center text-gray-500 dark:text-gray-400">
-                <p class="text-sm">Tidak ada kompensasi tersedia</p>
-            </div>
-            @endif
         </div>
     </div>
-
-    {{-- Modal Detail Hari dengan Kompensasi --}}
-    <div id="dayDetailModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-50">
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="w-full max-w-md p-6 bg-white rounded-lg shadow-lg dark:bg-gray-800">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Detail Kehadiran</h3>
-                    <button onclick="closeDayDetail()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
-                </div>
-                <div id="dayDetailContent">
-                    <!-- Content will be inserted here by JavaScript -->
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- JavaScript untuk Modal --}}
-    <script>
-        function showDayDetail(day) {
-            const modal = document.getElementById('dayDetailModal');
-            const content = document.getElementById('dayDetailContent');
-            
-            let detailHtml = `
-                <div class="space-y-3">
-                    <div>
-                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Tanggal:</span>
-                        <p class="text-gray-900 dark:text-gray-100">${day.date} ${document.querySelector('h2').textContent.split(' - ')[1]}</p>
-                    </div>
-                    <div>
-                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Status:</span>
-                        <p class="text-gray-900 dark:text-gray-100">${day.status_full}</p>
-                    </div>
-                    <div>
-                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Jam Masuk:</span>
-                        <p class="text-gray-900 dark:text-gray-100">${day.jam_masuk}</p>
-                    </div>
-                    <div>
-                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Jam Pulang:</span>
-                        <p class="text-gray-900 dark:text-gray-100">${day.jam_pulang}</p>
-                    </div>
-            `;
-            
-            if (day.metode_absen) {
-                detailHtml += `
-                    <div>
-                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Metode Absen:</span>
-                        <p class="text-gray-900 dark:text-gray-100">${getMetodeAbsenLabel(day.metode_absen)}</p>
-                    </div>
-                `;
-            }
-            
-            // INFO KOMPENSASI
-            if (day.compensation_info) {
-                detailHtml += `
-                    <div>
-                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Info Kompensasi:</span>
-                        <div class="mt-1 p-2 bg-indigo-50 rounded text-sm">
-                            <p class="text-indigo-900">Dari kerja: ${day.compensation_info.work_date}</p>
-                            <p class="text-indigo-700">Alasan: ${day.compensation_info.work_reason}</p>
-                            <p class="text-indigo-600">Jam kerja: ${day.compensation_info.work_hours} jam</p>
-                        </div>
-                    </div>
-                `;
-            }
-            
-            if (day.leave_type) {
-                detailHtml += `
-                    <div>
-                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Jenis Cuti:</span>
-                        <p class="text-gray-900 dark:text-gray-100">${day.leave_type}</p>
-                    </div>
-                `;
-            }
-            
-            if (day.leave_reason) {
-                detailHtml += `
-                    <div>
-                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Alasan:</span>
-                        <p class="text-gray-900 dark:text-gray-100">${day.leave_reason}</p>
-                    </div>
-                `;
-            }
-            
-            if (day.notes) {
-                detailHtml += `
-                    <div>
-                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Catatan:</span>
-                        <p class="text-gray-900 dark:text-gray-100">${day.notes}</p>
-                    </div>
-                `;
-            }
-            
-            detailHtml += '</div>';
-            
-            content.innerHTML = detailHtml;
-            modal.classList.remove('hidden');
-        }
-        
-        function closeDayDetail() {
-            document.getElementById('dayDetailModal').classList.add('hidden');
-        }
-        
-        function getMetodeAbsenLabel(metode) {
-            switch(metode) {
-                case 'qrcode': return 'QR Code';
-                case 'manual_hrd': return 'Manual HRD';
-                case 'system_generated': return 'System (Cuti/Kompensasi)';
-                case 'bulk_manual_hrd': return 'Bulk Manual HRD';
-                case 'sistem': return 'Sistem';
-                default: return metode || 'Unknown';
-            }
-        }
-        
-        // Close modal when clicking outside
-        document.getElementById('dayDetailModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeDayDetail();
-            }
-        });
-        
-        // Close modal with Escape key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeDayDetail();
-            }
-        });
-    </script>
+</div>
 </x-filament-panels::page>
