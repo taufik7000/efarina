@@ -238,5 +238,117 @@ public function getWorkingDaysInMonth($year, $month): int
     return $workingDays;
 }
 
+/**
+ * Relasi ke compensations
+ */
+public function compensations(): HasMany
+{
+    return $this->hasMany(Compensation::class);
+}
+
+/**
+ * Relasi ke compensations yang disetujui user ini
+ */
+public function approvedCompensations(): HasMany
+{
+    return $this->hasMany(Compensation::class, 'approved_by');
+}
+
+/**
+ * Get available compensations yang bisa digunakan
+ */
+public function getAvailableCompensations()
+{
+    return $this->compensations()->available()->orderBy('expires_at', 'asc')->get();
+}
+
+/**
+ * Get total available compensation days
+ */
+public function getTotalAvailableCompensationDays(): int
+{
+    return $this->compensations()->available()->count();
+}
+
+/**
+ * Get compensations yang akan expired dalam 30 hari
+ */
+public function getExpiringCompensations($days = 30)
+{
+    return $this->compensations()
+        ->where('status', 'earned')
+        ->where('expires_at', '<=', now()->addDays($days))
+        ->where('expires_at', '>', now())
+        ->orderBy('expires_at', 'asc')
+        ->get();
+}
+
+/**
+ * Check apakah user punya kompensasi tersedia untuk tanggal tertentu
+ */
+public function hasAvailableCompensationFor(Carbon $date): bool
+{
+    // Tidak bisa pakai kompensasi untuk hari Minggu
+    if ($date->dayOfWeek === Carbon::SUNDAY) {
+        return false;
+    }
+
+    return $this->compensations()
+        ->available()
+        ->where('expires_at', '>', $date)
+        ->exists();
+}
+
+/**
+ * Use compensation for specific date
+ */
+public function useCompensationFor(Carbon $date, ?string $notes = null): ?Compensation
+{
+    if (!$this->hasAvailableCompensationFor($date)) {
+        return null;
+    }
+
+    // Ambil kompensasi yang paling lama (FIFO)
+    $compensation = $this->compensations()
+        ->available()
+        ->where('expires_at', '>', $date)
+        ->orderBy('expires_at', 'asc')
+        ->first();
+
+    if ($compensation && $compensation->use($date, $notes)) {
+        return $compensation;
+    }
+
+    return null;
+}
+
+/**
+ * Create compensation dari kerja di hari libur
+ */
+public function createCompensationFromHolidayWork(
+    Carbon $workDate,
+    Carbon $startTime,
+    Carbon $endTime,
+    string $reason,
+    ?int $approverId = null
+): Compensation
+{
+    $workHours = $endTime->diffInHours($startTime);
+    
+    // Kompensasi expired dalam 90 hari (bisa disesuaikan policy)
+    $expiresAt = $workDate->copy()->addDays(90);
+
+    return $this->compensations()->create([
+        'work_date' => $workDate,
+        'work_start_time' => $startTime->format('H:i:s'),
+        'work_end_time' => $endTime->format('H:i:s'),
+        'work_hours' => $workHours,
+        'work_reason' => $reason,
+        'expires_at' => $expiresAt,
+        'approved_by' => $approverId,
+        'approved_at' => $approverId ? now() : null,
+        'status' => $approverId ? 'earned' : 'earned', // Auto approved untuk sekarang
+    ]);
+}
 
 }

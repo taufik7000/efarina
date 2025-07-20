@@ -78,4 +78,46 @@ public function isOnLeave(): bool
 {
     return in_array($this->status, ['Cuti', 'Sakit', 'Izin']);
 }
+/**
+ * Relasi ke compensation
+ */
+public function compensation(): BelongsTo
+{
+    return $this->belongsTo(Compensation::class);
+}
+
+/**
+ * Check if this attendance is compensation
+ */
+public function isCompensation(): bool
+{
+    return $this->status === 'Kompensasi Libur';
+}
+
+/**
+ * Check if this attendance is holiday work
+ */
+public function isHolidayWork(): bool
+{
+    return $this->tanggal && Carbon::parse($this->tanggal)->dayOfWeek === Carbon::SUNDAY;
+}
+
+/**
+ * Get formatted status dengan emoji
+ */
+public function getFormattedStatusAttribute(): string
+{
+    $statusMap = [
+        'Tepat Waktu' => '✅ Tepat Waktu',
+        'Terlambat' => '⏰ Terlambat',
+        'Alfa' => '❌ Alfa',
+        'Cuti' => '🏖️ Cuti',
+        'Sakit' => '🤒 Sakit',
+        'Izin' => '📝 Izin',
+        'Kompensasi Libur' => '🔄 Kompensasi Libur',
+    ];
+
+    return $statusMap[$this->status] ?? $this->status;
+}
+
 }

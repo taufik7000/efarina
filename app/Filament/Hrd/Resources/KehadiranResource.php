@@ -194,12 +194,14 @@ class KehadiranResource extends Resource
                         $currentMonth = now()->month;
                         
                         return $query->whereHas('kehadiran', function ($query) {
-                            // This is a dummy query, actual filtering will be done in collection
                         })->get()->filter(function ($user) use ($currentYear, $currentMonth) {
                             return $user->getRemainingLeaveQuotaInMonth($currentYear, $currentMonth) <= 1;
                         });
                     }),
             ])
+
+
+            
             ->actions([
                 // Action manual untuk menandai izin/sakit mendadak
                 Tables\Actions\Action::make('mark_manual_leave')
