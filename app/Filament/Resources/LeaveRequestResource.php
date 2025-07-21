@@ -21,11 +21,9 @@ class LeaveRequestResource extends Resource
     protected static ?string $model = LeaveRequest::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-arrow-up';
-
     protected static ?string $navigationGroup = 'Absensi';
     protected static ?string $navigationLabel = 'Pengajuan Cuti';
     protected static ?string $pluralModelLabel = 'Pengajuan Cuti';
-    
     protected static ?int $navigationSort = 2;
     protected static ?string $slug = 'pengajuan-cuti';
 
@@ -45,25 +43,39 @@ class LeaveRequestResource extends Resource
                             ->required(),
                         Forms\Components\Select::make('leave_type')
                             ->label('Jenis Cuti')
-                            ->options(['Cuti Tahunan' => 'Cuti Tahunan', 'Cuti Sakit' => 'Cuti Sakit', 'Cuti Alasan Penting' => 'Cuti Alasan Penting', 'Cuti Melahirkan' => 'Cuti Melahirkan'])
+                            ->options([
+                                'Cuti Tahunan' => 'Cuti Tahunan',
+                                'Cuti Sakit' => 'Cuti Sakit',
+                                'Cuti Alasan Penting' => 'Cuti Alasan Penting',
+                                'Cuti Melahirkan' => 'Cuti Melahirkan'
+                            ])
                             ->required(),
-                         Forms\Components\DatePicker::make('start_date')
+                        Forms\Components\DatePicker::make('start_date')
                             ->label('Tanggal Mulai')
                             ->native(false)
                             ->required()
-                            // --- TAMBAHKAN DUA BARIS INI ---
                             ->minDate(now()->addDays(7))
                             ->helperText('Pengajuan cuti minimal 7 hari sebelum tanggal mulai.'),
-                        
                         Forms\Components\DatePicker::make('end_date')
                             ->label('Tanggal Selesai')
                             ->native(false)
                             ->required()
                             ->minDate(fn (Forms\Get $get) => $get('start_date'))
                             ->helperText('Tanggal selesai tidak boleh sebelum tanggal mulai.'),
-                        Forms\Components\Select::make('replacement_user_id')->label('Pilih Pengganti (Opsional)')->options(User::where('id', '!=', auth()->id())->pluck('name', 'id'))->searchable()->helperText('Pilih rekan kerja yang akan menggantikan Anda selama cuti.'),
-                        Forms\Components\Textarea::make('reason')->label('Alasan Cuti')->required()->columnSpanFull(),
-                        Forms\Components\FileUpload::make('attachment')->label('Lampiran (Contoh: Surat Dokter)')->directory('leave-attachments')->visibility('private')->openable(),
+                        Forms\Components\Select::make('replacement_user_id')
+                            ->label('Pilih Pengganti (Opsional)')
+                            ->options(User::where('id', '!=', auth()->id())->pluck('name', 'id'))
+                            ->searchable()
+                            ->helperText('Pilih rekan kerja yang akan menggantikan Anda selama cuti.'),
+                        Forms\Components\Textarea::make('reason')
+                            ->label('Alasan Cuti')
+                            ->required()
+                            ->columnSpanFull(),
+                        Forms\Components\FileUpload::make('attachment')
+                            ->label('Lampiran (Contoh: Surat Dokter)')
+                            ->directory('leave-attachments')
+                            ->visibility('private')
+                            ->openable(),
                     ])->columns(2),
             ]);
     }
@@ -71,7 +83,7 @@ class LeaveRequestResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->recordUrl(null) // <-- Menghapus link ke halaman view
+            ->recordUrl(null)
             ->columns([
                 Tables\Columns\TextColumn::make('user.name')->label('Nama Pengaju')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('leave_type')->label('Jenis Cuti')->badge(),
@@ -90,11 +102,46 @@ class LeaveRequestResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make()->infolist(self::getInfolistSchema()),
                 Tables\Actions\EditAction::make()->visible(fn (LeaveRequest $record) => $record->status === 'pending' && $record->user_id === auth()->id()),
+                
+                // ACTION UNTUK PENGGANTI MENYETUJUI/MENOLAK
                 Tables\Actions\Action::make('approve_replacement')
-                    ->label('Setujui Penggantian')->icon('heroicon-o-check-circle')->color('success')->requiresConfirmation()
-                    ->modalHeading('Konfirmasi Persetujuan')->modalDescription('Apakah Anda yakin ingin menyetujui untuk menjadi pengganti?')
-                    ->visible(fn (LeaveRequest $record): bool => $record->replacement_user_id === auth()->id() && $record->replacement_status === 'pending')
-                    ->action(fn (LeaveRequest $record) => $record->update(['replacement_status' => 'approved'])),
+                    ->label('Setujui Penggantian')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('Konfirmasi Persetujuan')
+                    ->modalDescription('Apakah Anda yakin ingin menyetujui untuk menjadi pengganti?')
+                    ->visible(fn (LeaveRequest $record): bool => 
+                        $record->replacement_user_id === auth()->id() && 
+                        $record->replacement_status === 'pending'
+                    )
+                    ->action(function (LeaveRequest $record) {
+                        $record->update(['replacement_status' => 'approved']);
+                        
+                        // KIRIM NOTIFIKASI KE PENGAJU
+                        \Filament\Notifications\Notification::make()
+                            ->title('Pengganti Menyetujui')
+                            ->body("{$record->replacementUser->name} menyetujui menjadi pengganti Anda")
+                            ->icon('heroicon-o-check-circle')
+                            ->success()
+                            ->sendToDatabase($record->user);
+                        
+                        // KIRIM NOTIFIKASI KE HRD
+                        $hrdUsers = User::role(['hrd', 'admin'])->get();
+                        foreach ($hrdUsers as $hrd) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Pengganti Disetujui')
+                                ->body("Pengganti untuk cuti {$record->user->name} telah disetujui")
+                                ->icon('heroicon-o-check-circle')
+                                ->info()
+                                ->actions([
+                                    \Filament\Notifications\Actions\Action::make('review')
+                                        ->label('Review Pengajuan')
+                                        ->url('/hrd/leave-request-managements')
+                                ])
+                                ->sendToDatabase($hrd);
+                        }
+                    }),
             ])
             ->bulkActions([])
             ->defaultSort('created_at', 'desc')
@@ -119,11 +166,13 @@ class LeaveRequestResource extends Resource
                 ])->columns(2),
             InfolistSection::make('Status Persetujuan')
                 ->schema([
-                    TextEntry::make('status')->label('Status Akhir')->badge()->color(fn (string $state): string => match ($state) { 'pending' => 'warning', 'approved' => 'success', 'rejected' => 'danger', default => 'gray' }),
+                    TextEntry::make('status')->label('Status Akhir')->badge()
+                        ->color(fn (string $state): string => match ($state) { 'pending' => 'warning', 'approved' => 'success', 'rejected' => 'danger', default => 'gray' }),
                     TextEntry::make('replacementUser.name')->label('Pengganti')->placeholder('Tidak ada'),
-                    TextEntry::make('replacement_status')->label('Persetujuan Pengganti')->badge()->color(fn (string $state): string => match ($state) { 'pending' => 'warning', 'approved' => 'success', 'rejected' => 'danger', default => 'gray' }),
+                    TextEntry::make('replacement_status')->label('Persetujuan Pengganti')->badge()
+                        ->color(fn (string $state): string => match ($state) { 'pending' => 'warning', 'approved' => 'success', 'rejected' => 'danger', default => 'gray' }),
                     TextEntry::make('approver.name')->label('Disetujui/Ditolak oleh')->placeholder('Belum ada tindakan'),
-                    TextEntry::make('action_at')->label('Tanggal Tindakan')->dateTime(),
+                    TextEntry::make('approved_at')->label('Tanggal Tindakan')->dateTime(),
                     TextEntry::make('rejection_reason')->label('Alasan Penolakan')->visible(fn ($state) => !empty($state)),
                 ])->columns(2),
         ];
@@ -134,7 +183,6 @@ class LeaveRequestResource extends Resource
         return [
             'index' => Pages\ListLeaveRequests::route('/'),
             'create' => Pages\CreateLeaveRequest::route('/create'),
-            // Halaman view dan edit hanya diakses melalui aksi, tidak dari URL langsung
         ];
     }
 }

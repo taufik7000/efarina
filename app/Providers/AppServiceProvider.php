@@ -6,8 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL;
 use App\Models\Project;
+use App\Models\LeaveRequest;
 use App\Observers\ProjectObserver;
-
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -24,7 +24,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Registrasi observer yang sudah ada
         Project::observe(ProjectObserver::class);
+
         if ($this->app->isLocal()) {
             Model::unguard();
         }
@@ -37,4 +39,8 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
     }
+
+    /**
+     * Register event listeners untuk Leave Request
+     */
 }

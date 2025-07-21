@@ -30,6 +30,7 @@ class HrdPanelProvider extends PanelProvider
             ])
             ->viteTheme('resources/css/filament/hrd/theme.css')
             ->databaseNotifications()
+            ->databaseNotificationsPolling('5s')  
             ->discoverResources(in: app_path('Filament/Hrd/Resources'), for: 'App\\Filament\\Hrd\\Resources')
             ->discoverPages(in: app_path('Filament/Hrd/Pages'), for: 'App\\Filament\\Hrd\\Pages')
             ->discoverWidgets(in: app_path('Filament/Hrd/Widgets'), for: 'App\\Filament\\Hrd\\Widgets')

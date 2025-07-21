@@ -5,6 +5,9 @@ namespace App\Filament\Hrd\Pages;
 use App\Models\User;
 use App\Services\HolidayService;
 use Filament\Pages\Page;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
+use Filament\Notifications\Notification;
 use Illuminate\Support\Carbon;
 
 class LaporanKehadiran extends Page
@@ -14,7 +17,7 @@ class LaporanKehadiran extends Page
     protected static ?string $navigationGroup = 'Manajemen Absensi';
     protected static ?string $navigationLabel = 'Laporan Kehadiran Bulanan';
 
-    protected static ?int $navigationSort = 5 ;
+    protected static ?int $navigationSort = 5;
     protected static ?string $title = 'Laporan Kehadiran Bulanan';
 
     public $bulan;
@@ -36,6 +39,54 @@ class LaporanKehadiran extends Page
             $this->holidayService = new HolidayService();
         }
         return $this->holidayService;
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('changePeriod')
+                ->label('Ubah Periode')
+                ->icon('heroicon-o-calendar')
+                ->form([
+                    Select::make('bulan')
+                        ->label('Bulan')
+                        ->options([
+                            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+                            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+                            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+                        ])
+                        ->default($this->bulan)
+                        ->required(),
+                    Select::make('tahun')
+                        ->label('Tahun')
+                        ->options(array_combine(
+                            range(now()->year - 2, now()->year + 1),
+                            range(now()->year - 2, now()->year + 1)
+                        ))
+                        ->default($this->tahun)
+                        ->required(),
+                ])
+                ->action(function (array $data): void {
+                    $this->bulan = $data['bulan'];
+                    $this->tahun = $data['tahun'];
+                    $this->generateReport();
+                    
+                    Notification::make()
+                        ->title('Periode diperbarui')
+                        ->success()
+                        ->send();
+                }),
+
+            Action::make('exportPdf')
+                ->label('Export PDF')
+                ->icon('heroicon-o-document-arrow-down')
+                ->color('danger')
+                ->url(fn() => url('/hrd/export/attendance-pdf?' . http_build_query([
+                    'bulan' => $this->bulan,
+                    'tahun' => $this->tahun
+                ])))
+                ->openUrlInNewTab(),
+        ];
     }
 
     public function generateReport(): void
