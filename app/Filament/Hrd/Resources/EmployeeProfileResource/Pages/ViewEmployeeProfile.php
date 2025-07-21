@@ -16,20 +16,6 @@ class ViewEmployeeProfile extends ViewRecord
             Actions\EditAction::make()
                 ->label('Edit Profile'),
 
-            Actions\Action::make('manage_documents')
-                ->label('Kelola Dokumen')
-                ->icon('heroicon-o-document-duplicate')
-                ->color('info')
-                ->url(fn () => static::getResource()::getUrl('documents', ['record' => $this->getRecord()])),
-
-            Actions\Action::make('print_profile')
-                ->label('Print Profile')
-                ->icon('heroicon-o-printer')
-                ->color('gray')
-                ->action(function () {
-                    // Logic untuk print/PDF
-                    $this->notify('info', 'Fitur print akan segera tersedia');
-                }),
 
             Actions\Action::make('send_completion_reminder')
                 ->label('Kirim Reminder')

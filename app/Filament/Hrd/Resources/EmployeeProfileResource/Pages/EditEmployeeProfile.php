@@ -17,11 +17,6 @@ class EditEmployeeProfile extends EditRecord
             Actions\ViewAction::make()
                 ->label('Lihat Profile'),
 
-            Actions\Action::make('manage_documents')
-                ->label('Kelola Dokumen')
-                ->icon('heroicon-o-document-duplicate')
-                ->color('info')
-                ->url(fn () => static::getResource()::getUrl('documents', ['record' => $this->getRecord()])),
 
             Actions\DeleteAction::make()
                 ->label('Hapus Karyawan')

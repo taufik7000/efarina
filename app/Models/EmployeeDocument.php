@@ -24,6 +24,7 @@ class EmployeeDocument extends Model
         'is_verified',
         'verified_at',
         'verified_by',
+        'verification_notes',
     ];
 
     protected $casts = [
@@ -40,10 +41,12 @@ class EmployeeDocument extends Model
         'ijazah' => 'Ijazah',
         'sertifikat' => 'Sertifikat',
         'foto' => 'Foto Profil',
+        'npwp' => 'NPWP',
+        'bpjs' => 'BPJS',
         'other' => 'Lainnya'
     ];
 
-    // Relasi
+    // ===== RELASI =====
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -54,7 +57,7 @@ class EmployeeDocument extends Model
         return $this->belongsTo(User::class, 'verified_by');
     }
 
-    // Accessors
+    // ===== ACCESSORS =====
     public function getDocumentTypeNameAttribute(): string
     {
         return self::DOCUMENT_TYPES[$this->document_type] ?? ucfirst($this->document_type);
@@ -107,29 +110,37 @@ class EmployeeDocument extends Model
 
     public function getFileTypeIconAttribute(): string
     {
+        if (!$this->file_name) {
+            return 'heroicon-o-document';
+        }
+
         $extension = pathinfo($this->file_name, PATHINFO_EXTENSION);
         
         return match(strtolower($extension)) {
             'pdf' => 'heroicon-o-document-text',
-            'jpg', 'jpeg', 'png', 'gif' => 'heroicon-o-photo',
+            'jpg', 'jpeg', 'png', 'gif', 'webp' => 'heroicon-o-photo',
             'doc', 'docx' => 'heroicon-o-document',
             'xls', 'xlsx' => 'heroicon-o-table-cells',
+            'ppt', 'pptx' => 'heroicon-o-presentation-chart-bar',
+            'zip', 'rar' => 'heroicon-o-archive-box',
             default => 'heroicon-o-document'
         };
     }
 
     public function getUploadedTimeAgoAttribute(): string
     {
-        return $this->uploaded_at->diffForHumans();
+        $uploadedAt = $this->uploaded_at ?? $this->created_at;
+        return $uploadedAt->diffForHumans();
     }
 
-    // Helper Methods
-    public function verify(User $verifier): bool
+    // ===== HELPER METHODS =====
+    public function verify(User $verifier, ?string $notes = null): bool
     {
         return $this->update([
             'is_verified' => true,
             'verified_at' => now(),
             'verified_by' => $verifier->id,
+            'verification_notes' => $notes ?? 'Diverifikasi oleh HRD',
         ]);
     }
 
@@ -139,12 +150,13 @@ class EmployeeDocument extends Model
             'is_verified' => false,
             'verified_at' => null,
             'verified_by' => null,
+            'verification_notes' => null,
         ]);
     }
 
     public function fileExists(): bool
     {
-        return Storage::exists($this->file_path);
+        return $this->file_path && Storage::exists($this->file_path);
     }
 
     public function deleteFile(): bool
@@ -174,12 +186,14 @@ class EmployeeDocument extends Model
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'application/vnd.ms-excel',
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
         ];
         
         return in_array($this->mime_type, $officeTypes);
     }
 
-    // Scopes
+    // ===== SCOPES =====
     public function scopeVerified($query)
     {
         return $query->where('is_verified', true);
@@ -190,7 +204,7 @@ class EmployeeDocument extends Model
         return $query->where('is_verified', false);
     }
 
-    public function scopeByType($query, string $type)
+    public function scopeOfType($query, string $type)
     {
         return $query->where('document_type', $type);
     }
@@ -200,35 +214,39 @@ class EmployeeDocument extends Model
         return $query->where('user_id', $userId);
     }
 
-    public function scopeImages($query)
-    {
-        return $query->where('mime_type', 'like', 'image/%');
-    }
-
-    public function scopePdfs($query)
-    {
-        return $query->where('mime_type', 'application/pdf');
-    }
-
-    public function scopeRecentlyUploaded($query, int $days = 7)
-    {
-        return $query->where('uploaded_at', '>=', now()->subDays($days));
-    }
-
-    // Boot method untuk auto-set uploaded_at
+    // ===== BOOT METHODS =====
     protected static function boot()
     {
         parent::boot();
-        
+
+        // Auto-set uploaded_at jika belum diset
         static::creating(function ($document) {
             if (!$document->uploaded_at) {
                 $document->uploaded_at = now();
             }
         });
-        
-        // Auto-delete file ketika record dihapus
+
+        // Hapus file saat model dihapus
         static::deleting(function ($document) {
             $document->deleteFile();
         });
+    }
+
+    // ===== STATIC METHODS =====
+    public static function getDocumentTypeOptions(): array
+    {
+        return self::DOCUMENT_TYPES;
+    }
+
+    public static function getUserDocumentsSummary($userId): array
+    {
+        $documents = self::where('user_id', $userId)->get();
+        
+        return [
+            'total' => $documents->count(),
+            'verified' => $documents->where('is_verified', true)->count(),
+            'pending' => $documents->where('is_verified', false)->count(),
+            'by_type' => $documents->groupBy('document_type')->map->count(),
+        ];
     }
 }

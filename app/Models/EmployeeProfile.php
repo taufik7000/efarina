@@ -16,9 +16,14 @@ class EmployeeProfile extends Model
         'nik_ktp',
         'tempat_lahir',
         'tanggal_lahir',
+        'jenis_kelamin',
+        'agama',
+        'status_nikah',
         'alamat',
+        'no_telepon',
         'kontak_darurat_nama',
         'kontak_darurat_telp',
+        'kontak_darurat_hubungan',
         'gaji_pokok',
         'no_rekening',
         'npwp',
@@ -30,13 +35,13 @@ class EmployeeProfile extends Model
         'gaji_pokok' => 'decimal:2',
     ];
 
-    // Relasi
+    // ===== RELASI =====
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    // Accessors & Helper Methods
+    // ===== ACCESSORS =====
     public function getFullNameAttribute(): string
     {
         return $this->user->name ?? 'N/A';
@@ -99,7 +104,54 @@ class EmployeeProfile extends Model
         return substr($this->no_rekening, 0, 3) . str_repeat('*', $length - 6) . substr($this->no_rekening, -3);
     }
 
-    // Helper Methods
+    public function getJenisKelaminLabelAttribute(): string
+    {
+        return match($this->jenis_kelamin) {
+            'L' => 'Laki-laki',
+            'P' => 'Perempuan',
+            default => 'Belum diisi'
+        };
+    }
+
+    public function getStatusNikahLabelAttribute(): string
+    {
+        return match($this->status_nikah) {
+            'belum_menikah' => 'Belum Menikah',
+            'menikah' => 'Menikah',
+            'cerai' => 'Cerai',
+            default => 'Belum diisi'
+        };
+    }
+
+    public function getEmergencyContactFullAttribute(): ?string
+    {
+        if (!$this->kontak_darurat_nama) {
+            return null;
+        }
+        
+        $contact = $this->kontak_darurat_nama;
+        
+        if ($this->kontak_darurat_telp) {
+            $contact .= ' (' . $this->kontak_darurat_telp . ')';
+        }
+        
+        if ($this->kontak_darurat_hubungan) {
+            $contact .= ' - ' . $this->kontak_darurat_hubungan;
+        }
+        
+        return $contact;
+    }
+
+    public function getBankAccountFullAttribute(): ?string
+    {
+        if (!$this->no_rekening) {
+            return null;
+        }
+        
+        return $this->masked_rekening;
+    }
+
+    // ===== HELPER METHODS =====
     public function isProfileComplete(): bool
     {
         $requiredFields = [
@@ -125,10 +177,15 @@ class EmployeeProfile extends Model
         $allFields = [
             'nik_ktp',
             'tempat_lahir',
-            'tanggal_lahir', 
+            'tanggal_lahir',
+            'jenis_kelamin',
+            'agama',
+            'status_nikah',
             'alamat',
+            'no_telepon',
             'kontak_darurat_nama',
             'kontak_darurat_telp',
+            'kontak_darurat_hubungan',
             'gaji_pokok',
             'no_rekening',
             'npwp'
@@ -144,7 +201,7 @@ class EmployeeProfile extends Model
         return round(($filledFields / count($allFields)) * 100);
     }
 
-    // Scopes
+    // ===== SCOPES =====
     public function scopeComplete($query)
     {
         return $query->whereNotNull('nik_ktp')
@@ -175,5 +232,50 @@ class EmployeeProfile extends Model
     public function scopeBornInYear($query, $year)
     {
         return $query->whereYear('tanggal_lahir', $year);
+    }
+
+    public function scopeByGender($query, $gender)
+    {
+        return $query->where('jenis_kelamin', $gender);
+    }
+
+    public function scopeByMaritalStatus($query, $status)
+    {
+        return $query->where('status_nikah', $status);
+    }
+
+    public function scopeByReligion($query, $religion)
+    {
+        return $query->where('agama', $religion);
+    }
+
+    // ===== STATIC METHODS =====
+    public static function getGenderOptions(): array
+    {
+        return [
+            'L' => 'Laki-laki',
+            'P' => 'Perempuan',
+        ];
+    }
+
+    public static function getReligionOptions(): array
+    {
+        return [
+            'Islam' => 'Islam',
+            'Kristen' => 'Kristen',
+            'Katolik' => 'Katolik',
+            'Hindu' => 'Hindu',
+            'Buddha' => 'Buddha',
+            'Konghucu' => 'Konghucu',
+        ];
+    }
+
+    public static function getMaritalStatusOptions(): array
+    {
+        return [
+            'belum_menikah' => 'Belum Menikah',
+            'menikah' => 'Menikah',
+            'cerai' => 'Cerai',
+        ];
     }
 }

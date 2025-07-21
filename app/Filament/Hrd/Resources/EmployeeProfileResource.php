@@ -22,10 +22,10 @@ class EmployeeProfileResource extends Resource
     protected static ?string $model = User::class;
     
     protected static ?string $navigationIcon = 'heroicon-o-identification';
-    protected static ?string $navigationGroup = 'Manajemen Karyawan';
+    protected static ?string $navigationGroup = 'Manajemen Organisasi';
     protected static ?string $navigationLabel = 'Profile Karyawan';
     protected static ?string $pluralModelLabel = 'Profile Karyawan';
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 4;
 
     public static function form(Form $form): Form
     {
@@ -71,27 +71,52 @@ class EmployeeProfileResource extends Resource
                             ->maxLength(255),
 
                         Forms\Components\DatePicker::make('tanggal_lahir')
-                            ->label('Tanggal Lahir')
-                            ->maxDate(now()->subYears(17)), // Minimal 17 tahun
+                            ->label('Tanggal Lahir'),
+
+                        Forms\Components\TextInput::make('no_telepon')
+                            ->label('No. Telepon')
+                            ->tel()
+                            ->maxLength(15),
+
+                        Forms\Components\Select::make('jenis_kelamin')
+                            ->label('Jenis Kelamin')
+                            ->options([
+                                'L' => 'Laki-laki',
+                                'P' => 'Perempuan',
+                            ]),
+
+                        Forms\Components\Select::make('agama')
+                            ->label('Agama')
+                            ->options([
+                                'Islam' => 'Islam',
+                                'Kristen' => 'Kristen',
+                                'Katolik' => 'Katolik',
+                                'Hindu' => 'Hindu',
+                                'Buddha' => 'Buddha',
+                                'Konghucu' => 'Konghucu',
+                            ]),
+
+                        Forms\Components\Select::make('status_nikah')
+                            ->label('Status Pernikahan')
+                            ->options([
+                                'belum_menikah' => 'Belum Menikah',
+                                'menikah' => 'Menikah',
+                                'cerai' => 'Cerai',
+                            ]),
 
                         Forms\Components\Textarea::make('alamat')
                             ->label('Alamat Lengkap')
                             ->rows(3)
                             ->columnSpanFull(),
 
-                        Forms\Components\TextInput::make('kontak_darurat_nama')
-                            ->label('Kontak Darurat - Nama')
-                            ->maxLength(255),
-
-                        Forms\Components\TextInput::make('kontak_darurat_telp')
-                            ->label('Kontak Darurat - Telepon')
+                        Forms\Components\TextInput::make('no_telepon')
+                            ->label('No. Telepon')
                             ->tel()
-                            ->maxLength(20)
-                            ->placeholder('08123456789'),
+                            ->maxLength(15),
                     ])
-                    ->columns(2),
+                    ->columns(3),
 
-                Forms\Components\Section::make('Data Finansial')
+                Forms\Components\Section::make('Informasi Keuangan')
                     ->relationship('employeeProfile')
                     ->schema([
                         Forms\Components\TextInput::make('gaji_pokok')
@@ -101,35 +126,34 @@ class EmployeeProfileResource extends Resource
                             ->placeholder('5000000'),
 
                         Forms\Components\TextInput::make('no_rekening')
-                            ->label('No. Rekening Bank')
-                            ->maxLength(50)
-                            ->placeholder('1234567890'),
+                            ->label('No. Rekening')
+                            ->maxLength(50),
 
                         Forms\Components\TextInput::make('npwp')
                             ->label('NPWP')
                             ->maxLength(20)
                             ->placeholder('12.345.678.9-012.345'),
                     ])
-                    ->columns(2),
+                    ->columns(3),
 
                 Forms\Components\Section::make('Catatan HRD')
                     ->relationship('employeeProfile')
                     ->schema([
                         Forms\Components\Textarea::make('notes_hrd')
                             ->label('Catatan Khusus')
-                            ->placeholder('Catatan internal HRD...')
+                            ->placeholder('Catatan khusus dari HRD...')
                             ->rows(3)
                             ->columnSpanFull(),
-                    ]),
+                    ])
+                    ->collapsible(),
             ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
-            ->query(User::query()->with(['employeeProfile', 'jabatan.divisi', 'employeeDocuments']))
             ->columns([
-                Tables\Columns\ImageColumn::make('profile_photo')
+                Tables\Columns\ImageColumn::make('photo_url')
                     ->label('Foto')
                     ->circular()
                     ->state(function (User $record): ?string {
@@ -231,7 +255,15 @@ class EmployeeProfileResource extends Resource
                     ->label('Kelola Dokumen')
                     ->icon('heroicon-o-document-duplicate')
                     ->color('info')
-                    ->url(fn (User $record): string => static::getUrl('documents', ['record' => $record])),
+                    ->url(fn (User $record): string => 
+                        EmployeeDocumentResource::getUrl('index', [
+                            'tableFilters' => [
+                                'user' => [
+                                    'value' => $record->id,
+                                ],
+                            ],
+                        ])
+                    ),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -247,8 +279,7 @@ class EmployeeProfileResource extends Resource
                                 ->send();
                         }),
                 ]),
-            ])
-            ->defaultSort('name');
+            ]);
     }
 
     public static function infolist(Infolist $infolist): Infolist
@@ -257,101 +288,135 @@ class EmployeeProfileResource extends Resource
             ->schema([
                 Components\Section::make('Informasi Dasar')
                     ->schema([
-                        Components\Split::make([
-                            Components\Grid::make(2)
-                                ->schema([
-                                    Components\TextEntry::make('name')
-                                        ->label('Nama Lengkap')
-                                        ->weight('bold')
-                                        ->size('lg'),
-                                    
-                                    Components\TextEntry::make('email')
-                                        ->label('Email')
-                                        ->copyable()
-                                        ->icon('heroicon-o-envelope'),
+                        Components\ImageEntry::make('photo_url')
+                            ->label('Foto Profile')
+                            ->state(function (User $record): ?string {
+                                $photo = $record->getDocument('foto');
+                                return $photo ? Storage::url($photo->file_path) : null;
+                            })
+                            ->defaultImageUrl(function (User $record): string {
+                                return 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&color=7F9CF5&background=EBF4FF';
+                            })
+                            ->circular()
+                            ->size(120),
 
-                                    Components\TextEntry::make('jabatan.nama_jabatan')
-                                        ->label('Jabatan')
-                                        ->badge()
-                                        ->color('info'),
+                        Components\TextEntry::make('name')
+                            ->label('Nama Lengkap'),
 
-                                    Components\TextEntry::make('jabatan.divisi.nama_divisi')
-                                        ->label('Divisi')
-                                        ->badge()
-                                        ->color('success'),
+                        Components\TextEntry::make('email')
+                            ->label('Email'),
 
-                                    Components\TextEntry::make('employment_start_date')
-                                        ->label('Tanggal Bergabung')
-                                        ->date('d F Y')
-                                        ->icon('heroicon-o-calendar'),
+                        Components\TextEntry::make('jabatan.nama_jabatan')
+                            ->label('Jabatan')
+                            ->placeholder('Belum diatur'),
 
-                                    Components\TextEntry::make('work_duration')
-                                        ->label('Masa Kerja')
-                                        ->state(function (User $record): string {
-                                            if (!$record->employment_start_date) return 'N/A';
-                                            return $record->employment_start_date->diffForHumans(null, true);
-                                        })
-                                        ->icon('heroicon-o-clock'),
-                                ]),
-                            
-                            Components\ImageEntry::make('profile_photo')
-                                ->label('Foto Profile')
-                                ->circular()
-                                ->state(function (User $record): ?string {
-                                    $photo = $record->getDocument('foto');
-                                    return $photo ? Storage::url($photo->file_path) : null;
-                                })
-                                ->defaultImageUrl('https://ui-avatars.com/api/?name=' . urlencode('N A') . '&color=7F9CF5&background=EBF4FF')
-                                ->grow(false),
-                        ]),
-                    ]),
+                        Components\TextEntry::make('jabatan.divisi.nama_divisi')
+                            ->label('Divisi')
+                            ->placeholder('Belum diatur'),
+
+                        Components\TextEntry::make('employment_start_date')
+                            ->label('Tanggal Bergabung')
+                            ->date('d F Y'),
+                    ])
+                    ->columns(3),
 
                 Components\Section::make('Data Personal')
                     ->schema([
                         Components\TextEntry::make('employeeProfile.nik_ktp')
                             ->label('NIK KTP')
-                            ->copyable(),
+                            ->placeholder('Belum diisi'),
 
                         Components\TextEntry::make('employeeProfile.birth_place_full')
-                            ->label('Tempat, Tanggal Lahir'),
+                            ->label('Tempat, Tanggal Lahir')
+                            ->placeholder('Belum diisi'),
 
                         Components\TextEntry::make('employeeProfile.age')
-                            ->label('Umur')
-                            ->suffix(' tahun'),
+                            ->label('Usia')
+                            ->suffix(' tahun')
+                            ->placeholder('-'),
+
+                        Components\TextEntry::make('employeeProfile.jenis_kelamin')
+                            ->label('Jenis Kelamin')
+                            ->formatStateUsing(fn (?string $state): string => match($state) {
+                                'L' => 'Laki-laki',
+                                'P' => 'Perempuan',
+                                default => 'Belum diisi'
+                            })
+                            ->placeholder('Belum diisi'),
+
+                        Components\TextEntry::make('employeeProfile.agama')
+                            ->label('Agama')
+                            ->placeholder('Belum diisi'),
+
+                        Components\TextEntry::make('employeeProfile.status_nikah')
+                            ->label('Status Pernikahan')
+                            ->formatStateUsing(fn (?string $state): string => match($state) {
+                                'belum_menikah' => 'Belum Menikah',
+                                'menikah' => 'Menikah',
+                                'cerai' => 'Cerai',
+                                default => 'Belum diisi'
+                            })
+                            ->placeholder('Belum diisi'),
 
                         Components\TextEntry::make('employeeProfile.alamat')
                             ->label('Alamat')
+                            ->placeholder('Belum diisi')
                             ->columnSpanFull(),
 
-                        Components\TextEntry::make('employeeProfile.kontak_darurat_nama')
-                            ->label('Kontak Darurat'),
+                        Components\TextEntry::make('employeeProfile.no_telepon')
+                            ->label('No. Telepon')
+                            ->placeholder('Belum diisi'),
 
-                        Components\TextEntry::make('employeeProfile.kontak_darurat_telp')
-                            ->label('No. Telepon Darurat')
-                            ->copyable(),
-                    ])
-                    ->columns(2),
-
-                Components\Section::make('Data Finansial')
-                    ->schema([
-                        Components\TextEntry::make('employeeProfile.formatted_gaji')
-                            ->label('Gaji Pokok')
-                            ->badge()
-                            ->color('success'),
-
-                        Components\TextEntry::make('employeeProfile.masked_rekening')
-                            ->label('No. Rekening')
-                            ->icon('heroicon-o-building-library'),
-
-                        Components\TextEntry::make('employeeProfile.masked_npwp')
-                            ->label('NPWP')
-                            ->icon('heroicon-o-document-text'),
+                        Components\TextEntry::make('emergency_contact_info')
+                            ->label('Kontak Darurat')
+                            ->state(function (User $record): string {
+                                $profile = $record->employeeProfile;
+                                if (!$profile || !$profile->kontak_darurat_nama) {
+                                    return 'Belum diisi';
+                                }
+                                
+                                $contact = $profile->kontak_darurat_nama;
+                                if ($profile->kontak_darurat_telp) {
+                                    $contact .= ' (' . $profile->kontak_darurat_telp . ')';
+                                }
+                                if ($profile->kontak_darurat_hubungan) {
+                                    $contact .= ' - ' . $profile->kontak_darurat_hubungan;
+                                }
+                                
+                                return $contact;
+                            })
+                            ->placeholder('Belum diisi')
+                            ->columnSpanFull(),
                     ])
                     ->columns(3),
 
-                Components\Section::make('Status Profile')
+                Components\Section::make('Informasi Keuangan')
                     ->schema([
-                        Components\TextEntry::make('profile_completion_percentage')
+                        Components\TextEntry::make('employeeProfile.formatted_gaji')
+                            ->label('Gaji Pokok')
+                            ->placeholder('Belum diatur'),
+
+                        Components\TextEntry::make('bank_account_info')
+                            ->label('Rekening Bank')
+                            ->state(function (User $record): string {
+                                $profile = $record->employeeProfile;
+                                if (!$profile || !$profile->no_rekening) {
+                                    return 'Belum diisi';
+                                }
+                                
+                                return $profile->masked_rekening;
+                            })
+                            ->placeholder('Belum diisi'),
+
+                        Components\TextEntry::make('employeeProfile.masked_npwp')
+                            ->label('NPWP')
+                            ->placeholder('Belum diisi'),
+                    ])
+                    ->columns(3),
+
+                Components\Section::make('Status Profile & Dokumen')
+                    ->schema([
+                        Components\TextEntry::make('profile_completion')
                             ->label('Kelengkapan Profile')
                             ->state(fn (User $record): string => $record->getProfileCompletionPercentage() . '%')
                             ->badge()
@@ -390,7 +455,6 @@ class EmployeeProfileResource extends Resource
             'create' => Pages\CreateEmployeeProfile::route('/create'),
             'view' => Pages\ViewEmployeeProfile::route('/{record}'),
             'edit' => Pages\EditEmployeeProfile::route('/{record}/edit'),
-            'documents' => Pages\ManageEmployeeDocuments::route('/{record}/documents'),
         ];
     }
 
