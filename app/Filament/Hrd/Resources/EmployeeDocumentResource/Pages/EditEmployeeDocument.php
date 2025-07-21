@@ -39,7 +39,7 @@ class EditEmployeeDocument extends EditRecord
 
                     return response()->download(
                         Storage::path($this->record->file_path),
-                        $this->record->getAttribute('file_name')
+                        $this->record->file_name
                     );
                 }),
 
