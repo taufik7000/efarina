@@ -23,6 +23,13 @@ class TransaksiResource extends Resource
     protected static ?string $pluralModelLabel = 'Transaksi';
     protected static ?int $navigationSort = 6;
 
+    public static function getWidgets(): array
+{
+    return [
+        \App\Filament\Widgets\SaldoAktualWidget::class,
+    ];
+}
+
     public static function form(Form $form): Form
     {
         return $form

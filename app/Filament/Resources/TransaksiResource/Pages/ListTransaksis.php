@@ -15,10 +15,31 @@ class ListTransaksis extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            Actions\CreateAction::make()
+                ->label('Buat Transaksi Baru')
+                ->icon('heroicon-o-plus'),
         ];
     }
 
+    // TAMBAHKAN: Method ini untuk menampilkan widgets di atas table
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            \App\Filament\Widgets\SaldoAktualWidget::class,
+        ];
+    }
+
+    // TAMBAHKAN: Customize widget grid layout
+    public function getHeaderWidgetsColumns(): int | array
+    {
+        return [
+            'sm' => 1,
+            'md' => 2, 
+            'lg' => 4,
+        ];
+    }
+
+    // Existing method - keep as is
     public function getTabs(): array
     {
         return [

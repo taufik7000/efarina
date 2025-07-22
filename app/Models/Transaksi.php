@@ -197,4 +197,39 @@ public function getCalculatedTotalAttribute(): float
 {
     return $this->items()->sum('subtotal');
 }
+
+/**
+ * Boot method untuk auto-generate nomor_transaksi
+ */
+protected static function boot()
+{
+    parent::boot();
+
+    static::creating(function ($transaksi) {
+        // Auto-generate nomor_transaksi jika belum ada
+        if (empty($transaksi->nomor_transaksi)) {
+            $transaksi->nomor_transaksi = $transaksi->generateNomorTransaksi();
+        }
+    });
+}
+
+/**
+ * Generate nomor transaksi otomatis
+ * Format: TRX-IN/YYYY/MM/XXXX atau TRX-OUT/YYYY/MM/XXXX
+ */
+private function generateNomorTransaksi(): string
+{
+    // Tentukan prefix berdasarkan jenis transaksi
+    $prefix = $this->jenis_transaksi === 'pemasukan' ? 'TRX-IN' : 'TRX-OUT';
+    $year = now()->format('Y');
+    $month = now()->format('m');
+
+    // Hitung counter berdasarkan tahun, bulan, dan jenis transaksi
+    $counter = static::whereYear('tanggal_transaksi', now()->year)
+        ->whereMonth('tanggal_transaksi', now()->month)
+        ->where('jenis_transaksi', $this->jenis_transaksi)
+        ->count() + 1;
+
+    return $prefix . '/' . $year . '/' . $month . '/' . str_pad($counter, 4, '0', STR_PAD_LEFT);
+}
 }
