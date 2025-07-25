@@ -130,7 +130,7 @@ class ViewTransaksi extends ViewRecord
                             // Lampiran dengan handling untuk array dan string
                             Section::make('Lampiran & Bukti Pembayaran')
                                 ->schema([
-                                    // Untuk attachments array (bukti pembayaran dari action)
+                                    // RepeatableEntry untuk attachments array
                                     RepeatableEntry::make('attachments')
                                         ->label('')
                                         ->schema([
@@ -166,39 +166,99 @@ class ViewTransaksi extends ViewRecord
                                                     $state ? \Carbon\Carbon::parse($state)->format('d M Y H:i') : 'Tidak diketahui'
                                                 ),
 
-                                            // Tampilkan gambar bukti pembayaran
+                                            // PERBAIKAN UTAMA: ImageEntry dengan path URL yang benar
                                             ImageEntry::make('filename')
                                                 ->label('Preview')
-                                                ->disk('public')
-                                                ->height(200)
-                                                ->width(300)
-                                                ->extraAttributes(['class' => 'rounded-lg shadow-sm'])
-                                                ->visible(
-                                                    fn($record) =>
-                                                    isset($record['filename']) &&
-                                                    is_string($record['filename']) &&
-                                                    in_array(strtolower(pathinfo($record['filename'], PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif', 'webp'])
-                                                ),
+                                                ->height(250)
+                                                ->width(400)
+                                                ->extraAttributes(['class' => 'rounded-lg shadow-sm border'])
+                                                ->getStateUsing(function ($record) {
+                                                    // PERBAIKAN: Gunakan URL langsung tanpa 'storage/'
+                                                    if (!isset($record['filename']))
+                                                        return null;
 
-                                            // Link download untuk file PDF atau non-image
+                                                    $filename = $record['filename'];
+                                                    $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+                                                    $isImage = in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp']);
+
+                                                    if ($isImage) {
+                                                        // URL langsung ke file: /bukti-pembayaran/filename.jpg
+                                                        return asset($filename);
+                                                    }
+
+                                                    return null;
+                                                })
+                                                ->visible(function ($record) {
+                                                    if (!isset($record['filename']))
+                                                        return false;
+
+                                                    $filename = $record['filename'];
+                                                    $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+
+                                                    return in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp']);
+                                                }),
+
+                                            // Link untuk melihat gambar di tab baru
                                             TextEntry::make('filename')
-                                                ->label('Download File')
-                                                ->formatStateUsing(
-                                                    fn(?string $state): string =>
-                                                    $state ? '📎 ' . basename($state) : 'File tidak tersedia'
-                                                )
-                                                ->url(
-                                                    fn($record) =>
-                                                    isset($record['filename']) ? asset('storage/' . $record['filename']) : null
-                                                )
+                                                ->label('Lihat Gambar')
+                                                ->formatStateUsing(function ($record): string {
+                                                    if (!isset($record['filename']))
+                                                        return 'File tidak tersedia';
+
+                                                    $filename = $record['filename'];
+                                                    $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+                                                    $isImage = in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp']);
+
+                                                    if ($isImage) {
+                                                        return '🖼️ Buka gambar di tab baru';
+                                                    } else {
+                                                        return '📎 ' . basename($filename);
+                                                    }
+                                                })
+                                                ->url(function ($record) {
+                                                    if (!isset($record['filename']))
+                                                        return null;
+
+                                                    // PERBAIKAN: URL langsung tanpa 'storage/'
+                                                    return asset($record['filename']);
+                                                })
                                                 ->openUrlInNewTab()
-                                                ->color('primary')
-                                                ->visible(
-                                                    fn($record) =>
-                                                    isset($record['filename']) &&
-                                                    is_string($record['filename']) &&
-                                                    !in_array(strtolower(pathinfo($record['filename'], PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif', 'webp'])
-                                                ),
+                                                ->color('primary'),
+
+                                            // Link download
+                                            TextEntry::make('filename')
+                                                ->label('Download')
+                                                ->formatStateUsing(function ($record): string {
+                                                    $originalName = $record['original_name'] ?? $record['filename'] ?? 'file';
+                                                    return '⬇️ Download: ' . basename($originalName);
+                                                })
+                                                ->url(function ($record) {
+                                                    if (!isset($record['filename']))
+                                                        return null;
+
+                                                    // PERBAIKAN: URL langsung tanpa 'storage/'
+                                                    return asset($record['filename']);
+                                                })
+                                                ->openUrlInNewTab()
+                                                ->color('success'),
+
+                                            // Debug info (opsional, bisa dihapus setelah berhasil)
+                                            TextEntry::make('debug_url')
+                                                ->label('Debug URL')
+                                                ->formatStateUsing(function ($record): string {
+                                                    if (!isset($record['filename']))
+                                                        return 'No filename';
+
+                                                    $filename = $record['filename'];
+                                                    $assetUrl = asset($filename);
+                                                    $storageUrl = asset('storage/' . $filename);
+
+                                                    return "Asset URL: {$assetUrl}\n" .
+                                                        "Storage URL: {$storageUrl}\n" .
+                                                        "Filename: {$filename}";
+                                                })
+                                                ->visible(config('app.debug'))
+                                                ->columnSpanFull(),
                                         ])
                                         ->columns(2)
                                         ->contained(false)
@@ -207,19 +267,6 @@ class ViewTransaksi extends ViewRecord
                                             !empty($record->attachments) &&
                                             is_array($record->attachments) &&
                                             count($record->attachments) > 0
-                                        ),
-
-                                    // Fallback untuk attachments string (legacy atau direct upload)
-                                    ImageEntry::make('attachments')
-                                        ->label('Lampiran')
-                                        ->disk('public')
-                                        ->height(200)
-                                        ->width(300)
-                                        ->extraAttributes(['class' => 'rounded-lg shadow-sm'])
-                                        ->visible(
-                                            fn($record) =>
-                                            !empty($record->attachments) &&
-                                            is_string($record->attachments)
                                         ),
 
                                     // Pesan jika tidak ada lampiran
