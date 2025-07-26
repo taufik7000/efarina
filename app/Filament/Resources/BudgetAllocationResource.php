@@ -25,91 +25,197 @@ class BudgetAllocationResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Informasi Alokasi Budget')
+                // ===============================================
+                // GRID 2 KOLOM UTAMA - DIPERBAIKI
+                // ===============================================
+                Forms\Components\Grid::make(2) // Lebih sederhana
                     ->schema([
-                        Forms\Components\Select::make('budget_plan_id')
-                            ->label('Budget Plan')
-                            ->relationship('budgetPlan', 'nama_budget')
-                            ->searchable()
-                            ->preload()
-                            ->required()
-                            ->live(),
+                        // ===============================================
+                        // KOLOM KIRI: Informasi Alokasi Budget
+                        // ===============================================
+                        Forms\Components\Section::make('📊 Informasi Alokasi Budget')
+                            ->description('Detail alokasi budget dan kategori')
+                            ->icon('heroicon-o-chart-pie')
+                            ->columnSpan(1) // Eksplisit set column span
+                            ->schema([
+                                Forms\Components\Select::make('budget_plan_id')
+                                    ->label('Budget Plan')
+                                    ->relationship('budgetPlan', 'nama_budget')
+                                    ->searchable()
+                                    ->preload()
+                                    ->required()
+                                    ->live(),
 
-                        Forms\Components\Select::make('budget_category_id')
-                            ->label('Kategori Budget')
-                            ->relationship('category', 'nama_kategori')
-                            ->searchable()
-                            ->preload()
-                            ->required()
-                            ->live()
-                            ->afterStateUpdated(fn (Forms\Set $set) => $set('budget_subcategory_id', null)),
+                                Forms\Components\Select::make('budget_category_id')
+                                    ->label('Kategori Budget')
+                                    ->relationship('category', 'nama_kategori')
+                                    ->searchable()
+                                    ->preload()
+                                    ->required()
+                                    ->live()
+                                    ->afterStateUpdated(fn (Forms\Set $set) => $set('budget_subcategory_id', null)),
 
-                        Forms\Components\Select::make('budget_subcategory_id')
-                            ->label('Subkategori Budget')
-                            ->options(fn (Forms\Get $get): array => 
-                                $get('budget_category_id') 
-                                    ? BudgetCategory::find($get('budget_category_id'))
-                                        ?->subcategories()
-                                        ->active()
-                                        ->pluck('nama_subkategori', 'id')
-                                        ->toArray() ?? []
-                                    : []
-                            )
-                            ->searchable()
-                            ->live()
-                            ->placeholder('Pilih kategori terlebih dahulu'),
+                                Forms\Components\Select::make('budget_subcategory_id')
+                                    ->label('Subkategori Budget')
+                                    ->options(fn (Forms\Get $get): array => 
+                                        $get('budget_category_id') 
+                                            ? BudgetCategory::find($get('budget_category_id'))
+                                                ?->subcategories()
+                                                ->active()
+                                                ->pluck('nama_subkategori', 'id')
+                                                ->toArray() ?? []
+                                            : []
+                                    )
+                                    ->searchable()
+                                    ->live()
+                                    ->placeholder('Pilih kategori terlebih dahulu'),
 
-                        Forms\Components\TextInput::make('allocated_amount')
-                            ->label('Jumlah Alokasi')
-                            ->required()
-                            ->numeric()
-                            ->prefix('Rp')
-                            ->step(1000)
-                            ->rules(['min:0'])
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set, $record) {
-                                // Validasi tidak melebihi remaining budget (hanya saat create)
-                                $budgetPlanId = $get('budget_plan_id');
-                                if ($budgetPlanId && $state && !$record) { // Hanya validasi saat create
-                                    $budgetPlan = \App\Models\BudgetPlan::find($budgetPlanId);
-                                    if ($budgetPlan && $state > $budgetPlan->remaining_budget) {
-                                        $set('allocated_amount', $budgetPlan->remaining_budget);
-                                    }
-                                }
-                            }),
+                                Forms\Components\TextInput::make('allocated_amount')
+                                    ->label('Jumlah Alokasi')
+                                    ->required()
+                                    ->numeric()
+                                    ->prefix('Rp')
+                                    ->step(1000)
+                                    ->rules(['min:0'])
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set, $record) {
+                                        // Validasi tidak melebihi remaining budget (hanya saat create)
+                                        $budgetPlanId = $get('budget_plan_id');
+                                        if ($budgetPlanId && $state && !$record) {
+                                            $budgetPlan = \App\Models\BudgetPlan::find($budgetPlanId);
+                                            if ($budgetPlan && $state > $budgetPlan->remaining_budget) {
+                                                $set('allocated_amount', $budgetPlan->remaining_budget);
+                                            }
+                                        }
+                                    }),
 
+                                // Informasi Audit
+                                Forms\Components\Grid::make(2)
+                                    ->schema([
+                                        Forms\Components\DateTimePicker::make('created_at')
+                                            ->label('Tanggal Dibuat')
+                                            ->disabled()
+                                            ->visible(fn ($record) => $record !== null),
+
+                                        Forms\Components\Select::make('created_by')
+                                            ->label('Dibuat Oleh')
+                                            ->relationship('createdBy', 'name')
+                                            ->disabled()
+                                            ->visible(fn ($record) => $record !== null),
+                                    ])
+                                    ->visible(fn ($record) => $record !== null),
+                            ]),
+
+                        // ===============================================
+                        // KOLOM KANAN: Informasi Penggunaan & Status
+                        // ===============================================
+                        Forms\Components\Section::make('💰 Informasi Penggunaan')
+                            ->description('Status penggunaan dan sisa budget')
+                            ->icon('heroicon-o-banknotes')
+                            ->columnSpan(1) // Eksplisit set column span
+                            ->schema([
+                                // Grid untuk nilai-nilai penggunaan
+                                Forms\Components\Grid::make(1)
+                                    ->schema([
+                                        Forms\Components\TextInput::make('used_amount')
+                                            ->label('Jumlah Terpakai')
+                                            ->numeric()
+                                            ->prefix('Rp')
+                                            ->disabled()
+                                            ->default(0)
+                                            ->visible(fn ($record) => $record !== null),
+
+                                        Forms\Components\TextInput::make('remaining_amount')
+                                            ->label('Sisa Alokasi')
+                                            ->prefix('Rp')
+                                            ->disabled()
+                                            ->visible(fn ($record) => $record !== null),
+
+                                        Forms\Components\TextInput::make('usage_percentage')
+                                            ->label('Persentase Penggunaan')
+                                            ->suffix('%')
+                                            ->disabled()
+                                            ->visible(fn ($record) => $record !== null),
+                                    ]),
+
+                                // Status Badge
+                                Forms\Components\Placeholder::make('status_info')
+                                    ->label('Status Budget')
+                                    ->content(function ($record) {
+                                        if (!$record) return 'Belum ada data';
+                                        
+                                        $percentage = $record->usage_percentage ?? 0;
+                                        
+                                        if ($percentage >= 95) {
+                                            return '🔴 Sangat Kritis (≥95%)';
+                                        } elseif ($percentage >= 90) {
+                                            return '🟠 Kritis (≥90%)';
+                                        } elseif ($percentage >= 75) {
+                                            return '🟡 Perhatian (≥75%)';
+                                        } else {
+                                            return '🟢 Aman (<75%)';
+                                        }
+                                    })
+                                    ->visible(fn ($record) => $record !== null),
+
+                                Forms\Components\DateTimePicker::make('updated_at')
+                                    ->label('Terakhir Diupdate')
+                                    ->disabled()
+                                    ->visible(fn ($record) => $record !== null),
+
+                                // ===============================================
+                                // Ringkasan Budget dalam satu kotak kecil
+                                // ===============================================
+                                Forms\Components\Section::make('📈 Ringkasan')
+                                    ->schema([
+                                        Forms\Components\Grid::make(1)
+                                            ->schema([
+                                                Forms\Components\Placeholder::make('allocated_summary')
+                                                    ->label('💰 Total Alokasi')
+                                                    ->content(function ($record) {
+                                                        if (!$record) return 'Rp 0';
+                                                        return 'Rp ' . number_format($record->allocated_amount ?? 0, 0, ',', '.');
+                                                    }),
+
+                                                Forms\Components\Placeholder::make('used_summary')
+                                                    ->label('📉 Sudah Terpakai')
+                                                    ->content(function ($record) {
+                                                        if (!$record) return 'Rp 0';
+                                                        return 'Rp ' . number_format($record->used_amount ?? 0, 0, ',', '.');
+                                                    }),
+
+                                                Forms\Components\Placeholder::make('remaining_summary')
+                                                    ->label('📈 Sisa Budget')
+                                                    ->content(function ($record) {
+                                                        if (!$record) return 'Rp 0';
+                                                        $remaining = ($record->allocated_amount ?? 0) - ($record->used_amount ?? 0);
+                                                        $color = $remaining < 0 ? '🔴' : '🟢';
+                                                        return $color . ' Rp ' . number_format($remaining, 0, ',', '.');
+                                                    }),
+                                            ]),
+                                    ])
+                                    ->visible(fn ($record) => $record !== null)
+                                    ->compact(),
+                            ]),
+                    ]),
+
+                // ===============================================
+                // CATATAN - FULL WIDTH (di bawah 2 kolom)
+                // ===============================================
+                Forms\Components\Section::make('📝 Catatan')
+                    ->description('Catatan tambahan untuk alokasi budget ini')
+                    ->icon('heroicon-o-document-text')
+                    ->schema([
                         Forms\Components\Textarea::make('catatan')
                             ->label('Catatan')
                             ->rows(3)
                             ->maxLength(1000)
+                            ->placeholder('Tambahkan catatan untuk alokasi budget ini...')
                             ->columnSpanFull(),
                     ])
-                    ->columns(2),
-
-                Forms\Components\Section::make('Informasi Penggunaan')
-                    ->schema([
-                        Forms\Components\TextInput::make('used_amount')
-                            ->label('Jumlah Terpakai')
-                            ->numeric()
-                            ->prefix('Rp')
-                            ->disabled()
-                            ->default(0)
-                            ->visible(fn ($record) => $record !== null),
-
-                        Forms\Components\TextInput::make('remaining_amount')
-                            ->label('Sisa Alokasi')
-                            ->prefix('Rp')
-                            ->disabled()
-                            ->visible(fn ($record) => $record !== null),
-
-                        Forms\Components\TextInput::make('usage_percentage')
-                            ->label('Persentase Penggunaan')
-                            ->suffix('%')
-                            ->disabled()
-                            ->visible(fn ($record) => $record !== null),
-                    ])
-                    ->columns(3)
-                    ->visible(fn ($record) => $record !== null),
+                    ->collapsible()
+                    ->collapsed(fn ($record) => $record && empty($record->catatan))
+                    ->columnSpanFull(),
             ]);
     }
 
@@ -122,9 +228,8 @@ class BudgetAllocationResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
-
-                Tables\Columns\TextColumn::make('category_name')
-                    ->label('Kategori')
+                Tables\Columns\TextColumn::make('subcategory.nama_subkategori')
+                    ->label('Jenis Alokasi')
                     ->searchable()
                     ->wrap(),
 
@@ -188,7 +293,6 @@ class BudgetAllocationResource extends Resource
                     ->query(fn ($query) => $query->whereRaw('used_amount > allocated_amount')),
             ])
             ->actions([
-
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make()
                     ->visible(fn () => auth()->user()->hasRole(['admin', 'super-admin', 'direktur', 'keuangan'])),
@@ -227,5 +331,4 @@ class BudgetAllocationResource extends Resource
             'edit' => Pages\EditBudgetAllocation::route('/{record}/edit'),
         ];
     }
-
 }

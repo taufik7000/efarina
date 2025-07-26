@@ -209,30 +209,31 @@ class TransaksiResource extends Resource
                                             ->displayFormat('d/m/Y'),
                                     ]),
 
-                                Section::make('💰 Budget & Project')
-                                    ->description('Alokasi budget dan project terkait')
-                                    ->visible(fn(Forms\Get $get) => $get('jenis_transaksi') === 'pengeluaran')
-                                    ->collapsible()
+                                Forms\Components\Section::make('Alokasi Budget & Project')
                                     ->schema([
-                                        Select::make('budget_allocation_id')
+                                        Forms\Components\Select::make('budget_allocation_id')
                                             ->label('Alokasi Budget')
                                             ->relationship('budgetAllocation', 'id')
                                             ->getOptionLabelFromRecordUsing(
                                                 fn($record) =>
-                                                $record->category_name
+                                                $record->category_name . ' - Rp ' . number_format($record->remaining_amount, 0, ',', '.')
                                             )
-                                            ->searchable(['category_name'])
+                                            ->searchable()
                                             ->preload()
-                                            ->placeholder('Pilih kategori budget...')
-                                            ->native(false),
+                                            ->visible(fn(Forms\Get $get) => $get('jenis_transaksi') === 'pengeluaran')
+                                            ->helperText('Pilih alokasi budget yang akan digunakan'),
 
-                                        Select::make('project_id')
+                                        Forms\Components\Select::make('project_id')
                                             ->label('Project Terkait')
                                             ->relationship('project', 'nama_project')
                                             ->searchable()
                                             ->preload()
-                                            ->placeholder('Pilih project...')
-                                            ->native(false),
+                                            ->placeholder('Opsional - jika terkait project tertentu'),
+
+                                        Forms\Components\TextInput::make('nomor_referensi')
+                                            ->label('Nomor Referensi')
+                                            ->maxLength(255)
+                                            ->placeholder('No. invoice, kwitansi, dll'),
                                     ]),
 
                                 // Summary Card
