@@ -5,11 +5,7 @@
 @section('content')
 <div class="bg-gray-50 min-h-screen">
     {{-- Header Component --}}
-    @include('videos.components.header', [
-        'totalVideos' => $paginationInfo['total'] ?? 0,
-        'totalCategories' => $categories->count(),
-        'featuredCount' => $featuredVideos->count()
-    ])
+
 
     {{-- Breadcrumb Component --}}
     @include('videos.components.breadcrumb')

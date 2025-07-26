@@ -142,14 +142,10 @@ class Transaksi extends Model
         };
     }
 
-    public function getJenisColorAttribute(): string
-    {
-        return match($this->jenis_transaksi) {
-            'pemasukan' => 'success',
-            'pengeluaran' => 'danger',
-            default => 'gray',
-        };
-    }
+public function getJenisColorAttribute(): string
+{
+    return $this->jenis_transaksi === 'pemasukan' ? 'success' : 'danger';
+}
 
     public function getFormattedTotalAttribute(): string
     {
@@ -178,8 +174,14 @@ class Transaksi extends Model
  */
 public function updateTotalFromItems(): void
 {
-    $totalFromItems = $this->items()->sum('subtotal');
-    $this->update(['total_amount' => $totalFromItems]);
+    $total = $this->items()->sum('subtotal');
+    
+    // Update tanpa trigger observer dan timestamps
+    $this->withoutEvents(function () use ($total) {
+        $this->timestamps = false;
+        $this->update(['total_amount' => $total]);
+        $this->timestamps = true;
+    });
 }
 
 /**
@@ -232,9 +234,24 @@ private function generateNomorTransaksi(): string
 
     return $prefix . '/' . $year . '/' . $month . '/' . str_pad($counter, 4, '0', STR_PAD_LEFT);
 }
-public function transaksiHistories()
+public function transaksiHistories(): HasMany
 {
-    // Mengambil riwayat dari yang terbaru
-    return $this->hasMany(TransaksiHistory::class)->latest();
+    return $this->hasMany(TransaksiHistory::class)->orderBy('created_at', 'desc');
 }
+/**
+ * Accessor untuk mendapatkan aktivitas terbaru
+ */
+public function getLatestActivityAttribute(): ?TransaksiHistory
+{
+    return $this->transaksiHistories()->first();
+}
+
+/**
+ * Accessor untuk mendapatkan total aktivitas
+ */
+public function getTotalActivitiesAttribute(): int
+{
+    return $this->transaksiHistories()->count();
+}
+
 }

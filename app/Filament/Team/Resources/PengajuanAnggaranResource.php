@@ -25,308 +25,344 @@ class PengajuanAnggaranResource extends Resource
     protected static ?string $navigationLabel = 'Pengajuan Anggaran';
     protected static ?int $navigationSort = 2;
 
-    public static function form(Form $form): Form
-    {
-        return $form
-            ->schema([
-                Forms\Components\Section::make('Informasi Pengajuan')
-                    ->schema([
-                        Forms\Components\TextInput::make('judul_pengajuan')
-                            ->label('Judul Pengajuan')
-                            ->required()
-                            ->maxLength(255)
-                            ->columnSpan(2),
+ public static function form(Form $form): Form
+{
+    return $form
+        ->schema([
+            Forms\Components\Grid::make(2)
+                ->schema([
+                    // KOLOM KIRI
+                    Forms\Components\Group::make()
+                        ->schema([
+                            Forms\Components\Section::make('Informasi Pengajuan')
+                                ->schema([
+                                    Forms\Components\TextInput::make('judul_pengajuan')
+                                        ->label('Judul Pengajuan')
+                                        ->required()
+                                        ->maxLength(255)
+                                        ->placeholder('Masukkan judul pengajuan anggaran'),
 
-                        Forms\Components\Select::make('project_id')
-                            ->label('Project Terkait')
-                            ->relationship(
-                                name: 'project', 
-                                titleAttribute: 'nama_project',
-                                modifyQueryUsing: function (Builder $query) {
-                                    $user = auth()->user();
-                                    
-                                    if (!$user) {
-                                        return $query->whereRaw('1 = 0');
-                                    }
-                                    
-                                    // 🔥 FILTER UTAMA: Exclude project dengan status 'completed' dan 'cancelled'
-                                    $query->whereNotIn('status', ['completed', 'cancelled']);
-                                    
-                                    // Role-based filtering
-                                    if ($user->hasRole(['admin', 'redaksi'])) {
-                                        // Admin dan redaksi bisa pilih semua project yang tidak completed/cancelled
-                                        return $query;
-                                    }
-                                    
-                                    if ($user->hasRole('team')) {
-                                        // Team hanya bisa pilih project yang terkait dengan mereka
-                                        return $query->where(function ($subQuery) use ($user) {
-                                            $subQuery->where('project_manager_id', $user->id)
-                                                ->orWhere('created_by', $user->id)
-                                                ->orWhereJsonContains('team_members', (string) $user->id);
-                                        });
-                                    }
-                                    
-                                    // Role lain tidak bisa pilih project apapun
-                                    return $query->whereRaw('1 = 0');
-                                }
-                            )
-                            ->searchable()
-                            ->preload()
-                            ->placeholder('Pilih project yang sedang berjalan')
-                            ->helperText('Hanya project yang masih aktif (belum selesai) yang dapat dipilih')
-                            ->getOptionLabelFromRecordUsing(function ($record) {
-                                // Tampilkan nama project dengan status dan deadline jika ada
-                                $label = $record->nama_project;
-                                
-                                // Tambah status badge
-                                $statusBadge = match($record->status) {
-                                    'draft' => '📝 Draft',
-                                    'planning' => '📋 Planning', 
-                                    'in_progress' => '🚀 In Progress',
-                                    'review' => '👁️ Review',
-                                    default => ucfirst($record->status)
-                                };
-                                
-                                $label .= " ({$statusBadge})";
-                                
-                                // Tambah deadline jika ada
-                                if ($record->tanggal_selesai) {
-                                    $deadline = $record->tanggal_selesai->format('d M Y');
-                                    $label .= " - Deadline: {$deadline}";
-                                }
-                                
-                                return $label;
-                            })
-                            ->getSearchResultsUsing(function (string $search) {
-                                $user = auth()->user();
-                                
-                                $query = Project::where('nama_project', 'like', "%{$search}%")
-                                    ->whereNotIn('status', ['completed', 'cancelled']) // 🔥 Filter completed project
-                                    ->orderBy('nama_project');
-                                
-                                // Apply role-based filtering untuk search
-                                if ($user->hasRole(['admin', 'redaksi'])) {
-                                    return $query->limit(50)->get();
-                                }
-                                
-                                if ($user->hasRole('team')) {
-                                    $query->where(function ($subQuery) use ($user) {
-                                        $subQuery->where('project_manager_id', $user->id)
-                                            ->orWhere('created_by', $user->id)
-                                            ->orWhereJsonContains('team_members', (string) $user->id);
-                                    });
-                                    
-                                    return $query->limit(50)->get();
-                                }
-                                
-                                return collect(); // Empty collection untuk role lain
-                            })
-                            ->reactive()
-                            ->columnSpan(1),
-
-                        Forms\Components\DatePicker::make('tanggal_dibutuhkan')
-                            ->label('Tanggal Dibutuhkan')
-                            ->required()
-                            ->native(false)
-                            ->minDate(now()),
-
-                        Forms\Components\Textarea::make('deskripsi')
-                            ->label('Deskripsi Kebutuhan')
-                            ->required()
-                            ->rows(3)
-                            ->columnSpanFull()
-                            ->helperText('Jelaskan secara detail kebutuhan anggaran ini'),
-
-                        Forms\Components\Textarea::make('justifikasi')
-                            ->label('Justifikasi Bisnis')
-                            ->required()
-                            ->rows(3)
-                            ->columnSpanFull()
-                            ->helperText('Jelaskan mengapa anggaran ini penting untuk bisnis'),
-                    ])
-                    ->columns(2),
-
-                Forms\Components\Section::make('Detail Item Anggaran')
-                    ->schema([
-                        Forms\Components\Repeater::make('detail_items')
-                            ->label('Item Anggaran')
-                            ->schema([
-                                // Budget Selection
-                                Forms\Components\Select::make('budget_category_id')
-                                    ->label('Kategori Budget')
-                                    ->options(function () {
-                                        return BudgetCategory::active()
-                                            ->whereHas('allocations', function ($q) {
-                                                $q->whereHas('budgetPlan', fn($query) => $query->where('status', 'active'))
-                                                    ->whereRaw('allocated_amount > used_amount');
-                                            })
-                                            ->pluck('nama_kategori', 'id');
-                                    })
-                                    ->searchable()
-                                    ->required()
-                                    ->live()
-                                    ->columnSpan(2)
-                                    ->afterStateUpdated(fn(callable $set) => $set('budget_subcategory_id', null)),
-
-                                Forms\Components\Select::make('budget_subcategory_id')
-                                    ->label('Sub Kategori')
-                                    ->options(function (callable $get) {
-                                        $categoryId = $get('budget_category_id');
-                                        if (!$categoryId)
-                                            return [];
-
-                                        return BudgetSubcategory::whereHas('allocations', function ($q) {
-                                            $q->whereHas('budgetPlan', fn($query) => $query->where('status', 'active'))
-                                                ->whereRaw('allocated_amount > used_amount');
-                                        })
-                                            ->where('budget_category_id', $categoryId)
-                                            ->pluck('nama_subkategori', 'id');
-                                    })
-                                    ->searchable()
-                                    ->required()
-                                    ->live()
-                                    ->columnSpan(2)
-                                    ->placeholder('Pilih kategori terlebih dahulu'),
-
-                                // Item Details
-                                Forms\Components\TextInput::make('item_name')
-                                    ->label('Nama Item')
-                                    ->required()
-                                    ->maxLength(255)
-                                    ->columnSpan(3),
-
-                                Forms\Components\Textarea::make('description')
-                                    ->label('Deskripsi Item')
-                                    ->rows(2)
-                                    ->maxLength(500)
-                                    ->columnSpan(3),
-
-                                // Quantity & Price (menggunakan pola dari reference file)
-                                Forms\Components\TextInput::make('quantity')
-                                    ->label('Qty')
-                                    ->numeric()
-                                    ->default(1)
-                                    ->minValue(1)
-                                    ->required()
-                                    ->live()
-                                    ->columnSpan(2)
-                                    ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get, ?string $state) {
-                                        $quantity = (float) ($state ?: 1);
-                                        $unitPrice = (float) ($get('unit_price') ?: 0);
-                                        $set('total_price', $quantity * $unitPrice);
-                                    }),
-
-                                Forms\Components\TextInput::make('unit_price')
-                                    ->label('Harga Satuan')
-                                    ->numeric()
-                                    ->prefix('Rp')
-                                    ->required()
-                                    ->live()
-                                    ->columnSpan(2)
-                                    ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get, ?string $state) {
-                                        $quantity = (float) ($get('quantity') ?: 1);
-                                        $unitPrice = (float) ($state ?: 0);
-                                        $set('total_price', $quantity * $unitPrice);
-                                    }),
-
-                                Forms\Components\TextInput::make('total_price')
-                                    ->label('Total Harga')
-                                    ->numeric()
-                                    ->prefix('Rp')
-                                    ->disabled()
-                                    ->dehydrated()
-                                    ->required()
-                                    ->columnSpan(2),
-                            ])
-                            ->columns(6)
-                            ->columnSpanFull()
-                            ->minItems(1)
-                            ->addActionLabel('+ Tambah Item')
-                            ->reorderableWithButtons()
-                            ->collapsible()
-                            ->cloneable()
-                            ->itemLabel(
-                                fn(array $state): ?string =>
-                                ($state['item_name'] ?? 'Item Baru') .
-                                (isset($state['total_price']) ? ' - Rp ' . number_format($state['total_price'], 0, ',', '.') : '')
-                            )
-                            ->live(),
-
-                        // Total Anggaran (Auto calculated menggunakan method yang sama)
-                        Forms\Components\TextInput::make('total_anggaran')
-                            ->label('Total Anggaran')
-                            ->numeric()
-                            ->prefix('Rp')
-                            ->disabled()
-                            ->dehydrated()
-                            ->default(0)
-                            ->live()
-                            ->afterStateHydrated(function ($component, callable $get) {
-                                // Calculate total saat form load
-                                $items = $get('detail_items') ?? [];
-                                $total = 0;
-
-                                if (is_array($items)) {
-                                    foreach ($items as $item) {
-                                        $total += (float) ($item['total_price'] ?? 0);
-                                    }
-                                }
-
-                                $component->state($total);
-                            })
-                            ->reactive()
-                            ->extraAttributes([
-                                'x-data' => '{
-                                    init() {
-                                        this.$watch("$wire.data.detail_items", () => {
-                                            let total = 0;
-                                            if (this.$wire.data.detail_items) {
-                                                this.$wire.data.detail_items.forEach(item => {
-                                                    total += parseFloat(item.total_price || 0);
-                                                });
+                                    Forms\Components\Select::make('project_id')
+                                        ->label('Project Terkait')
+                                        ->relationship(
+                                            name: 'project', 
+                                            titleAttribute: 'nama_project',
+                                            modifyQueryUsing: function (Builder $query) {
+                                                $user = auth()->user();
+                                                
+                                                if (!$user) {
+                                                    return $query->whereRaw('1 = 0');
+                                                }
+                                                
+                                                // Filter: Exclude completed & cancelled projects
+                                                $query->whereNotIn('status', ['completed', 'cancelled']);
+                                                
+                                                // Role-based filtering
+                                                if ($user->hasRole(['admin', 'redaksi'])) {
+                                                    return $query;
+                                                }
+                                                
+                                                if ($user->hasRole('team')) {
+                                                    return $query->where(function ($subQuery) use ($user) {
+                                                        $subQuery->where('project_manager_id', $user->id)
+                                                            ->orWhere('created_by', $user->id)
+                                                            ->orWhereJsonContains('team_members', (string) $user->id);
+                                                    });
+                                                }
+                                                
+                                                return $query->whereRaw('1 = 0');
                                             }
-                                            this.$wire.set("data.total_anggaran", total);
-                                        });
-                                    }
-                                }'
-                            ]),
-                    ]),
+                                        )
+                                        ->searchable()
+                                        ->preload()
+                                        ->placeholder('Pilih project yang sedang berjalan')
+                                        ->helperText('Hanya project yang masih aktif yang dapat dipilih')
+                                        ->getOptionLabelFromRecordUsing(function ($record) {
+                                            $label = $record->nama_project;
+                                            
+                                            $statusBadge = match($record->status) {
+                                                'draft' => '📝 Draft',
+                                                'planning' => '📋 Planning', 
+                                                'in_progress' => '🚀 In Progress',
+                                                'review' => '👁️ Review',
+                                                default => ucfirst($record->status)
+                                            };
+                                            
+                                            $label .= " ({$statusBadge})";
+                                            
+                                            if ($record->tanggal_selesai) {
+                                                $deadline = $record->tanggal_selesai->format('d M Y');
+                                                $label .= " - Deadline: {$deadline}";
+                                            }
+                                            
+                                            return $label;
+                                        }),
 
-                Forms\Components\Section::make('Status Approval')
-                    ->schema([
-                        Forms\Components\Placeholder::make('workflow_status')
-                            ->label('Status Workflow')
-                            ->content(function ($record) {
-                                if (!$record)
-                                    return '📝 Draft - Belum diajukan';
+                                    Forms\Components\DatePicker::make('tanggal_dibutuhkan')
+                                        ->label('Tanggal Dibutuhkan')
+                                        ->required()
+                                        ->native(false)
+                                        ->minDate(now())
+                                        ->helperText('Kapan anggaran ini dibutuhkan'),
 
-                                return match ($record->status) {
-                                    'draft' => '📝 Draft - Belum diajukan',
-                                    'pending_redaksi' => '👥 Menunggu approval redaksi',
-                                    'pending_keuangan' => '💰 Menunggu approval keuangan/direktur',
-                                    'approved' => '✅ Disetujui - Siap digunakan',
-                                    'rejected' => '❌ Ditolak',
-                                    default => '❓ Status tidak dikenal'
-                                };
-                            }),
+                                    Forms\Components\Select::make('priority')
+                                        ->label('Prioritas')
+                                        ->options([
+                                            'low' => 'Rendah',
+                                            'medium' => 'Sedang', 
+                                            'high' => 'Tinggi',
+                                            'urgent' => 'Mendesak'
+                                        ])
+                                        ->default('medium')
+                                        ->required(),
+                                ]),
 
-                        Forms\Components\Textarea::make('redaksi_notes')
-                            ->label('Catatan Redaksi')
-                            ->disabled()
-                            ->rows(2)
-                            ->visible(fn($record) => $record && $record->redaksi_notes),
+                            Forms\Components\Section::make('Deskripsi & Justifikasi')
+                                ->schema([
+                                    Forms\Components\Textarea::make('deskripsi')
+                                        ->label('Deskripsi Kebutuhan')
+                                        ->required()
+                                        ->rows(4)
+                                        ->placeholder('Jelaskan secara detail kebutuhan anggaran ini')
+                                        ->helperText('Deskripsikan apa yang akan dibeli/dilakukan'),
 
-                        Forms\Components\Textarea::make('keuangan_notes')
-                            ->label('Catatan Keuangan/Direktur')
-                            ->disabled()
-                            ->rows(2)
-                            ->visible(fn($record) => $record && $record->keuangan_notes),
-                    ])
-                    ->columns(1)
-                    ->visible(fn($context) => $context === 'edit' || $context === 'view'),
-            ]);
-    }
+                                    Forms\Components\Textarea::make('justifikasi')
+                                        ->label('Justifikasi Bisnis')
+                                        ->required()
+                                        ->rows(4)
+                                        ->placeholder('Jelaskan mengapa anggaran ini penting untuk bisnis')
+                                        ->helperText('Manfaat dan dampak bisnis dari pengajuan ini'),
+                                ]),
+
+                            // Total Anggaran Display
+                            Forms\Components\Section::make('Ringkasan Anggaran')
+                                ->schema([
+                                    Forms\Components\Placeholder::make('total_summary')
+                                        ->label('')
+                                        ->content(function (Forms\Get $get) {
+                                            $items = $get('detail_items') ?? [];
+                                            $total = 0;
+                                            $itemCount = 0;
+
+                                            foreach ($items as $item) {
+                                                if (!empty($item['item_name'])) {
+                                                    $total += (float) ($item['total_price'] ?? 0);
+                                                    $itemCount++;
+                                                }
+                                            }
+
+                                            return new \Illuminate\Support\HtmlString('
+                                                <div class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg border border-orange-200 dark:border-orange-700">
+                                                    <div class="flex justify-between items-center mb-2">
+                                                        <span class="text-sm font-medium text-orange-700 dark:text-orange-300">Total Items:</span>
+                                                        <span class="text-sm font-semibold text-orange-900 dark:text-orange-100">' . $itemCount . ' item(s)</span>
+                                                    </div>
+                                                    <div class="flex justify-between items-center border-t border-orange-200 dark:border-orange-700 pt-2 mt-2">
+                                                        <span class="text-lg font-bold text-orange-900 dark:text-orange-100">TOTAL ANGGARAN:</span>
+                                                        <span class="text-xl font-bold text-orange-600 dark:text-orange-400">Rp ' . number_format($total, 0, ',', '.') . '</span>
+                                                    </div>
+                                                </div>
+                                            ');
+                                        }),
+
+                                    // Hidden field untuk menyimpan total
+                                    Forms\Components\TextInput::make('total_anggaran')
+                                        ->hidden()
+                                        ->live()
+                                        ->afterStateHydrated(function ($component, callable $get) {
+                                            $items = $get('detail_items') ?? [];
+                                            $total = 0;
+
+                                            if (is_array($items)) {
+                                                foreach ($items as $item) {
+                                                    $total += (float) ($item['total_price'] ?? 0);
+                                                }
+                                            }
+
+                                            $component->state($total);
+                                        }),
+                                ]),
+                        ])
+                        ->columnSpan(1),
+
+                    // KOLOM KANAN
+                    Forms\Components\Group::make()
+                        ->schema([
+                            Forms\Components\Section::make('Detail Item Anggaran')
+                                ->description('Breakdown detail anggaran yang diajukan')
+                                ->schema([
+                                    Forms\Components\Repeater::make('detail_items')
+                                        ->label('Item Anggaran')
+                                        ->schema([
+                                            // Budget Selection (2 kolom)
+                                            Forms\Components\Select::make('budget_category_id')
+                                                ->label('Kategori Budget')
+                                                ->options(function () {
+                                                    return BudgetCategory::active()
+                                                        ->whereHas('allocations', function ($q) {
+                                                            $q->whereHas('budgetPlan', fn($query) => $query->where('status', 'active'))
+                                                                ->whereRaw('allocated_amount > used_amount');
+                                                        })
+                                                        ->pluck('nama_kategori', 'id');
+                                                })
+                                                ->searchable()
+                                                ->required()
+                                                ->live()
+                                                ->columnSpan(2)
+                                                ->afterStateUpdated(fn(callable $set) => $set('budget_subcategory_id', null)),
+
+                                            Forms\Components\Select::make('budget_subcategory_id')
+                                                ->label('Sub Kategori')
+                                                ->options(function (callable $get) {
+                                                    $categoryId = $get('budget_category_id');
+                                                    if (!$categoryId) return [];
+
+                                                    return BudgetSubcategory::whereHas('allocations', function ($q) {
+                                                        $q->whereHas('budgetPlan', fn($query) => $query->where('status', 'active'))
+                                                            ->whereRaw('allocated_amount > used_amount');
+                                                    })
+                                                        ->where('budget_category_id', $categoryId)
+                                                        ->pluck('nama_subkategori', 'id');
+                                                })
+                                                ->searchable()
+                                                ->required()
+                                                ->live()
+                                                ->columnSpan(2)
+                                                ->placeholder('Pilih kategori terlebih dahulu'),
+
+                                            // Item Details
+                                            Forms\Components\TextInput::make('item_name')
+                                                ->label('Nama Item')
+                                                ->required()
+                                                ->maxLength(255)
+                                                ->placeholder('Nama barang/jasa')
+                                                ->columnSpan(4),
+
+                                            // Quantity & Price (4 kolom)
+                                            Forms\Components\TextInput::make('quantity')
+                                                ->label('Qty')
+                                                ->numeric()
+                                                ->default(1)
+                                                ->minValue(1)
+                                                ->required()
+                                                ->live(onBlur: true)
+                                                ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get, ?string $state) {
+                                                    $quantity = (float) ($state ?: 1);
+                                                    $unitPrice = (float) ($get('unit_price') ?: 0);
+                                                    $set('total_price', $quantity * $unitPrice);
+                                                }),
+
+                                            Forms\Components\TextInput::make('unit_price')
+                                                ->label('Harga Satuan')
+                                                ->numeric()
+                                                ->prefix('Rp')
+                                                ->required()
+                                                ->placeholder('0')
+                                                ->live(onBlur: true)
+                                                ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get, ?string $state) {
+                                                    $quantity = (float) ($get('quantity') ?: 1);
+                                                    $unitPrice = (float) ($state ?: 0);
+                                                    $set('total_price', $quantity * $unitPrice);
+                                                }),
+
+                                            Forms\Components\TextInput::make('total_price')
+                                                ->label('Total Harga')
+                                                ->numeric()
+                                                ->prefix('Rp')
+                                                ->disabled()
+                                                ->dehydrated()
+                                                ->required()
+                                                ->placeholder('Auto calculated'),
+
+                                            Forms\Components\TextInput::make('unit')
+                                                ->label('Satuan')
+                                                ->placeholder('pcs, kg, meter')
+                                                ->default('pcs'),
+
+                                            Forms\Components\Textarea::make('description')
+                                                ->label('Spesifikasi')
+                                                ->rows(2)
+                                                ->maxLength(500)
+                                                ->placeholder('Detail spesifikasi item')
+                                                ->columnSpanFull(),
+                                        ])
+                                        ->columns(4)
+                                        ->addActionLabel('+ Tambah Item')
+                                        ->reorderableWithButtons()
+                                        ->collapsible()
+                                        ->cloneable()
+                                        ->itemLabel(
+                                            fn(array $state): ?string =>
+                                            ($state['item_name'] ?? 'Item Baru') .
+                                            (isset($state['total_price']) ? ' - Rp ' . number_format($state['total_price'], 0, ',', '.') : '')
+                                        )
+                                        ->defaultItems(1)
+                                        ->minItems(1)
+                                        ->required()
+                                        ->live()
+                                        ->afterStateUpdated(function ($state, callable $set) {
+                                            // Calculate total from all items
+                                            $total = 0;
+                                            if (is_array($state)) {
+                                                foreach ($state as $item) {
+                                                    $total += (float) ($item['total_price'] ?? 0);
+                                                }
+                                            }
+                                            $set('total_anggaran', $total);
+                                        }),
+                                ]),
+
+                            // Status Approval Section (hanya untuk edit/view)
+                            Forms\Components\Section::make('Status Approval')
+                                ->schema([
+                                    Forms\Components\Placeholder::make('workflow_status')
+                                        ->label('Status Workflow')
+                                        ->content(function ($record) {
+                                            if (!$record) return '📝 Draft - Belum diajukan';
+
+                                            return match ($record->status) {
+                                                'draft' => '📝 Draft - Belum diajukan',
+                                                'pending_redaksi' => '👥 Menunggu approval redaksi',
+                                                'pending_keuangan' => '💰 Menunggu approval keuangan/direktur',
+                                                'approved' => '✅ Disetujui - Siap digunakan',
+                                                'rejected' => '❌ Ditolak',
+                                                default => '❓ Status tidak dikenal'
+                                            };
+                                        }),
+
+                                    Forms\Components\Textarea::make('redaksi_notes')
+                                        ->label('Catatan Redaksi')
+                                        ->disabled()
+                                        ->rows(2)
+                                        ->visible(fn($record) => $record && $record->redaksi_notes),
+
+                                    Forms\Components\Textarea::make('keuangan_notes')
+                                        ->label('Catatan Keuangan/Direktur')
+                                        ->disabled()
+                                        ->rows(2)
+                                        ->visible(fn($record) => $record && $record->keuangan_notes),
+                                ])
+                                ->visible(fn($context) => $context === 'edit' || $context === 'view'),
+                        ])
+                        ->columnSpan(1),
+                ])
+        ])
+        ->extraAttributes([
+            'x-data' => '{
+                init() {
+                    this.$watch("$wire.data.detail_items", () => {
+                        let total = 0;
+                        if (this.$wire.data.detail_items) {
+                            this.$wire.data.detail_items.forEach(item => {
+                                total += parseFloat(item.total_price || 0);
+                            });
+                        }
+                        this.$wire.set("data.total_anggaran", total);
+                    });
+                }
+            }'
+        ]);
+}
 
     public static function table(Table $table): Table
     {

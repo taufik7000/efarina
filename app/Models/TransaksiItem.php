@@ -1,5 +1,4 @@
 <?php
-// app/Models/TransaksiItem.php
 
 namespace App\Models;
 
@@ -33,37 +32,39 @@ class TransaksiItem extends Model
         return $this->belongsTo(Transaksi::class);
     }
 
-    // Mutator untuk auto-calculate subtotal
-    public function setKuantitasAttribute($value)
-    {
-        $this->attributes['kuantitas'] = $value;
-        $this->calculateSubtotal();
-    }
-
-    public function setHargaSatuanAttribute($value)
-    {
-        $this->attributes['harga_satuan'] = $value;
-        $this->calculateSubtotal();
-    }
-
-    private function calculateSubtotal()
-    {
-        if (isset($this->attributes['kuantitas']) && isset($this->attributes['harga_satuan'])) {
-            $this->attributes['subtotal'] = $this->attributes['kuantitas'] * $this->attributes['harga_satuan'];
-        }
-    }
-
-    // Boot method untuk update total di transaksi
+    // Boot method untuk auto-calculate subtotal dan update total transaksi
     protected static function boot()
     {
         parent::boot();
 
-        static::saved(function ($item) {
-            $item->transaksi->updateTotalFromItems();
+        // Before saving: calculate subtotal
+        static::saving(function ($item) {
+            $item->subtotal = ($item->kuantitas ?? 0) * ($item->harga_satuan ?? 0);
         });
 
-        static::deleted(function ($item) {
-            $item->transaksi->updateTotalFromItems();
+        // After saved: update total di transaksi
+        static::saved(function ($item) {
+            if ($item->transaksi) {
+                $item->transaksi->updateTotalFromItems();
+            }
         });
+
+        // After deleted: update total di transaksi
+        static::deleted(function ($item) {
+            if ($item->transaksi) {
+                $item->transaksi->updateTotalFromItems();
+            }
+        });
+    }
+
+    // Accessor untuk format currency
+    public function getFormattedSubtotalAttribute(): string
+    {
+        return 'Rp ' . number_format($this->subtotal, 0, ',', '.');
+    }
+
+    public function getFormattedHargaSatuanAttribute(): string
+    {
+        return 'Rp ' . number_format($this->harga_satuan, 0, ',', '.');
     }
 }
