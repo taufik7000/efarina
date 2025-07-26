@@ -12,6 +12,7 @@ class TransaksiHistory extends Model
 
     protected $fillable = [
         'transaksi_id',
+        'user_id',
         'status_from',
         'status_to',
         'action_by',
@@ -34,6 +35,8 @@ class TransaksiHistory extends Model
     {
         return $this->belongsTo(User::class, 'action_by');
     }
+
+    
 
     // Accessor untuk format status yang readable
     public function getFormattedStatusFromAttribute(): string
@@ -68,4 +71,6 @@ class TransaksiHistory extends Model
         
         return "Status diubah dari {$this->formatted_status_from} ke {$this->formatted_status_to}";
     }
+
+    
 }

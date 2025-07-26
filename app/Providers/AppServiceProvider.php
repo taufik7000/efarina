@@ -7,7 +7,10 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL;
 use App\Models\Project;
 use App\Models\LeaveRequest;
+use App\Models\Transaksi;
 use App\Observers\ProjectObserver;
+use App\Observers\TransaksiObserver;
+
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -26,7 +29,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // Registrasi observer yang sudah ada
         Project::observe(ProjectObserver::class);
-
+        Transaksi::observe(TransaksiObserver::class);
         if ($this->app->isLocal()) {
             Model::unguard();
         }

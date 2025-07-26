@@ -232,4 +232,9 @@ private function generateNomorTransaksi(): string
 
     return $prefix . '/' . $year . '/' . $month . '/' . str_pad($counter, 4, '0', STR_PAD_LEFT);
 }
+public function transaksiHistories()
+{
+    // Mengambil riwayat dari yang terbaru
+    return $this->hasMany(TransaksiHistory::class)->latest();
+}
 }
