@@ -27,7 +27,7 @@ class KeuanganPanelProvider extends PanelProvider
             ->id('keuangan')
             ->path('keuangan')
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::Blue,
             ])
             ->databaseNotifications()
             ->viteTheme('resources/css/filament/keuangan/theme.css')

@@ -11,9 +11,12 @@ class CreateTransaksi extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        // Secara otomatis atur status menjadi 'pending'
+        $data['status'] = 'pending'; 
+
+        // Atur user_id yang membuat transaksi
         $data['created_by'] = auth()->id();
-        
-        // Auto-generate nomor transaksi akan dilakukan di model boot
+
         return $data;
     }
 

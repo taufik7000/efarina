@@ -24,7 +24,7 @@ use Filament\Forms\Components\Card;
 use Filament\Forms\Components\Wizard;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
-use App\Filament\Resources\Notification;
+use Filament\Notifications\Notification;
 
 class TransaksiResource extends Resource
 {
@@ -207,19 +207,6 @@ class TransaksiResource extends Resource
                                             ->default(now())
                                             ->native(false)
                                             ->displayFormat('d/m/Y'),
-
-                                        Select::make('status')
-                                            ->label('Status')
-                                            ->options([
-                                                'draft' => 'Draft',
-                                                'pending' => 'Menunggu Approval',
-                                                'approved' => 'Menunggu Pembayaran',
-                                                'rejected' => 'Ditolak',
-                                                'completed' => 'Selesai',
-                                            ])
-                                            ->default('draft')
-                                            ->required()
-                                            ->native(false),
                                     ]),
 
                                 Section::make('💰 Budget & Project')
@@ -429,11 +416,12 @@ class TransaksiResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('nomor_transaksi')->searchable()->sortable(),
+                BadgeColumn::make('jenis_transaksi')->colors(['success' => 'pemasukan', 'danger' => 'pengeluaran']),
                 TextColumn::make('nama_transaksi')->searchable(),
                 TextColumn::make('tanggal_transaksi')->date('d M Y')->sortable(),
-                BadgeColumn::make('jenis_transaksi')->colors(['success' => 'pemasukan', 'danger' => 'pengeluaran']),
                 TextColumn::make('total_amount')->money('IDR')->sortable(),
                 BadgeColumn::make('status')->colors(['secondary' => 'draft', 'warning' => 'pending', 'primary' => 'approved', 'success' => 'completed', 'danger' => 'rejected'])
                     ->formatStateUsing(fn(string $state): string => match ($state) {
@@ -452,7 +440,7 @@ class TransaksiResource extends Resource
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->visible(fn($record) => $record->status === 'approved' &&
-                        auth()->user()->hasRole(['admin', 'super-admin', 'keuangan']))
+                        auth()->user()->hasRole(['admin', 'direktur', 'keuangan']))
                     ->form([
                         Forms\Components\Select::make('metode_pembayaran')
                             ->label('Metode Pembayaran')
@@ -524,13 +512,13 @@ class TransaksiResource extends Resource
                         ]);
                     }),
 
-                // Action untuk Approve
+            Tables\Actions\ActionGroup::make([
                 Tables\Actions\Action::make('approve')
                     ->label('Setujui')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->visible(fn($record) => $record->status === 'pending' &&
-                        auth()->user()->hasRole(['admin', 'super-admin', 'direktur']))
+                        auth()->user()->hasRole(['admin', 'keuangan', 'direktur']))
                     ->form([
                         Forms\Components\Textarea::make('catatan_approval')
                             ->label('Catatan Approval')
@@ -546,6 +534,7 @@ class TransaksiResource extends Resource
 
                         Notification::make()
                             ->title('Transaksi berhasil disetujui')
+                            ->body('Transaksi telah disetujui dan menunggu pembayaran.')
                             ->success()
                             ->send();
                     }),
@@ -556,7 +545,7 @@ class TransaksiResource extends Resource
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->visible(fn($record) => $record->status === 'pending' &&
-                        auth()->user()->hasRole(['admin', 'super-admin', 'direktur']))
+                        auth()->user()->hasRole(['admin', 'keuangan', 'direktur']))
                     ->form([
                         Forms\Components\Textarea::make('catatan_approval')
                             ->label('Alasan Penolakan')
@@ -579,13 +568,14 @@ class TransaksiResource extends Resource
 
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make()
-                    ->visible(fn($record) => auth()->user()->hasRole(['admin', 'super-admin', 'keuangan']) &&
+                    ->visible(fn($record) => auth()->user()->hasRole(['admin', 'direktur', 'keuangan']) &&
                         in_array($record->status, ['draft', 'pending'])),
+            ])
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
-                        ->visible(fn() => auth()->user()->hasRole(['admin', 'super-admin']))
+                        ->visible(fn() => auth()->user()->hasRole(['admin']))
                         ->requiresConfirmation(),
                 ]),
             ]);
