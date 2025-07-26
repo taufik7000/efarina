@@ -19,6 +19,9 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\Card;
+use Filament\Forms\Components\Wizard;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
 use App\Filament\Resources\Notification;
@@ -31,290 +34,398 @@ class TransaksiResource extends Resource
     protected static ?string $pluralModelLabel = 'Transaksi';
     protected static ?int $navigationSort = 6;
 
+    public static function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                // Main Grid Layout (3 columns for large screens)
+                Forms\Components\Grid::make(['default' => 1, 'lg' => 3])
+                    ->schema([
+                        // LEFT COLUMN (wider)
+                        Forms\Components\Group::make()
+                            ->schema([
+                                // Informasi Transaksi
+                                Section::make('Informasi Transaksi')
+                                    ->icon('heroicon-o-document-text')
+                                    ->description('Detail dasar transaksi')
+                                    ->collapsible()
+                                    ->schema([
+                                        TextInput::make('nama_transaksi')
+                                            ->label('Nama Transaksi')
+                                            ->required()
+                                            ->maxLength(255)
+                                            ->placeholder('Contoh: Pembelian Alat Tulis Kantor')
+                                            ->columnSpanFull(),
 
-public static function form(Form $form): Form
-{
-    return $form
-        ->schema([
-            Forms\Components\Grid::make(2)
-                ->schema([
-                    // KOLOM KIRI
-                    Forms\Components\Group::make()
-                        ->schema([
-                            Section::make('Informasi Utama')
-                                ->schema([
-                                    TextInput::make('nama_transaksi')
-                                        ->label('Nama Transaksi')
-                                        ->required()
-                                        ->maxLength(255)
-                                        ->placeholder('Masukkan nama transaksi'),
+                                        Textarea::make('deskripsi')
+                                            ->label('Deskripsi')
+                                            ->maxLength(65535)
+                                            ->rows(3)
+                                            ->placeholder('Jelaskan detail transaksi ini...')
+                                            ->columnSpanFull(),
 
-                                    Select::make('jenis_transaksi')
-                                        ->label('Jenis Transaksi')
-                                        ->options([
-                                            'pemasukan' => 'Pemasukan',
-                                            'pengeluaran' => 'Pengeluaran'
-                                        ])
-                                        ->required()
-                                        ->live()
-                                        ->afterStateUpdated(fn(callable $set) => $set('status', 'draft')),
+                                        // Hidden field untuk total amount
+                                        TextInput::make('total_amount')
+                                            ->hidden()
+                                            ->default(0),
+                                    ]),
 
-                                    DatePicker::make('tanggal_transaksi')
-                                        ->label('Tanggal Transaksi')
-                                        ->required()
-                                        ->default(now()),
+                                // Detail Items - Main Content
+                                Section::make('Detail Items')
+                                    ->icon('heroicon-o-shopping-cart')
+                                    ->description('Daftar barang/jasa dalam transaksi')
+                                    ->schema([
+                                        Repeater::make('items')
+                                            ->relationship()
+                                            ->schema([
+                                                // Gunakan Grid dengan 12 kolom untuk fleksibilitas
+                                                Forms\Components\Grid::make(12)
+                                                    ->schema([
+                                                        // Baris 1: Nama Item (Lebar penuh)
+                                                        TextInput::make('nama_item')
+                                                            ->label('Nama Item')
+                                                            ->required()
+                                                            ->placeholder('Contoh: Kertas A4 80gsm')
+                                                            ->columnSpan(12),
 
-                                    Select::make('status')
-                                        ->label('Status')
-                                        ->options([
-                                            'draft' => 'Draft',
-                                            'pending' => 'Menunggu Approval',
-                                            'approved' => 'Menunggu Pembayaran',
-                                            'rejected' => 'Ditolak',
-                                            'completed' => 'Selesai',
-                                        ])
-                                        ->default('draft')
-                                        ->required(),
+                                                        // Baris 2: Qty, Satuan, dan Harga
+                                                        TextInput::make('kuantitas')
+                                                            ->label('Qty')
+                                                            ->numeric()
+                                                            ->required()
+                                                            ->default(1)
+                                                            ->minValue(1)
+                                                            ->live(onBlur: true)
+                                                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                                                $harga = $get('harga_satuan') ?? 0;
+                                                                $set('subtotal', $state * $harga);
+                                                            })
+                                                            ->columnSpan([
+                                                                'default' => 12, // Tumpuk di layar terkecil
+                                                                'sm' => 2,       // Ambil 2 dari 12 kolom di layar kecil
+                                                            ]),
 
-                                    Textarea::make('deskripsi')
-                                        ->label('Deskripsi')
-                                        ->maxLength(65535)
-                                        ->rows(4)
-                                        ->placeholder('Deskripsikan transaksi ini secara detail...'),
+                                                        TextInput::make('satuan')
+                                                            ->label('Satuan')
+                                                            ->placeholder('pcs')
+                                                            ->default('pcs')
+                                                            ->columnSpan([
+                                                                'default' => 12,
+                                                                'sm' => 3,       // Ambil 3 dari 12 kolom
+                                                            ]),
 
-                                    // Hidden field untuk total amount
-                                    TextInput::make('total_amount')
-                                        ->hidden()
-                                        ->default(0),
-                                ]),
+                                                        TextInput::make('harga_satuan')
+                                                            ->label('Harga')
+                                                            ->numeric()
+                                                            ->required()
+                                                            ->minValue(0)
+                                                            ->prefix('Rp')
+                                                            ->placeholder('0')
+                                                            ->live(onBlur: true)
+                                                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                                                $qty = $get('kuantitas') ?? 1;
+                                                                $set('subtotal', $qty * $state);
+                                                            })
+                                                            ->columnSpan([
+                                                                'default' => 12,
+                                                                'sm' => 7,       // Ambil 7 kolom sisanya, jadi lebih lebar
+                                                            ]),
 
-                            // Asosiasi Budget & Project - HANYA untuk PENGELUARAN
-                            Section::make('Budget & Project')
-                                ->visible(fn(Forms\Get $get) => $get('jenis_transaksi') === 'pengeluaran')
-                                ->schema([
-                                    Select::make('budget_allocation_id')
-                                        ->label('Alokasi Budget')
-                                        ->relationship('budgetAllocation', 'id')
-                                        ->getOptionLabelFromRecordUsing(
-                                            fn($record) =>
-                                            $record->category_name . ' - Rp ' . number_format($record->remaining_amount, 0, ',', '.')
-                                        )
-                                        ->searchable(['category_name'])
-                                        ->preload()
-                                        ->placeholder('Pilih alokasi budget (opsional)'),
+                                                        // Baris 3: Subtotal (Lebar penuh)
+                                                        Forms\Components\Placeholder::make('subtotal_display')
+                                                            ->label('Subtotal')
+                                                            ->content(function (Forms\Get $get) {
+                                                                $qty = $get('kuantitas') ?? 0;
+                                                                $harga = $get('harga_satuan') ?? 0;
+                                                                $subtotal = $qty * $harga;
+                                                                return 'Rp ' . number_format($subtotal, 0, ',', '.');
+                                                            })
+                                                            ->columnSpan(12),
 
-                                    Select::make('project_id')
-                                        ->label('Project Terkait')
-                                        ->relationship('project', 'nama_project')
-                                        ->searchable()
-                                        ->preload()
-                                        ->placeholder('Pilih project terkait (opsional)'),
-                                ]),
-
-                            // Informasi Pembayaran - untuk PENGELUARAN
-                            Section::make('Informasi Pembayaran')
-                                ->visible(fn(Forms\Get $get) => $get('jenis_transaksi') === 'pengeluaran')
-                                ->schema([
-                                    Select::make('metode_pembayaran')
-                                        ->label('Metode Pembayaran')
-                                        ->options([
-                                            'cash' => 'Tunai',
-                                            'transfer' => 'Transfer Bank',
-                                            'debit' => 'Kartu Debit',
-                                            'credit' => 'Kartu Kredit',
-                                            'e_wallet' => 'E-Wallet',
-                                            'cek' => 'Cek',
-                                        ])
-                                        ->placeholder('Pilih metode pembayaran'),
-
-                                    TextInput::make('nomor_referensi')
-                                        ->label('Nomor Referensi')
-                                        ->placeholder('No. invoice, PO, atau referensi lainnya')
-                                        ->helperText('Nomor untuk tracking pembayaran'),
-                                ]),
-                        ])
-                        ->columnSpan(1),
-
-                    // KOLOM KANAN
-                    Forms\Components\Group::make()
-                        ->schema([
-                            // Detail Items - WAJIB
-                            Section::make('Detail Items Transaksi')
-                                ->description('Minimal 1 item harus diisi')
-                                ->schema([
-                                    Repeater::make('items')
-                                        ->relationship()
-                                        ->schema([
-                                            TextInput::make('nama_item')
-                                                ->label('Nama Item')
-                                                ->required()
-                                                ->placeholder('Masukkan nama item')
-                                                ->columnSpan(2),
-
-                                            TextInput::make('kuantitas')
-                                                ->label('Qty')
-                                                ->numeric()
-                                                ->required()
-                                                ->default(1)
-                                                ->minValue(1)
-                                                ->live(onBlur: true)
-                                                ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                                    $harga = $get('harga_satuan') ?? 0;
-                                                    $set('subtotal', $state * $harga);
-                                                }),
-
-                                            TextInput::make('harga_satuan')
-                                                ->label('Harga Satuan')
-                                                ->numeric()
-                                                ->required()
-                                                ->prefix('IDR')
-                                                ->placeholder('0')
-                                                ->live(onBlur: true)
-                                                ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                                    $qty = $get('kuantitas') ?? 1;
-                                                    $set('subtotal', $qty * $state);
-                                                }),
-
-                                            TextInput::make('subtotal')
-                                                ->label('Subtotal')
-                                                ->numeric()
-                                                ->prefix('IDR')
-                                                ->disabled()
-                                                ->dehydrated(false)
-                                                ->placeholder('Auto calculated'),
-
-                                            TextInput::make('satuan')
-                                                ->label('Satuan')
-                                                ->placeholder('pcs, kg, meter')
-                                                ->default('pcs'),
-
-                                            Textarea::make('deskripsi_item')
-                                                ->label('Deskripsi Item')
-                                                ->rows(2)
-                                                ->placeholder('Detail spesifikasi item (opsional)')
-                                                ->columnSpanFull(),
-                                        ])
-                                        ->columns(4)
-                                        ->addActionLabel('+ Tambah Item')
-                                        ->reorderableWithButtons()
-                                        ->collapsible()
-                                        ->itemLabel(fn(array $state): ?string => $state['nama_item'] ?? 'Item Baru')
-                                        ->defaultItems(1)
-                                        ->minItems(1)
-                                        ->required()
-                                        ->live()
-                                        ->afterStateUpdated(function ($state, callable $set) {
-                                            // Calculate total from all items
-                                            $total = 0;
-                                            if (is_array($state)) {
-                                                foreach ($state as $item) {
-                                                    $qty = $item['kuantitas'] ?? 0;
-                                                    $harga = $item['harga_satuan'] ?? 0;
-                                                    $total += $qty * $harga;
+                                                        // Baris 4: Deskripsi (Lebar penuh)
+                                                        Textarea::make('deskripsi_item')
+                                                            ->label('Deskripsi/Spesifikasi')
+                                                            ->rows(2)
+                                                            ->placeholder('Detail spesifikasi, merek, warna, ukuran...')
+                                                            ->columnSpan(12),
+                                                    ]),
+                                            ])
+                                            ->addActionLabel('➕ Tambah Item')
+                                            ->reorderableWithButtons()
+                                            ->collapsible()
+                                            ->cloneable()
+                                            ->itemLabel(function (array $state): ?string {
+                                                if (!empty($state['nama_item'])) {
+                                                    $qty = $state['kuantitas'] ?? 0;
+                                                    $harga = $state['harga_satuan'] ?? 0;
+                                                    $subtotal = $qty * $harga;
+                                                    return $state['nama_item'] . ' - Rp ' . number_format($subtotal, 0, ',', '.');
                                                 }
-                                            }
-                                            $set('calculated_total', $total);
-                                        }),
-
-                                    // Total Summary
-                                    Forms\Components\Placeholder::make('total_summary')
-                                        ->label('')
-                                        ->content(function (Forms\Get $get) {
-                                            $items = $get('items') ?? [];
-                                            $total = 0;
-                                            $itemCount = 0;
-
-                                            foreach ($items as $item) {
-                                                if (!empty($item['nama_item'])) {
-                                                    $qty = $item['kuantitas'] ?? 0;
-                                                    $harga = $item['harga_satuan'] ?? 0;
-                                                    $total += $qty * $harga;
-                                                    $itemCount++;
+                                                return 'Item Baru';
+                                            })
+                                            ->defaultItems(1)
+                                            ->minItems(1)
+                                            ->maxItems(50)
+                                            ->required()
+                                            ->live()
+                                            ->afterStateUpdated(function ($state, callable $set) {
+                                                $total = 0;
+                                                if (is_array($state)) {
+                                                    foreach ($state as $item) {
+                                                        $qty = $item['kuantitas'] ?? 0;
+                                                        $harga = $item['harga_satuan'] ?? 0;
+                                                        $total += $qty * $harga;
+                                                    }
                                                 }
-                                            }
+                                                $set('total_amount', $total);
+                                            }),
+                                    ]),
+                            ])
+                            ->columnSpan(['default' => 3, 'lg' => 2]),
 
-                                            return new \Illuminate\Support\HtmlString('
-                                                <div class="bg-primary-50 dark:bg-primary-900/20 p-4 rounded-lg border border-primary-200 dark:border-primary-700">
-                                                    <div class="flex justify-between items-center mb-2">
-                                                        <span class="text-sm font-medium text-primary-700 dark:text-primary-300">Total Items:</span>
-                                                        <span class="text-sm font-semibold text-primary-900 dark:text-primary-100">' . $itemCount . ' item(s)</span>
+                        // RIGHT COLUMN
+                        Forms\Components\Group::make()
+                            ->schema([
+                                // Section for Main Details (Jenis, Tanggal, Status)
+                                Section::make('Detail Utama')
+                                    ->icon('heroicon-o-arrow-path')
+                                    ->schema([
+                                        Select::make('jenis_transaksi')
+                                            ->label('Jenis Transaksi')
+                                            ->options([
+                                                'pemasukan' => 'Pemasukan',
+                                                'pengeluaran' => 'Pengeluaran'
+                                            ])
+                                            ->required()
+                                            ->live()
+                                            ->afterStateUpdated(fn(callable $set) => $set('status', 'draft'))
+                                            ->native(false),
+
+                                        DatePicker::make('tanggal_transaksi')
+                                            ->label('Tanggal')
+                                            ->required()
+                                            ->default(now())
+                                            ->native(false)
+                                            ->displayFormat('d/m/Y'),
+
+                                        Select::make('status')
+                                            ->label('Status')
+                                            ->options([
+                                                'draft' => 'Draft',
+                                                'pending' => 'Menunggu Approval',
+                                                'approved' => 'Menunggu Pembayaran',
+                                                'rejected' => 'Ditolak',
+                                                'completed' => 'Selesai',
+                                            ])
+                                            ->default('draft')
+                                            ->required()
+                                            ->native(false),
+                                    ]),
+
+                                Section::make('💰 Budget & Project')
+                                    ->description('Alokasi budget dan project terkait')
+                                    ->visible(fn(Forms\Get $get) => $get('jenis_transaksi') === 'pengeluaran')
+                                    ->collapsible()
+                                    ->schema([
+                                        Select::make('budget_allocation_id')
+                                            ->label('Alokasi Budget')
+                                            ->relationship('budgetAllocation', 'id')
+                                            ->getOptionLabelFromRecordUsing(
+                                                fn($record) =>
+                                                $record->category_name
+                                            )
+                                            ->searchable(['category_name'])
+                                            ->preload()
+                                            ->placeholder('Pilih kategori budget...')
+                                            ->native(false),
+
+                                        Select::make('project_id')
+                                            ->label('Project Terkait')
+                                            ->relationship('project', 'nama_project')
+                                            ->searchable()
+                                            ->preload()
+                                            ->placeholder('Pilih project...')
+                                            ->native(false),
+                                    ]),
+
+                                // Summary Card
+                                Section::make('Ringkasan Transaksi')
+                                    ->icon('heroicon-o-chart-bar')
+                                    ->schema([
+                                        Forms\Components\Placeholder::make('transaction_summary')
+                                            ->label('')
+                                            ->content(function (Forms\Get $get) {
+                                                $items = $get('items') ?? [];
+                                                $total = 0;
+                                                $itemCount = 0;
+                                                $totalQty = 0;
+
+                                                foreach ($items as $item) {
+                                                    if (!empty($item['nama_item'])) {
+                                                        $qty = $item['kuantitas'] ?? 0;
+                                                        $harga = $item['harga_satuan'] ?? 0;
+                                                        $total += $qty * $harga;
+                                                        $itemCount++;
+                                                        $totalQty += $qty;
+                                                    }
+                                                }
+
+                                                $jenis = $get('jenis_transaksi');
+                                                $bgColor = $jenis === 'pemasukan' ? 'success' : 'primary';
+                                                $icon = $jenis === 'pemasukan' ? '💰' : '💸';
+                                                $prefix = $jenis === 'pemasukan' ? '+' : '-';
+
+                                                return new \Illuminate\Support\HtmlString("
+                                                    <div class='bg-{$bgColor}-50 dark:bg-{$bgColor}-900/20 p-4 rounded-lg border border-{$bgColor}-200 dark:border-{$bgColor}-700'>
+                                                        <div class='text-center mb-3'>
+                                                            <div class='text-2xl mb-1'>{$icon}</div>
+                                                            <div class='text-xs font-medium text-{$bgColor}-700 dark:text-{$bgColor}-300 uppercase tracking-wide'>
+                                                                " . ($jenis === 'pemasukan' ? 'Total Pemasukan' : 'Total Pengeluaran') . "
+                                                            </div>
+                                                            <div class='text-xl font-bold text-{$bgColor}-600 dark:text-{$bgColor}-400 mt-1'>
+                                                                {$prefix} Rp " . number_format($total, 0, ',', '.') . "
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class='grid grid-cols-2 gap-3 pt-3 border-t border-{$bgColor}-200 dark:border-{$bgColor}-700'>
+                                                            <div class='text-center'>
+                                                                <div class='text-lg font-semibold text-{$bgColor}-600 dark:text-{$bgColor}-400'>{$itemCount}</div>
+                                                                <div class='text-xs text-{$bgColor}-700 dark:text-{$bgColor}-300'>Items</div>
+                                                            </div>
+                                                            <div class='text-center'>
+                                                                <div class='text-lg font-semibold text-{$bgColor}-600 dark:text-{$bgColor}-400'>{$totalQty}</div>
+                                                                <div class='text-xs text-{$bgColor}-700 dark:text-{$bgColor}-300'>Quantity</div>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <div class="flex justify-between items-center border-t border-primary-200 dark:border-primary-700 pt-2 mt-2">
-                                                        <span class="text-lg font-bold text-primary-900 dark:text-primary-100">TOTAL:</span>
-                                                        <span class="text-xl font-bold text-primary-600 dark:text-primary-400">Rp ' . number_format($total, 0, ',', '.') . '</span>
-                                                    </div>
-                                                </div>
-                                            ');
-                                        }),
-                                ]),
+                                                ");
+                                            }),
+                                    ]),
 
-                            // Upload Bukti Pembayaran - OPSIONAL
-                            Section::make('Bukti Pembayaran (Opsional)')
-                                ->description('Dapat ditambahkan sekarang atau nanti')
-                                ->collapsible()
-                                ->collapsed()
-                                ->schema([
-                                    Repeater::make('attachments')
-                                        ->label(false)
-                                        ->addActionLabel('+ Tambah Bukti')
-                                        ->schema([
-                                            FileUpload::make('filename')
-                                                ->label('File')
-                                                ->disk('public')
-                                                ->directory('transaksi-attachments')
-                                                ->preserveFilenames()
-                                                ->maxSize(5120)
-                                                ->acceptedFileTypes([
-                                                    'application/pdf',
-                                                    'image/jpeg',
-                                                    'image/png',
-                                                    'image/jpg',
-                                                    'image/webp'
+                                // Payment Info - Conditional for Pengeluaran
+                                Section::make('💳 Info Pembayaran')
+                                    ->description('Metode dan referensi pembayaran')
+                                    ->visible(fn(Forms\Get $get) => $get('jenis_transaksi') === 'pengeluaran')
+                                    ->collapsible()
+                                    ->collapsed()
+                                    ->schema([
+                                        Select::make('metode_pembayaran')
+                                            ->label('Metode Pembayaran')
+                                            ->options([
+                                                'cash' => '💵 Tunai',
+                                                'transfer' => '🏦 Transfer Bank',
+                                                'debit' => '💳 Kartu Debit',
+                                                'credit' => '💳 Kartu Kredit',
+                                                'e_wallet' => '📱 E-Wallet',
+                                                'cek' => '📄 Cek',
+                                            ])
+                                            ->placeholder('Pilih metode...')
+                                            ->native(false),
+
+                                        TextInput::make('nomor_referensi')
+                                            ->label('No. Referensi')
+                                            ->placeholder('INV-001, PO-123')
+                                            ->helperText('Invoice, PO, atau referensi lain'),
+                                    ]),
+
+                                // Attachments
+                                Section::make('📎 Lampiran')
+                                    ->description('Upload dokumen pendukung')
+                                    ->collapsible()
+                                    ->collapsed(fn(Forms\Get $get) => empty($get('attachments')))
+                                    ->schema([
+                                        Repeater::make('attachments')
+                                            ->label(false)
+                                            ->addActionLabel('📎 Tambah File')
+                                            ->schema([
+                                                FileUpload::make('filename')
+                                                    ->label('File')
+                                                    ->disk('public')
+                                                    ->directory('transaksi-attachments')
+                                                    ->preserveFilenames()
+                                                    ->maxSize(5120) // 5MB
+                                                    ->acceptedFileTypes([
+                                                        'application/pdf',
+                                                        'image/jpeg',
+                                                        'image/png',
+                                                        'image/jpg',
+                                                        'image/webp'
+                                                    ])
+                                                    ->imageEditor()
+                                                    ->imageEditorAspectRatios([
+                                                        '16:9',
+                                                        '4:3',
+                                                        '1:1',
+                                                    ])
+                                                    ->panelLayout('grid')
+                                                    ->required()
+                                                    ->columnSpanFull(),
+
+                                                Forms\Components\Grid::make([
+                                                    'default' => 1,
+                                                    'sm' => 2,
                                                 ])
-                                                ->imageEditor()
-                                                ->required(),
+                                                    ->schema([
+                                                        Select::make('type')
+                                                            ->label('Jenis')
+                                                            ->options([
+                                                                'bukti_pembayaran' => '🧾 Bukti Bayar',
+                                                                'invoice' => '📋 Invoice',
+                                                                'kwitansi' => '🧾 Kwitansi',
+                                                                'nota' => '📄 Nota',
+                                                                'po' => '📝 PO',
+                                                                'kontrak' => '📑 Kontrak',
+                                                                'lainnya' => '📎 Lainnya'
+                                                            ])
+                                                            ->default('bukti_pembayaran')
+                                                            ->required()
+                                                            ->native(false),
 
-                                            Select::make('type')
-                                                ->label('Jenis')
-                                                ->options([
-                                                    'bukti_pembayaran' => 'Bukti Pembayaran',
-                                                    'invoice' => 'Invoice',
-                                                    'kwitansi' => 'Kwitansi',
-                                                    'nota' => 'Nota',
-                                                    'lainnya' => 'Lainnya'
-                                                ])
-                                                ->default('bukti_pembayaran')
-                                                ->required(),
+                                                        TextInput::make('uploaded_by')
+                                                            ->label('Upload oleh')
+                                                            ->default(fn() => auth()->user()->name)
+                                                            ->disabled()
+                                                            ->dehydrated(),
+                                                    ]),
 
-                                            Textarea::make('description')
-                                                ->label('Keterangan')
-                                                ->rows(2)
-                                                ->placeholder('Deskripsikan bukti ini')
-                                                ->columnSpanFull(),
+                                                Textarea::make('description')
+                                                    ->label('Keterangan')
+                                                    ->rows(2)
+                                                    ->placeholder('Deskripsi dokumen...')
+                                                    ->columnSpanFull(),
 
-                                            // Hidden metadata
-                                            TextInput::make('uploaded_by')
-                                                ->hidden()
-                                                ->default(fn() => auth()->user()->name),
+                                                // Hidden metadata
+                                                TextInput::make('uploaded_at')
+                                                    ->hidden()
+                                                    ->default(fn() => now()->toIso8601String()),
+                                            ])
+                                            ->itemLabel(function (array $state): ?string {
+                                                if (isset($state['type']) && isset($state['filename'])) {
+                                                    $typeLabels = [
+                                                        'bukti_pembayaran' => '🧾',
+                                                        'invoice' => '📋',
+                                                        'kwitansi' => '🧾',
+                                                        'nota' => '📄',
+                                                        'po' => '📝',
+                                                        'kontrak' => '📑',
+                                                        'lainnya' => '📎'
+                                                    ];
+                                                    $icon = $typeLabels[$state['type']] ?? '📎';
+                                                    $filename = is_string($state['filename']) ? basename($state['filename']) : 'File baru';
+                                                    return $icon . ' ' . $filename;
+                                                }
+                                                return '📎 Lampiran Baru';
+                                            })
+                                            ->defaultItems(0)
+                                            ->reorderableWithButtons()
+                                            ->collapsible(),
+                                    ]),
+                            ])
+                            ->columnSpan(['default' => 3, 'lg' => 1]),
+                    ]),
+            ]);
+    }
 
-                                            TextInput::make('uploaded_at')
-                                                ->hidden()
-                                                ->default(fn() => now()->toIso8601String()),
-                                        ])
-                                        ->columns(2)
-                                        ->itemLabel(function (array $state): ?string {
-                                            if (isset($state['filename']) && is_string($state['filename'])) {
-                                                return basename($state['filename']);
-                                            }
-                                            return 'Lampiran baru';
-                                        })
-                                        ->defaultItems(0),
-                                ]),
-                        ])
-                        ->columnSpan(1),
-                ])
-        ]);
-}
     public static function table(Table $table): Table
     {
         return $table
@@ -480,7 +591,6 @@ public static function form(Form $form): Form
             ]);
     }
 
-    // ... (Sisa kode Anda seperti getRelations() dan getPages() tetap sama)
     public static function getRelations(): array
     {
         return [

@@ -96,7 +96,7 @@ Route::prefix('berita')->name('news.')->group(function () {
 // API routes for views counter
 Route::post('/api/news/{news}/view', [NewsController::class, 'incrementView'])
     ->name('api.news.view')
-    ->middleware('throttle:10,1'); // Limit 10 requests per minute
+    ->middleware('throttle:100,1'); // Limit 100 requests per minute
 
 
 
