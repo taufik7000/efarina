@@ -210,6 +210,7 @@ class TransaksiResource extends Resource
                                     ]),
 
                                 Forms\Components\Section::make('Alokasi Budget & Project')
+                                    ->icon('heroicon-o-briefcase')
                                     ->schema([
                                         Forms\Components\Select::make('budget_allocation_id')
                                             ->label('Alokasi Budget')
@@ -291,7 +292,8 @@ class TransaksiResource extends Resource
                                     ]),
 
                                 // Payment Info - Conditional for Pengeluaran
-                                Section::make('💳 Info Pembayaran')
+                                Section::make('Info Pembayaran')
+                                    ->icon('heroicon-o-banknotes')
                                     ->description('Metode dan referensi pembayaran')
                                     ->visible(fn(Forms\Get $get) => $get('jenis_transaksi') === 'pengeluaran')
                                     ->collapsible()
@@ -317,7 +319,8 @@ class TransaksiResource extends Resource
                                     ]),
 
                                 // Attachments
-                                Section::make('📎 Lampiran')
+                                Section::make('Lampiran')
+                                    ->icon('heroicon-o-paper-clip')
                                     ->description('Upload dokumen pendukung')
                                     ->collapsible()
                                     ->collapsed(fn(Forms\Get $get) => empty($get('attachments')))
