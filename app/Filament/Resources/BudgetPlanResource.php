@@ -56,10 +56,35 @@ class BudgetPlanResource extends Resource
                         Forms\Components\TextInput::make('total_budget')
                             ->label('Total Budget')
                             ->required()
-                            ->numeric()
                             ->prefix('Rp')
-                            ->step(1000)
-                            ->rules(['min:0']),
+                            ->inputMode('decimal')
+                            ->placeholder('0')
+                            ->extraInputAttributes([
+                                'oninput' => "
+            let value = this.value.replace(/[^0-9]/g, '');
+            if (value) {
+                this.value = value.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            }
+        ",
+                                'onkeydown' => "
+            if ([46, 8, 9, 27, 13].indexOf(event.keyCode) !== -1 ||
+                // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                (event.keyCode === 65 && event.ctrlKey === true) ||
+                (event.keyCode === 67 && event.ctrlKey === true) ||
+                (event.keyCode === 86 && event.ctrlKey === true) ||
+                (event.keyCode === 88 && event.ctrlKey === true)) {
+                return;
+            }
+            // Ensure that it is a number and stop the keypress
+            if ((event.shiftKey || (event.keyCode < 48 || event.keyCode > 57)) && (event.keyCode < 96 || event.keyCode > 105)) {
+                event.preventDefault();
+            }
+        "
+                            ])
+                            ->dehydrateStateUsing(fn($state) => $state ? (int) str_replace('.', '', $state) : null)
+                            ->formatStateUsing(fn($state) => $state ? number_format($state, 0, ',', '.') : '')
+                            ->rules(['min:0'])
+                            ->helperText('Masukkan nominal dalam rupiah. Contoh: 1.000.000 untuk satu juta rupiah'),
 
                         Forms\Components\Select::make('status')
                             ->label('Status')

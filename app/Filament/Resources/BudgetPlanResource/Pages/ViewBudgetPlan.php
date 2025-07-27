@@ -21,66 +21,106 @@ public function getTitle(): string
     return $this->getRecord()->nama_budget;
 }
 
-protected function getHeaderActions(): array
-{
-    return [
-        Actions\EditAction::make()
-            ->icon('heroicon-o-pencil-square')
-            ->color('primary')
-            ->visible(fn () => auth()->user()->hasRole(['admin', 'super-admin', 'direktur', 'keuangan'])),
-            
-        Actions\Action::make('create_allocation')
-            ->label('Tambah Alokasi')
-            ->icon('heroicon-o-plus-circle')
-            ->color('success')
-            ->visible(fn () => auth()->user()->hasRole(['keuangan', 'direktur']))
-            ->modal()
-            ->modalHeading('Tambah Alokasi Budget')
-            ->modalDescription('Buat alokasi budget baru untuk rencana ini')
-            ->modalWidth('2xl')
-            ->modalSubmitActionLabel('Simpan Alokasi')
-            ->modalCancelActionLabel('Batal')
-            ->form([
-                Forms\Components\Section::make('Informasi Alokasi')
-                    ->schema([
-                        Forms\Components\Hidden::make('budget_plan_id')
-                            ->default(fn () => $this->getRecord()->id),
-                            
-                        Forms\Components\Select::make('budget_category_id')
-                            ->label('Kategori Budget')
-                            ->options(function () {
-                                return \App\Models\BudgetCategory::where('is_active', true)
-                                    ->pluck('nama_kategori', 'id')
-                                    ->toArray();
-                            })
-                            ->searchable()
-                            ->required()
-                            ->live()
-                            ->afterStateUpdated(fn (Forms\Set $set) => $set('budget_subcategory_id', null)),
-
-                        Forms\Components\Select::make('budget_subcategory_id')
-                            ->label('Subkategori Budget')
-                            ->options(function (Forms\Get $get): array {
-                                $categoryId = $get('budget_category_id');
-                                if (!$categoryId) {
-                                    return [];
-                                }
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\EditAction::make()
+                ->icon('heroicon-o-pencil-square')
+                ->color('primary')
+                ->visible(fn () => auth()->user()->hasRole(['admin', 'super-admin', 'direktur', 'keuangan'])),
+                
+            Actions\Action::make('create_allocation')
+                ->label('Tambah Alokasi')
+                ->icon('heroicon-o-plus-circle')
+                ->color('success')
+                ->visible(fn () => auth()->user()->hasRole(['keuangan', 'direktur']))
+                ->modal()
+                ->modalHeading('Tambah Alokasi Budget')
+                ->modalDescription('Buat alokasi budget baru atau tambahkan budget ke alokasi yang sudah ada')
+                ->modalWidth('2xl')
+                ->modalSubmitActionLabel('Simpan Alokasi')
+                ->modalCancelActionLabel('Batal')
+                ->form([
+                    Forms\Components\Section::make('Informasi Alokasi')
+                        ->schema([
+                            Forms\Components\Hidden::make('budget_plan_id')
+                                ->default(fn () => $this->getRecord()->id),
                                 
-                                return \App\Models\BudgetSubcategory::where('budget_category_id', $categoryId)
-                                    ->where('is_active', true)
-                                    ->pluck('nama_subkategori', 'id')
-                                    ->toArray();
-                            })
-                            ->searchable()
-                            ->placeholder('Pilih subkategori (opsional)'),
+                            Forms\Components\Select::make('budget_category_id')
+                                ->label('Kategori Budget')
+                                ->options(function () {
+                                    return \App\Models\BudgetCategory::where('is_active', true)
+                                        ->pluck('nama_kategori', 'id')
+                                        ->toArray();
+                                })
+                                ->searchable()
+                                ->required()
+                                ->live()
+                                ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
+                                    $set('budget_subcategory_id', null);
+                                    $this->checkExistingAllocation($get, $set);
+                                }),
 
+                            Forms\Components\Select::make('budget_subcategory_id')
+                                ->label('Subkategori Budget')
+                                ->options(fn (Forms\Get $get): array => 
+                                    $get('budget_category_id') 
+                                        ? \App\Models\BudgetCategory::find($get('budget_category_id'))
+                                            ?->subcategories()
+                                            ->where('is_active', true)
+                                            ->pluck('nama_subkategori', 'id')
+                                            ->toArray() ?? []
+                                        : []
+                                )
+                                ->searchable()
+                                ->live()
+                                ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
+                                    $this->checkExistingAllocation($get, $set);
+                                }),
 
-Forms\Components\TextInput::make('allocated_amount')
-    ->label('Jumlah Alokasi')
-    ->prefix('Rp')
-    ->inputMode('decimal')
-    ->required()
-    ->placeholder('0')
+                            // Alert untuk menampilkan info alokasi existing
+                            Forms\Components\Placeholder::make('existing_allocation_info')
+                                ->label('')
+                                ->content(function (Forms\Get $get) {
+                                    $budgetPlanId = $get('budget_plan_id');
+                                    $categoryId = $get('budget_category_id');
+                                    $subcategoryId = $get('budget_subcategory_id');
+                                    
+                                    if ($budgetPlanId && $categoryId) {
+                                        $existing = BudgetAllocation::where('budget_plan_id', $budgetPlanId)
+                                            ->where('budget_category_id', $categoryId)
+                                            ->where('budget_subcategory_id', $subcategoryId)
+                                            ->first();
+                                            
+                                        if ($existing) {
+                                            return new \Illuminate\Support\HtmlString('
+                                                <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                                    <div class="flex items-center">
+                                                        <svg class="w-5 h-5 text-blue-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                                        </svg>
+                                                        <div>
+                                                            <h4 class="text-sm font-medium text-blue-800">Alokasi Sudah Ada</h4>
+                                                            <p class="text-sm text-blue-600">
+                                                                Alokasi saat ini: <strong>Rp ' . number_format($existing->allocated_amount, 0, ',', '.') . '</strong><br>
+                                                                Jumlah yang akan Anda masukkan akan <strong>ditambahkan</strong> ke alokasi existing.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ');
+                                        }
+                                    }
+                                    return '';
+                                })
+                                ->visible(fn (Forms\Get $get) => $this->hasExistingAllocation($get)),
+
+                            Forms\Components\TextInput::make('allocated_amount')
+                                ->label('Jumlah Alokasi')
+                                ->prefix('Rp')
+                                ->inputMode('decimal')
+                                ->required()
+                                ->placeholder('0')
                                 ->extraInputAttributes([
                                     'oninput' => "
             let value = this.value.replace(/[^0-9]/g, '');
@@ -129,50 +169,70 @@ Forms\Components\TextInput::make('allocated_amount')
                             return false;
                         }
 
-                        // Check duplicate allocation
-                    $existingAllocation = \App\Models\BudgetAllocation::where('budget_plan_id', $data['budget_plan_id'])
-                        ->where('budget_category_id', $data['budget_category_id'])
-                        ->where('budget_subcategory_id', $data['budget_subcategory_id'])
-                        ->first();
+                        // Check if allocation already exists
+                        $existingAllocation = BudgetAllocation::where('budget_plan_id', $data['budget_plan_id'])
+                            ->where('budget_category_id', $data['budget_category_id'])
+                            ->where('budget_subcategory_id', $data['budget_subcategory_id'])
+                            ->first();
 
-                    if ($existingAllocation) {
+                        if ($existingAllocation) {
+                            // Update existing allocation - ADD to current amount
+                            $oldAmount = $existingAllocation->allocated_amount;
+                            $existingAllocation->increment('allocated_amount', $data['allocated_amount']);
+                            
+                            // Update catatan jika ada
+                            if (!empty($data['catatan'])) {
+                                $newCatatan = $existingAllocation->catatan 
+                                    ? $existingAllocation->catatan . "\n\n[" . now()->format('d/m/Y H:i') . "] Penambahan: " . $data['catatan']
+                                    : $data['catatan'];
+                                $existingAllocation->update(['catatan' => $newCatatan]);
+                            }
+
+                            // Update budget plan totals
+                            $budgetPlan->updateTotals();
+
+                            Notification::make()
+                                ->title('Alokasi Berhasil Ditambahkan')
+                                ->body(
+                                    'Alokasi berhasil ditambahkan ke kategori existing.<br>' .
+                                    'Sebelum: Rp ' . number_format($oldAmount, 0, ',', '.') . '<br>' .
+                                    'Ditambah: Rp ' . number_format($data['allocated_amount'], 0, ',', '.') . '<br>' .
+                                    '<strong>Total sekarang: Rp ' . number_format($existingAllocation->fresh()->allocated_amount, 0, ',', '.') . '</strong>'
+                                )
+                                ->success()
+                                ->duration(8000)
+                                ->send();
+
+                        } else {
+                            // Create new allocation
+                            $data['created_by'] = auth()->id();
+                            $data['used_amount'] = 0;
+
+                            $allocation = BudgetAllocation::create($data);
+
+                            // Update budget plan totals
+                            $budgetPlan->updateTotals();
+
+                            Notification::make()
+                                ->title('Alokasi Berhasil Dibuat')
+                                ->body('Alokasi baru sebesar Rp ' . number_format($data['allocated_amount'], 0, ',', '.') . ' telah ditambahkan')
+                                ->success()
+                                ->duration(5000)
+                                ->send();
+                        }
+
+                        return redirect(request()->header('Referer'));
+
+                    } catch (\Exception $e) {
+                        \Log::error('Error creating/updating budget allocation: ' . $e->getMessage());
+                        
                         Notification::make()
-                            ->title('Alokasi Sudah Ada')
-                            ->body('Alokasi untuk kategori ini sudah dibuat. Silakan edit alokasi yang ada.')
-                            ->warning()
+                            ->title('Terjadi Kesalahan')
+                            ->body('Gagal memproses alokasi: ' . $e->getMessage())
+                            ->danger()
                             ->duration(8000)
                             ->send();
-                        return false;
-                    }
-
-                    // Create allocation
-                    $data['created_by'] = auth()->id();
-                    $data['used_amount'] = 0;
-
-                    $allocation = \App\Models\BudgetAllocation::create($data);
-
-                    // Update budget plan totals
-                    $budgetPlan->updateTotals();
-
-                    Notification::make()
-                        ->title('Alokasi Berhasil Dibuat')
-                        ->body('Alokasi sebesar Rp ' . number_format($data['allocated_amount'], 0, ',', '.') . ' telah ditambahkan')
-                        ->success()
-                        ->duration(5000)
-                        ->send();
-
-                    return redirect(request()->header('Referer'));
-
-                } catch (\Exception $e) {
-                    \Log::error('Error creating budget allocation: ' . $e->getMessage());
-                    
-                    Notification::make()
-                        ->title('Terjadi Kesalahan')
-                        ->body('Gagal membuat alokasi: ' . $e->getMessage())
-                        ->danger()
-                        ->duration(8000)
-                        ->send();
-                    
+                        
                     return false;
                 }
             }),
@@ -408,4 +468,44 @@ Forms\Components\TextInput::make('allocated_amount')
             return collect();
         }
     }
+
+       /**
+     * Helper method to check if allocation already exists
+     */
+    private function hasExistingAllocation(Forms\Get $get): bool
+    {
+        $budgetPlanId = $get('budget_plan_id');
+        $categoryId = $get('budget_category_id');
+        $subcategoryId = $get('budget_subcategory_id');
+        
+        if ($budgetPlanId && $categoryId) {
+            return BudgetAllocation::where('budget_plan_id', $budgetPlanId)
+                ->where('budget_category_id', $categoryId)
+                ->where('budget_subcategory_id', $subcategoryId)
+                ->exists();
+        }
+        
+        return false;
+    }
+
+    /**
+     * Helper method to check existing allocation and update form state
+     */
+    private function checkExistingAllocation(Forms\Get $get, Forms\Set $set): void
+    {
+        $budgetPlanId = $get('budget_plan_id');
+        $categoryId = $get('budget_category_id');
+        $subcategoryId = $get('budget_subcategory_id');
+        
+        if ($budgetPlanId && $categoryId) {
+            $existing = BudgetAllocation::where('budget_plan_id', $budgetPlanId)
+                ->where('budget_category_id', $categoryId)
+                ->where('budget_subcategory_id', $subcategoryId)
+                ->first();
+                
+            // Force refresh the form to show/hide the info placeholder
+            // This is handled by the reactive form components
+        }
+    }
+
 }

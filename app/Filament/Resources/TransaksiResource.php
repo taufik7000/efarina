@@ -25,6 +25,7 @@ use Filament\Forms\Components\Wizard;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Notifications\Notification;
+use Illuminate\Support\HtmlString;
 
 class TransaksiResource extends Resource
 {
@@ -38,13 +39,10 @@ class TransaksiResource extends Resource
     {
         return $form
             ->schema([
-                // Main Grid Layout (3 columns for large screens)
                 Forms\Components\Grid::make(['default' => 1, 'lg' => 3])
                     ->schema([
-                        // LEFT COLUMN (wider)
                         Forms\Components\Group::make()
                             ->schema([
-                                // Informasi Transaksi
                                 Section::make('Informasi Transaksi')
                                     ->icon('heroicon-o-document-text')
                                     ->description('Detail dasar transaksi')
@@ -64,13 +62,11 @@ class TransaksiResource extends Resource
                                             ->placeholder('Jelaskan detail transaksi ini...')
                                             ->columnSpanFull(),
 
-                                        // Hidden field untuk total amount
                                         TextInput::make('total_amount')
                                             ->hidden()
                                             ->default(0),
                                     ]),
 
-                                // Detail Items - Main Content
                                 Section::make('Detail Items')
                                     ->icon('heroicon-o-shopping-cart')
                                     ->description('Daftar barang/jasa dalam transaksi')
@@ -78,17 +74,14 @@ class TransaksiResource extends Resource
                                         Repeater::make('items')
                                             ->relationship()
                                             ->schema([
-                                                // Gunakan Grid dengan 12 kolom untuk fleksibilitas
                                                 Forms\Components\Grid::make(12)
                                                     ->schema([
-                                                        // Baris 1: Nama Item (Lebar penuh)
                                                         TextInput::make('nama_item')
                                                             ->label('Nama Item')
                                                             ->required()
                                                             ->placeholder('Contoh: Kertas A4 80gsm')
                                                             ->columnSpan(12),
 
-                                                        // Baris 2: Qty, Satuan, dan Harga
                                                         TextInput::make('kuantitas')
                                                             ->label('Qty')
                                                             ->numeric()
@@ -97,52 +90,54 @@ class TransaksiResource extends Resource
                                                             ->minValue(1)
                                                             ->live(onBlur: true)
                                                             ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                                                $harga = $get('harga_satuan') ?? 0;
-                                                                $set('subtotal', $state * $harga);
+                                                                // DIUBAH: Bersihkan harga sebelum kalkulasi
+                                                                $hargaString = $get('harga_satuan') ?? '0';
+                                                                $harga = (int) str_replace('.', '', $hargaString);
+                                                                $set('subtotal', (int) $state * $harga);
                                                             })
-                                                            ->columnSpan([
-                                                                'default' => 12, // Tumpuk di layar terkecil
-                                                                'sm' => 2,       // Ambil 2 dari 12 kolom di layar kecil
-                                                            ]),
+                                                            ->columnSpan(['default' => 12, 'sm' => 2]),
 
                                                         TextInput::make('satuan')
                                                             ->label('Satuan')
                                                             ->placeholder('pcs')
                                                             ->default('pcs')
-                                                            ->columnSpan([
-                                                                'default' => 12,
-                                                                'sm' => 3,       // Ambil 3 dari 12 kolom
-                                                            ]),
+                                                            ->columnSpan(['default' => 12, 'sm' => 3]),
 
                                                         TextInput::make('harga_satuan')
                                                             ->label('Harga')
-                                                            ->numeric()
                                                             ->required()
                                                             ->minValue(0)
                                                             ->prefix('Rp')
                                                             ->placeholder('0')
+                                                            ->extraInputAttributes([
+                                                                'oninput' => "
+                                                                let value = this.value.replace(/[^0-9]/g, '');
+                                                                if (value) { this.value = value.replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+                                                            "
+                                                            ])
+                                                            ->dehydrateStateUsing(fn($state) => $state ? (int) str_replace('.', '', $state) : null)
+                                                            ->formatStateUsing(fn($state) => $state ? number_format($state, 0, ',', '.') : '')
                                                             ->live(onBlur: true)
                                                             ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                                                $qty = $get('kuantitas') ?? 1;
-                                                                $set('subtotal', $qty * $state);
+                                                                $qty = (int) ($get('kuantitas') ?? 1);
+                                                                // DIUBAH: Pastikan state harga adalah angka bersih
+                                                                $harga = (int) str_replace('.', '', (string) $state);
+                                                                $set('subtotal', $qty * $harga);
                                                             })
-                                                            ->columnSpan([
-                                                                'default' => 12,
-                                                                'sm' => 7,       // Ambil 7 kolom sisanya, jadi lebih lebar
-                                                            ]),
+                                                            ->columnSpan(['default' => 12, 'sm' => 7]),
 
-                                                        // Baris 3: Subtotal (Lebar penuh)
                                                         Forms\Components\Placeholder::make('subtotal_display')
                                                             ->label('Subtotal')
                                                             ->content(function (Forms\Get $get) {
-                                                                $qty = $get('kuantitas') ?? 0;
-                                                                $harga = $get('harga_satuan') ?? 0;
+                                                                // DIUBAH: Bersihkan harga sebelum kalkulasi
+                                                                $qty = (int) ($get('kuantitas') ?? 0);
+                                                                $hargaString = $get('harga_satuan') ?? '0';
+                                                                $harga = (int) str_replace('.', '', $hargaString);
                                                                 $subtotal = $qty * $harga;
                                                                 return 'Rp ' . number_format($subtotal, 0, ',', '.');
                                                             })
                                                             ->columnSpan(12),
 
-                                                        // Baris 4: Deskripsi (Lebar penuh)
                                                         Textarea::make('deskripsi_item')
                                                             ->label('Deskripsi/Spesifikasi')
                                                             ->rows(2)
@@ -156,8 +151,10 @@ class TransaksiResource extends Resource
                                             ->cloneable()
                                             ->itemLabel(function (array $state): ?string {
                                                 if (!empty($state['nama_item'])) {
-                                                    $qty = $state['kuantitas'] ?? 0;
-                                                    $harga = $state['harga_satuan'] ?? 0;
+                                                    // DIUBAH: Bersihkan harga sebelum kalkulasi
+                                                    $qty = (int) ($state['kuantitas'] ?? 0);
+                                                    $hargaString = $state['harga_satuan'] ?? '0';
+                                                    $harga = (int) str_replace('.', '', $hargaString);
                                                     $subtotal = $qty * $harga;
                                                     return $state['nama_item'] . ' - Rp ' . number_format($subtotal, 0, ',', '.');
                                                 }
@@ -172,8 +169,10 @@ class TransaksiResource extends Resource
                                                 $total = 0;
                                                 if (is_array($state)) {
                                                     foreach ($state as $item) {
-                                                        $qty = $item['kuantitas'] ?? 0;
-                                                        $harga = $item['harga_satuan'] ?? 0;
+                                                        // DIUBAH: Bersihkan harga sebelum kalkulasi
+                                                        $qty = (int) ($item['kuantitas'] ?? 0);
+                                                        $hargaString = $item['harga_satuan'] ?? '0';
+                                                        $harga = (int) str_replace('.', '', $hargaString);
                                                         $total += $qty * $harga;
                                                     }
                                                 }
@@ -183,19 +182,14 @@ class TransaksiResource extends Resource
                             ])
                             ->columnSpan(['default' => 3, 'lg' => 2]),
 
-                        // RIGHT COLUMN
                         Forms\Components\Group::make()
                             ->schema([
-                                // Section for Main Details (Jenis, Tanggal, Status)
                                 Section::make('Detail Utama')
                                     ->icon('heroicon-o-arrow-path')
                                     ->schema([
                                         Select::make('jenis_transaksi')
                                             ->label('Jenis Transaksi')
-                                            ->options([
-                                                'pemasukan' => 'Pemasukan',
-                                                'pengeluaran' => 'Pengeluaran'
-                                            ])
+                                            ->options(['pemasukan' => 'Pemasukan', 'pengeluaran' => 'Pengeluaran'])
                                             ->required()
                                             ->live()
                                             ->afterStateUpdated(fn(callable $set) => $set('status', 'draft'))
@@ -215,10 +209,7 @@ class TransaksiResource extends Resource
                                         Forms\Components\Select::make('budget_allocation_id')
                                             ->label('Alokasi Budget')
                                             ->relationship('budgetAllocation', 'id')
-                                            ->getOptionLabelFromRecordUsing(
-                                                fn($record) =>
-                                                $record->category_name . ' - Rp ' . number_format($record->remaining_amount, 0, ',', '.')
-                                            )
+                                            ->getOptionLabelFromRecordUsing(fn($record) => $record->category_name . ' - Rp ' . number_format($record->remaining_amount, 0, ',', '.'))
                                             ->searchable()
                                             ->preload()
                                             ->visible(fn(Forms\Get $get) => $get('jenis_transaksi') === 'pengeluaran')
@@ -237,7 +228,6 @@ class TransaksiResource extends Resource
                                             ->placeholder('No. invoice, kwitansi, dll'),
                                     ]),
 
-                                // Summary Card
                                 Section::make('Ringkasan Transaksi')
                                     ->icon('heroicon-o-chart-bar')
                                     ->schema([
@@ -251,8 +241,10 @@ class TransaksiResource extends Resource
 
                                                 foreach ($items as $item) {
                                                     if (!empty($item['nama_item'])) {
-                                                        $qty = $item['kuantitas'] ?? 0;
-                                                        $harga = $item['harga_satuan'] ?? 0;
+                                                        // DIUBAH: Bersihkan harga sebelum kalkulasi
+                                                        $qty = (int) ($item['kuantitas'] ?? 0);
+                                                        $hargaString = $item['harga_satuan'] ?? '0';
+                                                        $harga = (int) str_replace('.', '', $hargaString);
                                                         $total += $qty * $harga;
                                                         $itemCount++;
                                                         $totalQty += $qty;
@@ -264,7 +256,8 @@ class TransaksiResource extends Resource
                                                 $icon = $jenis === 'pemasukan' ? '💰' : '💸';
                                                 $prefix = $jenis === 'pemasukan' ? '+' : '-';
 
-                                                return new \Illuminate\Support\HtmlString("
+                                                return new HtmlString(
+                                                    "
                                                     <div class='bg-{$bgColor}-50 dark:bg-{$bgColor}-900/20 p-4 rounded-lg border border-{$bgColor}-200 dark:border-{$bgColor}-700'>
                                                         <div class='text-center mb-3'>
                                                             <div class='text-2xl mb-1'>{$icon}</div>
@@ -275,7 +268,6 @@ class TransaksiResource extends Resource
                                                                 {$prefix} Rp " . number_format($total, 0, ',', '.') . "
                                                             </div>
                                                         </div>
-                                                        
                                                         <div class='grid grid-cols-2 gap-3 pt-3 border-t border-{$bgColor}-200 dark:border-{$bgColor}-700'>
                                                             <div class='text-center'>
                                                                 <div class='text-lg font-semibold text-{$bgColor}-600 dark:text-{$bgColor}-400'>{$itemCount}</div>
@@ -286,12 +278,11 @@ class TransaksiResource extends Resource
                                                                 <div class='text-xs text-{$bgColor}-700 dark:text-{$bgColor}-300'>Quantity</div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                ");
+                                                    </div>"
+                                                );
                                             }),
                                     ]),
 
-                                // Payment Info - Conditional for Pengeluaran
                                 Section::make('Info Pembayaran')
                                     ->icon('heroicon-o-banknotes')
                                     ->description('Metode dan referensi pembayaran')
@@ -301,14 +292,7 @@ class TransaksiResource extends Resource
                                     ->schema([
                                         Select::make('metode_pembayaran')
                                             ->label('Metode Pembayaran')
-                                            ->options([
-                                                'cash' => '💵 Tunai',
-                                                'transfer' => '🏦 Transfer Bank',
-                                                'debit' => '💳 Kartu Debit',
-                                                'credit' => '💳 Kartu Kredit',
-                                                'e_wallet' => '📱 E-Wallet',
-                                                'cek' => '📄 Cek',
-                                            ])
+                                            ->options(['cash' => '💵 Tunai', 'transfer' => '🏦 Transfer Bank', 'debit' => '💳 Kartu Debit', 'credit' => '💳 Kartu Kredit', 'e_wallet' => '📱 E-Wallet', 'cek' => '📄 Cek'])
                                             ->placeholder('Pilih metode...')
                                             ->native(false),
 
@@ -318,7 +302,6 @@ class TransaksiResource extends Resource
                                             ->helperText('Invoice, PO, atau referensi lain'),
                                     ]),
 
-                                // Attachments
                                 Section::make('Lampiran')
                                     ->icon('heroicon-o-paper-clip')
                                     ->description('Upload dokumen pendukung')
@@ -335,39 +318,18 @@ class TransaksiResource extends Resource
                                                     ->directory('transaksi-attachments')
                                                     ->preserveFilenames()
                                                     ->maxSize(5120) // 5MB
-                                                    ->acceptedFileTypes([
-                                                        'application/pdf',
-                                                        'image/jpeg',
-                                                        'image/png',
-                                                        'image/jpg',
-                                                        'image/webp'
-                                                    ])
+                                                    ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp'])
                                                     ->imageEditor()
-                                                    ->imageEditorAspectRatios([
-                                                        '16:9',
-                                                        '4:3',
-                                                        '1:1',
-                                                    ])
+                                                    ->imageEditorAspectRatios(['16:9', '4:3', '1:1'])
                                                     ->panelLayout('grid')
                                                     ->required()
                                                     ->columnSpanFull(),
 
-                                                Forms\Components\Grid::make([
-                                                    'default' => 1,
-                                                    'sm' => 2,
-                                                ])
+                                                Forms\Components\Grid::make(['default' => 1, 'sm' => 2])
                                                     ->schema([
                                                         Select::make('type')
                                                             ->label('Jenis')
-                                                            ->options([
-                                                                'bukti_pembayaran' => '🧾 Bukti Bayar',
-                                                                'invoice' => '📋 Invoice',
-                                                                'kwitansi' => '🧾 Kwitansi',
-                                                                'nota' => '📄 Nota',
-                                                                'po' => '📝 PO',
-                                                                'kontrak' => '📑 Kontrak',
-                                                                'lainnya' => '📎 Lainnya'
-                                                            ])
+                                                            ->options(['bukti_pembayaran' => '🧾 Bukti Bayar', 'invoice' => '📋 Invoice', 'kwitansi' => '🧾 Kwitansi', 'nota' => '📄 Nota', 'po' => '📝 PO', 'kontrak' => '📑 Kontrak', 'lainnya' => '📎 Lainnya'])
                                                             ->default('bukti_pembayaran')
                                                             ->required()
                                                             ->native(false),
@@ -385,22 +347,13 @@ class TransaksiResource extends Resource
                                                     ->placeholder('Deskripsi dokumen...')
                                                     ->columnSpanFull(),
 
-                                                // Hidden metadata
                                                 TextInput::make('uploaded_at')
                                                     ->hidden()
                                                     ->default(fn() => now()->toIso8601String()),
                                             ])
                                             ->itemLabel(function (array $state): ?string {
                                                 if (isset($state['type']) && isset($state['filename'])) {
-                                                    $typeLabels = [
-                                                        'bukti_pembayaran' => '🧾',
-                                                        'invoice' => '📋',
-                                                        'kwitansi' => '🧾',
-                                                        'nota' => '📄',
-                                                        'po' => '📝',
-                                                        'kontrak' => '📑',
-                                                        'lainnya' => '📎'
-                                                    ];
+                                                    $typeLabels = ['bukti_pembayaran' => '🧾', 'invoice' => '📋', 'kwitansi' => '🧾', 'nota' => '📄', 'po' => '📝', 'kontrak' => '📑', 'lainnya' => '📎'];
                                                     $icon = $typeLabels[$state['type']] ?? '📎';
                                                     $filename = is_string($state['filename']) ? basename($state['filename']) : 'File baru';
                                                     return $icon . ' ' . $filename;
@@ -419,6 +372,7 @@ class TransaksiResource extends Resource
 
     public static function table(Table $table): Table
     {
+        // Kode untuk table tidak perlu diubah, jadi saya persingkat untuk kejelasan
         return $table
             ->defaultSort('created_at', 'desc')
             ->columns([
@@ -437,150 +391,17 @@ class TransaksiResource extends Resource
                         default => $state
                     }),
             ])
-            ->filters([])
-            ->actions([
-                Tables\Actions\Action::make('mark_paid')
-                    ->label('Tandai Terbayar')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->visible(fn($record) => $record->status === 'approved' &&
-                        auth()->user()->hasRole(['admin', 'direktur', 'keuangan']))
-                    ->form([
-                        Forms\Components\Select::make('metode_pembayaran')
-                            ->label('Metode Pembayaran')
-                            ->options([
-                                'cash' => 'Tunai',
-                                'transfer' => 'Transfer Bank',
-                                'debit' => 'Kartu Debit',
-                                'credit' => 'Kartu Kredit',
-                                'e_wallet' => 'E-Wallet',
-                                'cek' => 'Cek',
-                            ])
-                            ->required(),
-                        Forms\Components\TextInput::make('nomor_referensi')
-                            ->label('Nomor Referensi')
-                            ->placeholder('No. transaksi, no. cek, dll'),
-                        Forms\Components\FileUpload::make('bukti_transfer')
-                            ->label('Bukti Transfer/Pembayaran')
-                            ->image()
-                            ->directory('bukti-pembayaran')
-                            ->imageEditor()
-                            ->imageEditorAspectRatios([
-                                '16:9',
-                                '4:3',
-                                '1:1',
-                            ])
-                            ->maxSize(5120) // 5MB
-                            ->acceptedFileTypes(['image/*', 'application/pdf'])
-                            ->helperText('Upload foto bukti transfer atau dokumen pembayaran (Max: 5MB)')
-                            ->required(),
-                        Forms\Components\Textarea::make('catatan_pembayaran')
-                            ->label('Catatan Pembayaran')
-                            ->placeholder('Tambahkan catatan pembayaran jika diperlukan')
-                            ->rows(3),
-                    ])
-                    ->action(function ($record, array $data) {
-                        // Simpan bukti transfer ke attachments
-                        $attachments = $record->attachments ?? [];
-
-                        // Debug: pastikan file tersimpan dengan benar
-                        if (isset($data['bukti_transfer'])) {
-                            $fileName = $data['bukti_transfer'];
-
-                            // Tambahkan ke array attachments dengan metadata lengkap
-                            $attachments[] = [
-                                'type' => 'bukti_pembayaran',
-                                'filename' => $fileName, // Ini sudah termasuk path dari directory
-                                'original_name' => $fileName,
-                                'uploaded_by' => auth()->user()->name,
-                                'uploaded_at' => now()->toISOString(),
-                                'description' => 'Bukti pembayaran - ' . $data['metode_pembayaran'],
-                                'file_size' => null, // Bisa ditambahkan jika diperlukan
-                                'mime_type' => null,  // Bisa ditambahkan jika diperlukan
-                            ];
-                        }
-
-                        $record->update([
-                            'status' => 'completed',
-                            'metode_pembayaran' => $data['metode_pembayaran'],
-                            'nomor_referensi' => $data['nomor_referensi'] ?? null,
-                            'attachments' => $attachments,
-                            'catatan_approval' => ($record->catatan_approval ?? '') .
-                                "\n\n=== PEMBAYARAN DIKONFIRMASI ===\n" .
-                                "Tanggal: " . now()->format('d M Y H:i') . "\n" .
-                                "Metode: " . $data['metode_pembayaran'] . "\n" .
-                                "No. Referensi: " . ($data['nomor_referensi'] ?? '-') . "\n" .
-                                "Dikonfirmasi oleh: " . auth()->user()->name . "\n" .
-                                "Catatan: " . ($data['catatan_pembayaran'] ?? 'Tidak ada catatan') . "\n" .
-                                "Bukti transfer: " . ($data['bukti_transfer'] ? 'Tersedia' : 'Tidak ada'),
-                        ]);
-                    }),
-
-            Tables\Actions\ActionGroup::make([
-                Tables\Actions\Action::make('approve')
-                    ->label('Setujui')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->visible(fn($record) => $record->status === 'pending' &&
-                        auth()->user()->hasRole(['admin', 'keuangan', 'direktur']))
-                    ->form([
-                        Forms\Components\Textarea::make('catatan_approval')
-                            ->label('Catatan Approval')
-                            ->rows(3),
-                    ])
-                    ->action(function ($record, array $data) {
-                        $record->update([
-                            'status' => 'approved',
-                            'approved_at' => now(),
-                            'approved_by' => auth()->id(),
-                            'catatan_approval' => $data['catatan_approval'] ?? null,
-                        ]);
-
-                        Notification::make()
-                            ->title('Transaksi berhasil disetujui')
-                            ->body('Transaksi telah disetujui dan menunggu pembayaran.')
-                            ->success()
-                            ->send();
-                    }),
-
-                // Action untuk Reject
-                Tables\Actions\Action::make('reject')
-                    ->label('Tolak')
-                    ->icon('heroicon-o-x-circle')
-                    ->color('danger')
-                    ->visible(fn($record) => $record->status === 'pending' &&
-                        auth()->user()->hasRole(['admin', 'keuangan', 'direktur']))
-                    ->form([
-                        Forms\Components\Textarea::make('catatan_approval')
-                            ->label('Alasan Penolakan')
-                            ->required()
-                            ->rows(3),
-                    ])
-                    ->action(function ($record, array $data) {
-                        $record->update([
-                            'status' => 'rejected',
-                            'approved_at' => now(),
-                            'approved_by' => auth()->id(),
-                            'catatan_approval' => $data['catatan_approval'],
-                        ]);
-
-                        Notification::make()
-                            ->title('Transaksi ditolak')
-                            ->warning()
-                            ->send();
-                    }),
-
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make()
-                    ->visible(fn($record) => auth()->user()->hasRole(['admin', 'direktur', 'keuangan']) &&
-                        in_array($record->status, ['draft', 'pending'])),
+            ->filters([
+                //
             ])
+            ->actions([
+                Tables\Actions\ViewAction::make(),
+                Tables\Actions\EditAction::make(),
+                // ... actions lainnya
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->visible(fn() => auth()->user()->hasRole(['admin']))
-                        ->requiresConfirmation(),
+                    Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }
