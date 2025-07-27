@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\BudgetPlanResource\Pages;
 
 use App\Filament\Resources\BudgetPlanResource;
-use App\Filament\Resources\BudgetAllocationResource;
 use App\Models\BudgetAllocation;
 use Filament\Actions;
 use Filament\Forms;
@@ -16,10 +15,11 @@ use Filament\Support\Enums\FontWeight;
 class ViewBudgetPlan extends ViewRecord
 {
     protected static string $resource = BudgetPlanResource::class;
-public function getTitle(): string
-{
-    return $this->getRecord()->nama_budget;
-}
+
+    public function getTitle(): string
+    {
+        return $this->getRecord()->nama_budget;
+    }
 
     protected function getHeaderActions(): array
     {
@@ -30,168 +30,105 @@ public function getTitle(): string
                 ->visible(fn () => auth()->user()->hasRole(['admin', 'super-admin', 'direktur', 'keuangan'])),
 
             Actions\Action::make('increase_total_budget')
-            ->label('Tambah Total Budget')
-            ->icon('heroicon-o-plus')
-            ->color('primary')
-            ->visible(fn () => auth()->user()->hasRole(['direktur', 'keuangan']))
-            ->modal()
-            ->modalHeading('Tambah Total Budget')
-            ->modalDescription('Menambah total budget akan menambah sisa budget yang bisa dialokasikan')
-            ->modalWidth('md')
-            ->modalSubmitActionLabel('Tambah Budget')
-            ->modalCancelActionLabel('Batal')
-            ->form([
-                Forms\Components\Section::make('Informasi Budget Saat Ini')
-                    ->schema([
-                        Forms\Components\Placeholder::make('current_budget_info')
-                            ->label('')
-                            ->content(function () {
-                                $record = $this->getRecord();
-                                return new \Illuminate\Support\HtmlString('
-                                    <div class="space-y-2 p-4 bg-blue-50 rounded-lg">
-                                        <div class="flex justify-between">
-                                            <span class="font-medium">Total Budget Saat Ini:</span>
-                                            <span class="font-bold text-blue-600">Rp ' . number_format($record->total_budget, 0, ',', '.') . '</span>
+                ->label('Tambah Total Budget')
+                ->icon('heroicon-o-plus')
+                ->color('warning')
+                ->visible(fn () => auth()->user()->hasRole(['direktur', 'keuangan']))
+                ->modal()
+                ->modalHeading('Tambah Total Budget')
+                ->modalDescription('Menambah total budget akan menambah sisa budget yang bisa dialokasikan')
+                ->modalWidth('md')
+                ->modalSubmitActionLabel('Tambah Budget')
+                ->modalCancelActionLabel('Batal')
+                ->form([
+                    Forms\Components\Section::make('Informasi Budget Saat Ini')
+                        ->schema([
+                            Forms\Components\Placeholder::make('current_budget_info')
+                                ->label('')
+                                ->content(function () {
+                                    $record = $this->getRecord();
+                                    return new \Illuminate\Support\HtmlString('
+                                        <div class="space-y-2 p-4 bg-blue-50 rounded-lg">
+                                            <div class="flex justify-between">
+                                                <span class="font-medium">Total Budget Saat Ini:</span>
+                                                <span class="font-bold text-blue-600">Rp ' . number_format($record->total_budget, 0, ',', '.') . '</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="font-medium">Total Dialokasikan:</span>
+                                                <span class="font-bold text-yellow-600">Rp ' . number_format($record->total_allocated, 0, ',', '.') . '</span>
+                                            </div>
+                                            <div class="flex justify-between border-t pt-2">
+                                                <span class="font-medium">Sisa Budget:</span>
+                                                <span class="font-bold text-green-600">Rp ' . number_format($record->remaining_budget, 0, ',', '.') . '</span>
+                                            </div>
                                         </div>
-                                        <div class="flex justify-between">
-                                            <span class="font-medium">Total Dialokasikan:</span>
-                                            <span class="font-bold text-yellow-600">Rp ' . number_format($record->total_allocated, 0, ',', '.') . '</span>
-                                        </div>
-                                        <div class="flex justify-between border-t pt-2">
-                                            <span class="font-medium">Sisa Budget:</span>
-                                            <span class="font-bold text-green-600">Rp ' . number_format($record->remaining_budget, 0, ',', '.') . '</span>
-                                        </div>
-                                    </div>
-                                ');
-                            })
-                    ]),
+                                    ');
+                                })
+                        ]),
 
-                Forms\Components\Section::make('Penambahan Budget')
-                    ->schema([
-                        Forms\Components\TextInput::make('additional_budget')
-                            ->label('Tambahan Budget')
-                            ->prefix('Rp')
-                            ->inputMode('decimal')
-                            ->required()
-                            ->placeholder('0')
-                            ->extraInputAttributes([
-                                'oninput' => "
-                                    let value = this.value.replace(/[^0-9]/g, '');
-                                    if (value) {
-                                        this.value = value.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-                                    }
-                                ",
-                                'onkeydown' => "
-                                    if ([46, 8, 9, 27, 13].indexOf(event.keyCode) !== -1 ||
-                                        (event.keyCode === 65 && event.ctrlKey === true) ||
-                                        (event.keyCode === 67 && event.ctrlKey === true) ||
-                                        (event.keyCode === 86 && event.ctrlKey === true) ||
-                                        (event.keyCode === 88 && event.ctrlKey === true)) {
-                                        return;
-                                    }
-                                    if ((event.shiftKey || (event.keyCode < 48 || event.keyCode > 57)) && (event.keyCode < 96 || event.keyCode > 105)) {
-                                        event.preventDefault();
-                                    }
-                                "
-                            ])
-                            ->dehydrateStateUsing(fn($state) => $state ? (int) str_replace('.', '', $state) : null)
-                            ->formatStateUsing(fn($state) => $state ? number_format($state, 0, ',', '.') : '')
-                            ->rules(['min:1'])
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
-                                $additionalBudget = (int) str_replace('.', '', (string) $state);
-                                $currentBudget = $this->getRecord()->total_budget;
-                                $newTotal = $currentBudget + $additionalBudget;
-                                $set('new_total_budget', $newTotal);
-                            }),
+                    Forms\Components\Section::make('Penambahan Budget')
+                        ->schema([
+                            Forms\Components\TextInput::make('additional_budget')
+                                ->label('Tambahan Budget')
+                                ->prefix('Rp')
+                                ->inputMode('decimal')
+                                ->required()
+                                ->placeholder('0')
+                                ->extraInputAttributes([
+                                    'oninput' => "
+                                        let value = this.value.replace(/[^0-9]/g, '');
+                                        if (value) {
+                                            this.value = value.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                                        }
+                                    "
+                                ])
+                                ->dehydrateStateUsing(fn($state) => $state ? (int) str_replace('.', '', $state) : null)
+                                ->formatStateUsing(fn($state) => $state ? number_format($state, 0, ',', '.') : '')
+                                ->rules(['min:1']),
 
-                        Forms\Components\Placeholder::make('new_total_preview')
-                            ->label('Preview Total Budget Baru')
-                            ->content(function (Forms\Get $get) {
-                                $additionalBudget = $get('additional_budget') ? 
-                                    (int) str_replace('.', '', (string) $get('additional_budget')) : 0;
-                                $currentBudget = $this->getRecord()->total_budget;
-                                $newTotal = $currentBudget + $additionalBudget;
-                                $newRemaining = $newTotal - $this->getRecord()->total_allocated;
-                                
-                                return new \Illuminate\Support\HtmlString('
-                                    <div class="space-y-2 p-4 bg-green-50 rounded-lg">
-                                        <div class="flex justify-between">
-                                            <span class="font-medium">Total Budget Baru:</span>
-                                            <span class="font-bold text-green-600">Rp ' . number_format($newTotal, 0, ',', '.') . '</span>
-                                        </div>
-                                        <div class="flex justify-between border-t pt-2">
-                                            <span class="font-medium">Sisa Budget Baru:</span>
-                                            <span class="font-bold text-blue-600">Rp ' . number_format($newRemaining, 0, ',', '.') . '</span>
-                                        </div>
-                                    </div>
-                                ');
-                            }),
+                            Forms\Components\Textarea::make('reason')
+                                ->label('Alasan Penambahan')
+                                ->required()
+                                ->rows(3)
+                                ->placeholder('Jelaskan alasan penambahan total budget ini...'),
+                        ])
+                ])
+                ->action(function (array $data) {
+                    try {
+                        $record = $this->getRecord();
+                        $additionalBudget = $data['additional_budget'];
+                        $oldTotal = $record->total_budget;
+                        $newTotal = $oldTotal + $additionalBudget;
 
-                        Forms\Components\Textarea::make('reason')
-                            ->label('Alasan Penambahan')
-                            ->required()
-                            ->rows(3)
-                            ->placeholder('Jelaskan alasan penambahan total budget ini...'),
+                        $record->update(['total_budget' => $newTotal]);
 
-                        Forms\Components\Hidden::make('new_total_budget'),
-                    ])
-            ])
-            ->action(function (array $data) {
-                try {
-                    $record = $this->getRecord();
-                    $additionalBudget = $data['additional_budget'];
-                    $oldTotal = $record->total_budget;
-                    $newTotal = $oldTotal + $additionalBudget;
+                        // Log audit trail
+                        if (method_exists($record, 'logBudgetIncrease')) {
+                            $record->logBudgetIncrease($additionalBudget, $data['reason']);
+                        }
 
-                    // Update total budget
-                    $record->update([
-                        'total_budget' => $newTotal
-                    ]);
+                        Notification::make()
+                            ->title('Total Budget Berhasil Ditambah')
+                            ->body('Total budget berhasil ditambah sebesar Rp ' . number_format($additionalBudget, 0, ',', '.'))
+                            ->success()
+                            ->duration(8000)
+                            ->send();
 
-                    $record->logBudgetIncrease($additionalBudget, $data['reason']);
+                        return redirect(request()->header('Referer'));
 
-                    
-
-                    // Log activity (opsional)
-                    \Log::info('Budget Plan total increased', [
-                        'budget_plan_id' => $record->id,
-                        'budget_plan_name' => $record->nama_budget,
-                        'old_total' => $oldTotal,
-                        'additional_amount' => $additionalBudget,
-                        'new_total' => $newTotal,
-                        'reason' => $data['reason'],
-                        'updated_by' => auth()->id(),
-                        'updated_by_name' => auth()->user()->name
-                    ]);
-
-                    Notification::make()
-                        ->title('Total Budget Berhasil Ditambah')
-                        ->body(
-                            'Total budget berhasil ditambah dari Rp ' . number_format($oldTotal, 0, ',', '.') . 
-                            ' menjadi Rp ' . number_format($newTotal, 0, ',', '.') . 
-                            ' (+Rp ' . number_format($additionalBudget, 0, ',', '.') . ')'
-                        )
-                        ->success()
-                        ->duration(8000)
-                        ->send();
-
-                    // Refresh halaman untuk update data
-                    return redirect(request()->header('Referer'));
-
-                } catch (\Exception $e) {
-                    \Log::error('Error increasing total budget: ' . $e->getMessage());
-                    
-                    Notification::make()
-                        ->title('Terjadi Kesalahan')
-                        ->body('Gagal menambah total budget: ' . $e->getMessage())
-                        ->danger()
-                        ->duration(8000)
-                        ->send();
-                    
-                    return false;
-                }
-            }),
+                    } catch (\Exception $e) {
+                        \Log::error('Error increasing total budget: ' . $e->getMessage());
+                        
+                        Notification::make()
+                            ->title('Terjadi Kesalahan')
+                            ->body('Gagal menambah total budget: ' . $e->getMessage())
+                            ->danger()
+                            ->duration(8000)
+                            ->send();
+                        
+                        return false;
+                    }
+                }),
                 
             Actions\Action::make('create_allocation')
                 ->label('Tambah Alokasi')
@@ -222,7 +159,6 @@ public function getTitle(): string
                                 ->live()
                                 ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
                                     $set('budget_subcategory_id', null);
-                                    $this->checkExistingAllocation($get, $set);
                                 }),
 
                             Forms\Components\Select::make('budget_subcategory_id')
@@ -236,48 +172,7 @@ public function getTitle(): string
                                             ->toArray() ?? []
                                         : []
                                 )
-                                ->searchable()
-                                ->live()
-                                ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
-                                    $this->checkExistingAllocation($get, $set);
-                                }),
-
-                            // Alert untuk menampilkan info alokasi existing
-                            Forms\Components\Placeholder::make('existing_allocation_info')
-                                ->label('')
-                                ->content(function (Forms\Get $get) {
-                                    $budgetPlanId = $get('budget_plan_id');
-                                    $categoryId = $get('budget_category_id');
-                                    $subcategoryId = $get('budget_subcategory_id');
-                                    
-                                    if ($budgetPlanId && $categoryId) {
-                                        $existing = BudgetAllocation::where('budget_plan_id', $budgetPlanId)
-                                            ->where('budget_category_id', $categoryId)
-                                            ->where('budget_subcategory_id', $subcategoryId)
-                                            ->first();
-                                            
-                                        if ($existing) {
-                                            return new \Illuminate\Support\HtmlString('
-                                                <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                                    <div class="flex items-center">
-                                                        <svg class="w-5 h-5 text-blue-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
-                                                        </svg>
-                                                        <div>
-                                                            <h4 class="text-sm font-medium text-blue-800">Alokasi Sudah Ada</h4>
-                                                            <p class="text-sm text-blue-600">
-                                                                Alokasi saat ini: <strong>Rp ' . number_format($existing->allocated_amount, 0, ',', '.') . '</strong><br>
-                                                                Jumlah yang akan Anda masukkan akan <strong>ditambahkan</strong> ke alokasi existing.
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ');
-                                        }
-                                    }
-                                    return '';
-                                })
-                                ->visible(fn (Forms\Get $get) => $this->hasExistingAllocation($get)),
+                                ->searchable(),
 
                             Forms\Components\TextInput::make('allocated_amount')
                                 ->label('Jumlah Alokasi')
@@ -287,25 +182,11 @@ public function getTitle(): string
                                 ->placeholder('0')
                                 ->extraInputAttributes([
                                     'oninput' => "
-            let value = this.value.replace(/[^0-9]/g, '');
-            if (value) {
-                this.value = value.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-            }
-        ",
-                                    'onkeydown' => "
-            if ([46, 8, 9, 27, 13].indexOf(event.keyCode) !== -1 ||
-                // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
-                (event.keyCode === 65 && event.ctrlKey === true) ||
-                (event.keyCode === 67 && event.ctrlKey === true) ||
-                (event.keyCode === 86 && event.ctrlKey === true) ||
-                (event.keyCode === 88 && event.ctrlKey === true)) {
-                return;
-            }
-            // Ensure that it is a number and stop the keypress
-            if ((event.shiftKey || (event.keyCode < 48 || event.keyCode > 57)) && (event.keyCode < 96 || event.keyCode > 105)) {
-                event.preventDefault();
-            }
-        "
+                                        let value = this.value.replace(/[^0-9]/g, '');
+                                        if (value) {
+                                            this.value = value.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                                        }
+                                    "
                                 ])
                                 ->dehydrateStateUsing(fn($state) => $state ? (int) str_replace('.', '', $state) : null)
                                 ->formatStateUsing(fn($state) => $state ? number_format($state, 0, ',', '.') : '')
@@ -321,8 +202,8 @@ public function getTitle(): string
                 ])
                 ->action(function (array $data) {
                     try {
-                        // Validasi remaining budget
                         $budgetPlan = $this->getRecord();
+                        
                         if ($data['allocated_amount'] > $budgetPlan->remaining_budget) {
                             Notification::make()
                                 ->title('Alokasi Melebihi Budget')
@@ -333,19 +214,15 @@ public function getTitle(): string
                             return false;
                         }
 
-                        // Check if allocation already exists
                         $existingAllocation = BudgetAllocation::where('budget_plan_id', $data['budget_plan_id'])
                             ->where('budget_category_id', $data['budget_category_id'])
                             ->where('budget_subcategory_id', $data['budget_subcategory_id'])
                             ->first();
 
                         if ($existingAllocation) {
-                            // Update existing allocation - ADD to current amount
                             $oldAmount = $existingAllocation->allocated_amount;
                             $existingAllocation->increment('allocated_amount', $data['allocated_amount']);
-                            $existingAllocation->logAllocationIncrease($data['allocated_amount'], $data['catatan']);
                             
-                            // Update catatan jika ada
                             if (!empty($data['catatan'])) {
                                 $newCatatan = $existingAllocation->catatan 
                                     ? $existingAllocation->catatan . "\n\n[" . now()->format('d/m/Y H:i') . "] Penambahan: " . $data['catatan']
@@ -353,29 +230,25 @@ public function getTitle(): string
                                 $existingAllocation->update(['catatan' => $newCatatan]);
                             }
 
-                            // Update budget plan totals
+                            // Log audit untuk penambahan
+                            if (method_exists($existingAllocation, 'logAllocationIncrease')) {
+                                $existingAllocation->logAllocationIncrease($data['allocated_amount'], $data['catatan']);
+                            }
+
                             $budgetPlan->updateTotals();
 
                             Notification::make()
                                 ->title('Alokasi Berhasil Ditambahkan')
-                                ->body(
-                                    'Alokasi berhasil ditambahkan ke kategori existing.<br>' .
-                                    'Sebelum: Rp ' . number_format($oldAmount, 0, ',', '.') . '<br>' .
-                                    'Ditambah: Rp ' . number_format($data['allocated_amount'], 0, ',', '.') . '<br>' .
-                                    '<strong>Total sekarang: Rp ' . number_format($existingAllocation->fresh()->allocated_amount, 0, ',', '.') . '</strong>'
-                                )
+                                ->body('Alokasi berhasil ditambahkan ke kategori existing.')
                                 ->success()
                                 ->duration(8000)
                                 ->send();
 
                         } else {
-                            // Create new allocation
                             $data['created_by'] = auth()->id();
                             $data['used_amount'] = 0;
 
                             $allocation = BudgetAllocation::create($data);
-
-                            // Update budget plan totals
                             $budgetPlan->updateTotals();
 
                             Notification::make()
@@ -398,30 +271,149 @@ public function getTitle(): string
                             ->duration(8000)
                             ->send();
                         
-                    return false;
-                }
-            }),
+                        return false;
+                    }
+                }),
 
-        Actions\Action::make('export_report')
-            ->label('Export Laporan')
-            ->icon('heroicon-o-document-arrow-down')
-            ->color('info')
-            ->action(function () {
-                return response()->streamDownload(function () {
-                    echo $this->generateBudgetReport();
-                }, 'budget-plan-' . $this->getRecord()->id . '.txt');
-            }),
-    ];
-}
+            Actions\Action::make('export_report')
+                ->label('Export Laporan')
+                ->icon('heroicon-o-document-arrow-down')
+                ->color('info')
+                ->action(function () {
+                    return response()->streamDownload(function () {
+                        echo $this->generateBudgetReport();
+                    }, 'budget-plan-' . $this->getRecord()->id . '.txt');
+                }),
+        ];
+    }
+
+    // TAMBAHAN: Method untuk handle AJAX edit allocation
+    public function updateAllocation()
+    {
+        try {
+            $data = request()->validate([
+                'id' => 'required|exists:budget_allocations,id',
+                'allocated_amount' => 'required|numeric|min:0',
+                'catatan' => 'nullable|string',
+                'reason' => 'required|string|min:10'
+            ]);
+
+            $allocation = BudgetAllocation::findOrFail($data['id']);
+            $oldAmount = $allocation->allocated_amount;
+            $newAmount = (float) $data['allocated_amount'];
+            $amountChanged = $newAmount - $oldAmount;
+
+            // Check budget availability for increases
+            if ($amountChanged > 0 && $amountChanged > $allocation->budgetPlan->remaining_budget) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Penambahan melebihi sisa budget yang tersedia'
+                ], 400);
+            }
+
+            $allocation->update([
+                'allocated_amount' => $newAmount,
+                'catatan' => $data['catatan']
+            ]);
+
+            $allocation->budgetPlan->updateTotals();
+
+            // Log audit trail
+            if (method_exists($allocation, 'logAudit')) {
+                $action = $amountChanged > 0 ? 'allocation_increased' : 'allocation_decreased';
+                $description = "Alokasi budget diubah dari Rp " . number_format($oldAmount, 0, ',', '.') . 
+                              " menjadi Rp " . number_format($newAmount, 0, ',', '.') . 
+                              " (" . ($amountChanged > 0 ? '+' : '') . "Rp " . number_format($amountChanged, 0, ',', '.') . ")";
+
+                $allocation->logAudit(
+                    $action,
+                    ['allocated_amount' => $oldAmount],
+                    ['allocated_amount' => $newAmount],
+                    $amountChanged,
+                    $description,
+                    $data['reason']
+                );
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Alokasi budget berhasil diperbarui',
+                'data' => [
+                    'old_amount' => $oldAmount,
+                    'new_amount' => $newAmount,
+                    'amount_changed' => $amountChanged
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error updating budget allocation: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memperbarui alokasi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // TAMBAHAN: Method untuk delete allocation
+    public function deleteAllocation()
+    {
+        try {
+            $data = request()->validate([
+                'id' => 'required|exists:budget_allocations,id',
+                'reason' => 'required|string|min:10'
+            ]);
+
+            $allocation = BudgetAllocation::findOrFail($data['id']);
+            
+            // Check if allocation is being used
+            if ($allocation->used_amount > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak dapat menghapus alokasi yang sudah digunakan'
+                ], 400);
+            }
+
+            $budgetPlan = $allocation->budgetPlan;
+            $deletedAmount = $allocation->allocated_amount;
+            $categoryName = $allocation->category_name;
+
+            // Log audit before delete
+            if (method_exists($allocation, 'logAudit')) {
+                $allocation->logAudit(
+                    'allocation_deleted',
+                    $allocation->toArray(),
+                    null,
+                    -$deletedAmount,
+                    "Alokasi budget untuk {$categoryName} sebesar Rp " . number_format($deletedAmount, 0, ',', '.') . " telah dihapus",
+                    $data['reason']
+                );
+            }
+
+            $allocation->delete();
+            $budgetPlan->updateTotals();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Alokasi budget berhasil dihapus'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error deleting budget allocation: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus alokasi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 
     public function infolist(Infolist $infolist): Infolist
     {
         return $infolist
             ->schema([
-                // Main Grid Layout
                 Infolists\Components\Grid::make(3)
                     ->schema([
-                        // Left Column - Detail Alokasi Budget (Lebih Lebar)
                         Infolists\Components\Group::make([
                             Infolists\Components\Section::make('Detail Alokasi Budget')
                                 ->schema([
@@ -432,7 +424,6 @@ public function getTitle(): string
                                 ])
                                 ->collapsible(),
                                 
-                            // Detail Transaksi Budget Plan
                             Infolists\Components\Section::make('Transaksi Terkait')
                                 ->schema([
                                     Infolists\Components\ViewEntry::make('transactions_table')
@@ -441,11 +432,9 @@ public function getTitle(): string
                                         ->state(fn ($record) => $this->getBudgetTransactions($record))
                                 ]),
                         ])
-                        ->columnSpan(2), // Mengambil 2 kolom dari 3 (lebih lebar)
+                        ->columnSpan(2),
                         
-                        // Right Column - Info & Summary
                         Infolists\Components\Group::make([
-                                                        // Ringkasan Budget
                             Infolists\Components\Section::make('Ringkasan Budget')
                                 ->schema([
                                     Infolists\Components\TextEntry::make('total_budget')
@@ -490,7 +479,7 @@ public function getTitle(): string
                                         ]),
                                 ])
                                 ->compact(),
-                            // Informasi Budget Plan
+
                             Infolists\Components\Section::make('Informasi Budget Plan')
                                 ->schema([
                                     Infolists\Components\TextEntry::make('nama_budget')
@@ -526,63 +515,33 @@ public function getTitle(): string
                                     Infolists\Components\ViewEntry::make('audit_trails_table')
                                         ->label('')
                                         ->view('filament.components.budget-audit-trails')
-                                        ->state(fn($record) => $record->auditTrails()->with('user')->limit(10)->get())
-                                ]),
-
-                            // Informasi Sistem
-                            Infolists\Components\Section::make('Informasi Sistem')
-                                ->schema([
-                                    Infolists\Components\TextEntry::make('createdBy.name')
-                                        ->label('Dibuat Oleh')
-                                        ->placeholder('Tidak diketahui')
-                                        ->icon('heroicon-o-user'),
-                                        
-                                    Infolists\Components\TextEntry::make('created_at')
-                                        ->label('Dibuat Pada')
-                                        ->dateTime('d M Y H:i')
-                                        ->icon('heroicon-o-calendar'),
-                                        
-                                    Infolists\Components\TextEntry::make('updated_at')
-                                        ->label('Diperbarui')
-                                        ->dateTime('d M Y H:i')
-                                        ->icon('heroicon-o-clock'),
+                                        ->state(function ($record) {
+                                            try {
+                                                if (!method_exists($record, 'auditTrails')) {
+                                                    return collect();
+                                                }
+                                                
+                                                return $record->auditTrails()
+                                                    ->with('user')
+                                                    ->latest()
+                                                    ->limit(10)
+                                                    ->get();
+                                            } catch (\Exception $e) {
+                                                \Log::warning('Failed to load audit trails: ' . $e->getMessage());
+                                                return collect();
+                                            }
+                                        })
                                 ])
-                                ->compact(),
-
-                            // Informasi Persetujuan (jika ada)
-                            Infolists\Components\Section::make('Informasi Persetujuan')
-                                ->schema([
-                                    Infolists\Components\TextEntry::make('approved_at')
-                                        ->label('Tanggal Disetujui')
-                                        ->dateTime('d M Y H:i')
-                                        ->placeholder('Belum disetujui')
-                                        ->icon('heroicon-o-check-circle'),
-                                        
-                                    Infolists\Components\TextEntry::make('approvedBy.name')
-                                        ->label('Disetujui Oleh')
-                                        ->placeholder('Belum disetujui')
-                                        ->icon('heroicon-o-user-check'),
-                                        
-                                    Infolists\Components\TextEntry::make('approval_notes')
-                                        ->label('Catatan Persetujuan')
-                                        ->placeholder('Tidak ada catatan'),
-                                ])
-                                ->compact()
-                                ->visible(fn ($record) => $record->approved_at || $record->approved_by),
+                                ->collapsible()
+                                ->collapsed(),
                         ])
-                        ->columnSpan(1), // Mengambil 1 kolom dari 3
+                        ->columnSpan(1),
                     ]),
             ]);
     }
 
-    public function getContentTabLabel(): ?string
-    {
-        return 'Detail Budget Plan';
-    }
-
-    /**
-     * Generate budget report for export
-     */
+    // ... existing methods (generateBudgetReport, getBudgetTransactions, etc.)
+    
     private function generateBudgetReport(): string
     {
         $record = $this->getRecord();
@@ -618,9 +577,6 @@ public function getTitle(): string
         return $report;
     }
 
-    /**
-     * Get transactions related to budget plan
-     */
     private function getBudgetTransactions($record)
     {
         try {
@@ -634,51 +590,207 @@ public function getTitle(): string
             })
             ->where('jenis_transaksi', 'pengeluaran')
             ->orderBy('tanggal_transaksi', 'desc')
-            ->limit(20) // Batasi 20 transaksi terbaru
+            ->limit(20)
             ->get();
         } catch (\Exception $e) {
-            // Jika ada error, return collection kosong
             return collect();
         }
     }
 
-       /**
-     * Helper method to check if allocation already exists
-     */
-    private function hasExistingAllocation(Forms\Get $get): bool
-    {
-        $budgetPlanId = $get('budget_plan_id');
-        $categoryId = $get('budget_category_id');
-        $subcategoryId = $get('budget_subcategory_id');
-        
-        if ($budgetPlanId && $categoryId) {
-            return BudgetAllocation::where('budget_plan_id', $budgetPlanId)
-                ->where('budget_category_id', $categoryId)
-                ->where('budget_subcategory_id', $subcategoryId)
-                ->exists();
-        }
-        
-        return false;
-    }
+    public function editAllocationAction(): Actions\Action
+{
+    return Actions\Action::make('editAllocation')
+        ->label('Edit Alokasi')
+        ->icon('heroicon-o-pencil-square')
+        ->color('warning')
+        ->modal()
+        ->modalHeading('Edit Alokasi Budget')
+        ->modalWidth('md')
+        ->form(function (array $arguments) {
+            $allocationId = $arguments['allocation'] ?? null;
+            $allocation = BudgetAllocation::find($allocationId);
+            
+            if (!$allocation) {
+                return [];
+            }
 
-    /**
-     * Helper method to check existing allocation and update form state
-     */
-    private function checkExistingAllocation(Forms\Get $get, Forms\Set $set): void
-    {
-        $budgetPlanId = $get('budget_plan_id');
-        $categoryId = $get('budget_category_id');
-        $subcategoryId = $get('budget_subcategory_id');
-        
-        if ($budgetPlanId && $categoryId) {
-            $existing = BudgetAllocation::where('budget_plan_id', $budgetPlanId)
-                ->where('budget_category_id', $categoryId)
-                ->where('budget_subcategory_id', $subcategoryId)
-                ->first();
+            return [
+                Forms\Components\Section::make('Edit Alokasi')
+                    ->schema([
+                        Forms\Components\Hidden::make('allocation_id')
+                            ->default($allocation->id),
+
+                        Forms\Components\Placeholder::make('category_info')
+                            ->label('Kategori')
+                            ->content($allocation->category_name),
+
+                        Forms\Components\TextInput::make('allocated_amount')
+                            ->label('Jumlah Alokasi')
+                            ->prefix('Rp')
+                            ->inputMode('decimal')
+                            ->required()
+                            ->placeholder('0')
+                            ->default($allocation->allocated_amount)
+                            ->extraInputAttributes([
+                                'oninput' => "
+                                    let value = this.value.replace(/[^0-9]/g, '');
+                                    if (value) {
+                                        this.value = value.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                                    }
+                                "
+                            ])
+                            ->dehydrateStateUsing(fn($state) => $state ? (int) str_replace('.', '', $state) : null)
+                            ->formatStateUsing(fn($state) => $state ? number_format($state, 0, ',', '.') : ''),
+
+                        Forms\Components\Textarea::make('catatan')
+                            ->label('Catatan')
+                            ->default($allocation->catatan)
+                            ->rows(3),
+
+                        Forms\Components\Textarea::make('reason')
+                            ->label('Alasan Perubahan')
+                            ->required()
+                            ->rows(2)
+                            ->placeholder('Jelaskan alasan perubahan untuk audit trail...'),
+                    ])
+            ];
+        })
+        ->action(function (array $data) {
+            try {
+                $allocation = BudgetAllocation::findOrFail($data['allocation_id']);
+                $oldAmount = $allocation->allocated_amount;
+                $newAmount = $data['allocated_amount'];
+                $amountChanged = $newAmount - $oldAmount;
+
+                // Validasi jika menambah
+                if ($amountChanged > 0 && $amountChanged > $allocation->budgetPlan->remaining_budget) {
+                    Notification::make()
+                        ->title('Penambahan Melebihi Budget')
+                        ->body('Sisa budget hanya Rp ' . number_format($allocation->budgetPlan->remaining_budget, 0, ',', '.'))
+                        ->warning()
+                        ->send();
+                    return false;
+                }
+
+                $allocation->update([
+                    'allocated_amount' => $newAmount,
+                    'catatan' => $data['catatan']
+                ]);
+
+                $allocation->budgetPlan->updateTotals();
+
+                // Log audit trail
+                if (method_exists($allocation, 'logAudit')) {
+                    $action = $amountChanged > 0 ? 'allocation_increased' : 'allocation_decreased';
+                    $description = "Alokasi budget diubah dari Rp " . number_format($oldAmount, 0, ',', '.') . 
+                                  " menjadi Rp " . number_format($newAmount, 0, ',', '.') . 
+                                  " (" . ($amountChanged > 0 ? '+' : '') . "Rp " . number_format($amountChanged, 0, ',', '.') . ")";
+
+                    $allocation->logAudit(
+                        $action,
+                        ['allocated_amount' => $oldAmount],
+                        ['allocated_amount' => $newAmount],
+                        $amountChanged,
+                        $description,
+                        $data['reason']
+                    );
+                }
+
+                Notification::make()
+                    ->title('Alokasi Berhasil Diperbarui')
+                    ->body('Alokasi budget berhasil diubah')
+                    ->success()
+                    ->send();
+
+                // Refresh halaman untuk update data
+                return redirect(request()->header('Referer'));
+
+            } catch (\Exception $e) {
+                \Log::error('Error updating allocation: ' . $e->getMessage());
                 
-            // Force refresh the form to show/hide the info placeholder
-            // This is handled by the reactive form components
-        }
-    }
+                Notification::make()
+                    ->title('Terjadi Kesalahan')
+                    ->body('Gagal memperbarui alokasi')
+                    ->danger()
+                    ->send();
+                
+                return false;
+            }
+        });
+}
 
+
+    public function deleteAllocationAction(): Actions\Action
+{
+    return Actions\Action::make('deleteAllocation')
+        ->label('Hapus Alokasi')
+        ->icon('heroicon-o-trash')
+        ->color('danger')
+        ->requiresConfirmation()
+        ->modalHeading('Hapus Alokasi Budget')
+        ->modalDescription('Apakah Anda yakin ingin menghapus alokasi ini? Tindakan ini tidak dapat dibatalkan.')
+        ->form(function (array $arguments) {
+            return [
+                Forms\Components\Textarea::make('reason')
+                    ->label('Alasan Penghapusan')
+                    ->required()
+                    ->rows(3)
+                    ->placeholder('Jelaskan alasan penghapusan untuk audit trail...'),
+            ];
+        })
+        ->action(function (array $data, array $arguments) {
+            try {
+                $allocationId = $arguments['allocation'] ?? null;
+                $allocation = BudgetAllocation::findOrFail($allocationId);
+                
+                // Check if allocation is being used
+                if ($allocation->used_amount > 0) {
+                    Notification::make()
+                        ->title('Tidak Dapat Dihapus')
+                        ->body('Alokasi yang sudah digunakan tidak dapat dihapus')
+                        ->warning()
+                        ->send();
+                    return false;
+                }
+
+                $budgetPlan = $allocation->budgetPlan;
+                $deletedAmount = $allocation->allocated_amount;
+                $categoryName = $allocation->category_name;
+
+                // Log audit before delete
+                if (method_exists($allocation, 'logAudit')) {
+                    $allocation->logAudit(
+                        'allocation_deleted',
+                        $allocation->toArray(),
+                        null,
+                        -$deletedAmount,
+                        "Alokasi budget untuk {$categoryName} sebesar Rp " . number_format($deletedAmount, 0, ',', '.') . " telah dihapus",
+                        $data['reason']
+                    );
+                }
+
+                $allocation->delete();
+                $budgetPlan->updateTotals();
+
+                Notification::make()
+                    ->title('Alokasi Berhasil Dihapus')
+                    ->body('Alokasi budget telah dihapus')
+                    ->success()
+                    ->send();
+
+                return redirect(request()->header('Referer'));
+
+            } catch (\Exception $e) {
+                \Log::error('Error deleting allocation: ' . $e->getMessage());
+                
+                Notification::make()
+                    ->title('Terjadi Kesalahan')
+                    ->body('Gagal menghapus alokasi')
+                    ->danger()
+                    ->send();
+                
+                return false;
+            }
+        });
+}
 }

@@ -124,27 +124,25 @@
                                     </a>
                                     
                                     {{-- Edit --}}
-                                    @if(auth()->user()->hasRole(['admin', 'super-admin', 'direktur', 'keuangan']))
-                                        <a href="#" onclick="editAllocation({{ $allocation->id }})" 
-                                           class="text-yellow-600 dark:text-yellow-400 hover:text-yellow-800 dark:hover:text-yellow-300 transition-colors"
-                                           title="Edit Alokasi">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                            </svg>
-                                        </a>
-                                    @endif
-                                    
-                                    {{-- Delete --}}
-                                    @if(auth()->user()->hasRole(['admin', 'super-admin', 'direktur']))
-                                        <button type="button" 
-                                                onclick="confirmDelete({{ $allocation->id }})"
-                                                class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition-colors"
-                                                title="Hapus Alokasi">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                            </svg>
-                                        </button>
-                                    @endif
+                                    <td class="py-3 px-4 text-center">
+                                        <div class="flex items-center justify-center space-x-2">
+        <!-- Edit Button -->
+                                            <button wire:click="mountAction('editAllocation', { allocation: {{ $allocation->id }} })"
+                                                class="inline-flex items-center p-1 text-gray-500 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                                    </svg>
+                                            </button>
+        
+        <!-- Delete Button -->
+                                            <button wire:click="mountAction('deleteAllocation', { allocation: {{ $allocation->id }} })"
+                                                class="inline-flex items-center p-1 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                    </svg>
+                                                </button>
+                                        </div>
+                                    </td>
                                 </div>
                             </td>
                         </tr>
@@ -219,59 +217,92 @@
     @endif
 </div>
 
+{{-- Ganti bagian script di budget-allocations-table.blade.php --}}
 <script>
-function getBaseUrl() {
-    const currentPath = window.location.pathname;
+function openEditModal(id, category, subcategory, allocatedAmount, catatan) {
+    document.getElementById('edit_allocation_id').value = id;
+    document.getElementById('edit_category_display').textContent = category + (subcategory ? ' - ' + subcategory : '');
+    document.getElementById('edit_allocated_amount').value = formatNumber(allocatedAmount);
+    document.getElementById('edit_catatan').value = catatan || '';
+    document.getElementById('edit_reason').value = '';
     
-    if (currentPath.includes('/keuangan/')) {
-        return '/keuangan/budget-allocations';
-    } else if (currentPath.includes('/direktur/')) {
-        return '/direktur/budget-allocations';
-    } else {
-        return '/admin/budget-allocations';
-    }
+    document.getElementById('editAllocationModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
 }
 
-function viewAllocation(allocationId) {
-    const baseUrl = getBaseUrl();
-    window.location.href = `${baseUrl}/${allocationId}`;
+function submitEditAllocation(event) {
+    event.preventDefault();
+    
+    const formData = {
+        id: document.getElementById('edit_allocation_id').value,
+        allocated_amount: document.getElementById('edit_allocated_amount').value.replace(/[^0-9]/g, ''),
+        catatan: document.getElementById('edit_catatan').value,
+        reason: document.getElementById('edit_reason').value,
+        _token: document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+    };
+    
+    // Use Livewire untuk call method di ViewBudgetPlan
+    fetch(window.location.pathname + '/update-allocation', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': formData._token
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeEditModal();
+            window.location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Terjadi kesalahan saat menyimpan data');
+    });
 }
 
-function editAllocation(allocationId) {
-    const baseUrl = getBaseUrl();
-    window.location.href = `${baseUrl}/${allocationId}/edit`;
-}
-
+// Tambahkan function untuk delete
 function confirmDelete(allocationId) {
     if (confirm('Apakah Anda yakin ingin menghapus alokasi ini? Tindakan ini tidak dapat dibatalkan.')) {
-        const baseUrl = getBaseUrl();
-        
-        // Create form untuk delete request
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `${baseUrl}/${allocationId}`;
-        form.style.display = 'none';
-        
-        // CSRF token
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-        if (csrfToken) {
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = '_token';
-            csrfInput.value = csrfToken;
-            form.appendChild(csrfInput);
+        const reason = prompt('Masukkan alasan penghapusan (wajib untuk audit trail):');
+        if (reason && reason.trim().length >= 10) {
+            deleteAllocation(allocationId, reason.trim());
+        } else {
+            alert('Alasan penghapusan harus diisi minimal 10 karakter');
         }
-        
-        // Method DELETE
-        const methodInput = document.createElement('input');
-        methodInput.type = 'hidden';
-        methodInput.name = '_method';
-        methodInput.value = 'DELETE';
-        form.appendChild(methodInput);
-        
-        // Submit form
-        document.body.appendChild(form);
-        form.submit();
     }
+}
+
+function deleteAllocation(id, reason) {
+    const formData = {
+        id: id,
+        reason: reason,
+        _token: document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+    };
+    
+    fetch(window.location.pathname + '/delete-allocation', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': formData._token
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Terjadi kesalahan saat menghapus data');
+    });
 }
 </script>

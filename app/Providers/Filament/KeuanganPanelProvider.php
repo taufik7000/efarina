@@ -38,7 +38,6 @@ class KeuanganPanelProvider extends PanelProvider
                 \App\Filament\Resources\BudgetPlanResource::class,
                 \App\Filament\Resources\BudgetCategoryResource::class,
                 \App\Filament\Resources\BudgetSubcategoryResource::class,
-                \App\Filament\Resources\BudgetAllocationResource::class,
                 \App\Filament\Resources\TransaksiResource::class,
                 \App\Filament\Team\Resources\PengajuanAnggaranResource::class,
                 LeaveRequestResource::class,
