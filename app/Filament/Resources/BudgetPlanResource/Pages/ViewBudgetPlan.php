@@ -531,9 +531,7 @@ class ViewBudgetPlan extends ViewRecord
                                                 return collect();
                                             }
                                         })
-                                ])
-                                ->collapsible()
-                                ->collapsed(),
+                                ]),
                         ])
                         ->columnSpan(1),
                     ]),
