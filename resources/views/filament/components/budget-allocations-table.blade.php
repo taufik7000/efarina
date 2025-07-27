@@ -195,14 +195,6 @@
             <div class="text-xs text-gray-500 dark:text-gray-400">
                 Terakhir diperbarui: {{ now()->format('d M Y H:i') }}
             </div>
-            <div class="flex space-x-2">
-                <button type="button" class="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium">
-                    🔄 Refresh
-                </button>
-                <button type="button" class="text-xs text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 font-medium">
-                    📊 Detail
-                </button>
-            </div>
         </div>
 
     @else

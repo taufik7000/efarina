@@ -16,36 +16,178 @@ use Filament\Support\Enums\FontWeight;
 class ViewBudgetPlan extends ViewRecord
 {
     protected static string $resource = BudgetPlanResource::class;
+public function getTitle(): string
+{
+    return $this->getRecord()->nama_budget;
+}
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\EditAction::make()
-                ->icon('heroicon-o-pencil-square')
-                ->color('primary')
-                ->visible(fn() => auth()->user()->hasRole(['admin', 'super-admin', 'direktur', 'keuangan'])),
+protected function getHeaderActions(): array
+{
+    return [
+        Actions\EditAction::make()
+            ->icon('heroicon-o-pencil-square')
+            ->color('primary')
+            ->visible(fn () => auth()->user()->hasRole(['admin', 'super-admin', 'direktur', 'keuangan'])),
+            
+        Actions\Action::make('create_allocation')
+            ->label('Tambah Alokasi')
+            ->icon('heroicon-o-plus-circle')
+            ->color('success')
+            ->visible(fn () => auth()->user()->hasRole(['keuangan', 'direktur']))
+            ->modal()
+            ->modalHeading('Tambah Alokasi Budget')
+            ->modalDescription('Buat alokasi budget baru untuk rencana ini')
+            ->modalWidth('2xl')
+            ->modalSubmitActionLabel('Simpan Alokasi')
+            ->modalCancelActionLabel('Batal')
+            ->form([
+                Forms\Components\Section::make('Informasi Alokasi')
+                    ->schema([
+                        Forms\Components\Hidden::make('budget_plan_id')
+                            ->default(fn () => $this->getRecord()->id),
+                            
+                        Forms\Components\Select::make('budget_category_id')
+                            ->label('Kategori Budget')
+                            ->options(function () {
+                                return \App\Models\BudgetCategory::where('is_active', true)
+                                    ->pluck('nama_kategori', 'id')
+                                    ->toArray();
+                            })
+                            ->searchable()
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(fn (Forms\Set $set) => $set('budget_subcategory_id', null)),
 
-            Actions\Action::make('create_allocation')
-                ->label('Tambah Alokasi')
-                ->icon('heroicon-o-plus-circle')
-                ->color('success')
-                ->visible(fn() => auth()->user()->hasRole(['keuangan', 'direktur']))
-                ->url(fn() => BudgetAllocationResource::getUrl('create', [
-                    'budget_plan_id' => $this->getRecord()->id
-                ])),
+                        Forms\Components\Select::make('budget_subcategory_id')
+                            ->label('Subkategori Budget')
+                            ->options(function (Forms\Get $get): array {
+                                $categoryId = $get('budget_category_id');
+                                if (!$categoryId) {
+                                    return [];
+                                }
+                                
+                                return \App\Models\BudgetSubcategory::where('budget_category_id', $categoryId)
+                                    ->where('is_active', true)
+                                    ->pluck('nama_subkategori', 'id')
+                                    ->toArray();
+                            })
+                            ->searchable()
+                            ->placeholder('Pilih subkategori (opsional)'),
 
-            Actions\Action::make('export_report')
-                ->label('Export Laporan')
-                ->icon('heroicon-o-document-arrow-down')
-                ->color('info')
-                ->action(function () {
-                    // Logic untuk export report
-                    return response()->streamDownload(function () {
-                        echo $this->generateBudgetReport();
-                    }, 'budget-plan-' . $this->getRecord()->id . '.pdf');
-                }),
-        ];
-    }
+
+Forms\Components\TextInput::make('allocated_amount')
+    ->label('Jumlah Alokasi')
+    ->prefix('Rp')
+    ->inputMode('decimal')
+    ->required()
+    ->placeholder('0')
+                                ->extraInputAttributes([
+                                    'oninput' => "
+            let value = this.value.replace(/[^0-9]/g, '');
+            if (value) {
+                this.value = value.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            }
+        ",
+                                    'onkeydown' => "
+            if ([46, 8, 9, 27, 13].indexOf(event.keyCode) !== -1 ||
+                // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                (event.keyCode === 65 && event.ctrlKey === true) ||
+                (event.keyCode === 67 && event.ctrlKey === true) ||
+                (event.keyCode === 86 && event.ctrlKey === true) ||
+                (event.keyCode === 88 && event.ctrlKey === true)) {
+                return;
+            }
+            // Ensure that it is a number and stop the keypress
+            if ((event.shiftKey || (event.keyCode < 48 || event.keyCode > 57)) && (event.keyCode < 96 || event.keyCode > 105)) {
+                event.preventDefault();
+            }
+        "
+                                ])
+                                ->dehydrateStateUsing(fn($state) => $state ? (int) str_replace('.', '', $state) : null)
+                                ->formatStateUsing(fn($state) => $state ? number_format($state, 0, ',', '.') : '')
+                                ->helperText(function () {
+                                    return 'Sisa budget: Rp ' . number_format($this->getRecord()->remaining_budget, 0, ',', '.');
+                                }),
+
+                            Forms\Components\Textarea::make('catatan')
+                                ->label('Catatan')
+                                ->placeholder('Catatan tambahan untuk alokasi ini...')
+                                ->rows(3),
+                        ])
+                ])
+                ->action(function (array $data) {
+                    try {
+                        // Validasi remaining budget
+                        $budgetPlan = $this->getRecord();
+                        if ($data['allocated_amount'] > $budgetPlan->remaining_budget) {
+                            Notification::make()
+                                ->title('Alokasi Melebihi Budget')
+                                ->body('Sisa budget hanya Rp ' . number_format($budgetPlan->remaining_budget, 0, ',', '.'))
+                                ->warning()
+                                ->duration(8000)
+                                ->send();
+                            return false;
+                        }
+
+                        // Check duplicate allocation
+                    $existingAllocation = \App\Models\BudgetAllocation::where('budget_plan_id', $data['budget_plan_id'])
+                        ->where('budget_category_id', $data['budget_category_id'])
+                        ->where('budget_subcategory_id', $data['budget_subcategory_id'])
+                        ->first();
+
+                    if ($existingAllocation) {
+                        Notification::make()
+                            ->title('Alokasi Sudah Ada')
+                            ->body('Alokasi untuk kategori ini sudah dibuat. Silakan edit alokasi yang ada.')
+                            ->warning()
+                            ->duration(8000)
+                            ->send();
+                        return false;
+                    }
+
+                    // Create allocation
+                    $data['created_by'] = auth()->id();
+                    $data['used_amount'] = 0;
+
+                    $allocation = \App\Models\BudgetAllocation::create($data);
+
+                    // Update budget plan totals
+                    $budgetPlan->updateTotals();
+
+                    Notification::make()
+                        ->title('Alokasi Berhasil Dibuat')
+                        ->body('Alokasi sebesar Rp ' . number_format($data['allocated_amount'], 0, ',', '.') . ' telah ditambahkan')
+                        ->success()
+                        ->duration(5000)
+                        ->send();
+
+                    return redirect(request()->header('Referer'));
+
+                } catch (\Exception $e) {
+                    \Log::error('Error creating budget allocation: ' . $e->getMessage());
+                    
+                    Notification::make()
+                        ->title('Terjadi Kesalahan')
+                        ->body('Gagal membuat alokasi: ' . $e->getMessage())
+                        ->danger()
+                        ->duration(8000)
+                        ->send();
+                    
+                    return false;
+                }
+            }),
+
+        Actions\Action::make('export_report')
+            ->label('Export Laporan')
+            ->icon('heroicon-o-document-arrow-down')
+            ->color('info')
+            ->action(function () {
+                return response()->streamDownload(function () {
+                    echo $this->generateBudgetReport();
+                }, 'budget-plan-' . $this->getRecord()->id . '.txt');
+            }),
+    ];
+}
 
     public function infolist(Infolist $infolist): Infolist
     {
@@ -61,57 +203,24 @@ class ViewBudgetPlan extends ViewRecord
                                     Infolists\Components\ViewEntry::make('allocations_table')
                                         ->label('')
                                         ->view('filament.components.budget-allocations-table')
-                                        ->state(fn($record) => $record->allocations()->with(['category', 'subcategory'])->get())
+                                        ->state(fn ($record) => $record->allocations()->with(['category', 'subcategory'])->get())
                                 ])
                                 ->collapsible(),
-
+                                
                             // Detail Transaksi Budget Plan
                             Infolists\Components\Section::make('Transaksi Terkait')
                                 ->schema([
                                     Infolists\Components\ViewEntry::make('transactions_table')
                                         ->label('')
                                         ->view('filament.components.budget-transactions-table')
-                                        ->state(fn($record) => $this->getBudgetTransactions($record))
-                                ])
-                                ->collapsible()
-                                ->collapsed(),
+                                        ->state(fn ($record) => $this->getBudgetTransactions($record))
+                                ]),
                         ])
-                            ->columnSpan(2), // Mengambil 2 kolom dari 3 (lebih lebar)
-
+                        ->columnSpan(2), // Mengambil 2 kolom dari 3 (lebih lebar)
+                        
                         // Right Column - Info & Summary
                         Infolists\Components\Group::make([
-                            // Informasi Budget Plan
-                            Infolists\Components\Section::make('Informasi Budget Plan')
-                                ->schema([
-                                    Infolists\Components\TextEntry::make('nama_budget')
-                                        ->label('Nama Budget')
-                                        ->weight(FontWeight::Bold)
-                                        ->size(Infolists\Components\TextEntry\TextEntrySize::Large)
-                                        ->color('primary'),
-
-                                    Infolists\Components\TextEntry::make('period.nama_periode')
-                                        ->label('Periode')
-                                        ->badge()
-                                        ->color('info'),
-
-                                    Infolists\Components\TextEntry::make('status')
-                                        ->label('Status')
-                                        ->badge()
-                                        ->color(fn(string $state): string => match ($state) {
-                                            'draft' => 'gray',
-                                            'active' => 'success',
-                                            'completed' => 'info',
-                                            'cancelled' => 'danger',
-                                            default => 'gray',
-                                        }),
-
-                                    Infolists\Components\TextEntry::make('deskripsi')
-                                        ->label('Deskripsi')
-                                        ->placeholder('Tidak ada deskripsi'),
-                                ])
-                                ->compact(),
-
-                            // Ringkasan Budget
+                                                        // Ringkasan Budget
                             Infolists\Components\Section::make('Ringkasan Budget')
                                 ->schema([
                                     Infolists\Components\TextEntry::make('total_budget')
@@ -120,40 +229,70 @@ class ViewBudgetPlan extends ViewRecord
                                         ->weight(FontWeight::Bold)
                                         ->color('primary')
                                         ->size(Infolists\Components\TextEntry\TextEntrySize::Large),
-
+                                        
                                     Infolists\Components\Fieldset::make('Alokasi & Penggunaan')
                                         ->schema([
                                             Infolists\Components\TextEntry::make('total_allocated')
                                                 ->label('Dialokasikan')
                                                 ->money('IDR')
                                                 ->color('info'),
-
+                                                
                                             Infolists\Components\TextEntry::make('total_used')
                                                 ->label('Terpakai')
                                                 ->money('IDR')
                                                 ->color('warning'),
-
+                                                
                                             Infolists\Components\TextEntry::make('remaining_budget')
                                                 ->label('Sisa Budget')
                                                 ->money('IDR')
-                                                ->color(fn($state) => $state < 0 ? 'danger' : 'success')
+                                                ->color(fn ($state) => $state < 0 ? 'danger' : 'success')
                                                 ->weight(FontWeight::SemiBold),
                                         ]),
-
+                                        
                                     Infolists\Components\Fieldset::make('Persentase')
                                         ->schema([
                                             Infolists\Components\TextEntry::make('allocation_percentage')
                                                 ->label('% Alokasi')
                                                 ->suffix('%')
-                                                ->color(fn($state) => $state >= 100 ? 'danger' : ($state >= 80 ? 'warning' : 'success'))
+                                                ->color(fn ($state) => $state >= 100 ? 'danger' : ($state >= 80 ? 'warning' : 'success'))
                                                 ->badge(),
-
+                                                
                                             Infolists\Components\TextEntry::make('usage_percentage')
                                                 ->label('% Penggunaan')
                                                 ->suffix('%')
-                                                ->color(fn($state) => $state >= 90 ? 'danger' : ($state >= 75 ? 'warning' : 'success'))
+                                                ->color(fn ($state) => $state >= 90 ? 'danger' : ($state >= 75 ? 'warning' : 'success'))
                                                 ->badge(),
                                         ]),
+                                ])
+                                ->compact(),
+                            // Informasi Budget Plan
+                            Infolists\Components\Section::make('Informasi Budget Plan')
+                                ->schema([
+                                    Infolists\Components\TextEntry::make('nama_budget')
+                                        ->label('Nama Budget')
+                                        ->weight(FontWeight::Bold)
+                                        ->size(Infolists\Components\TextEntry\TextEntrySize::Large)
+                                        ->color('primary'),
+                                        
+                                    Infolists\Components\TextEntry::make('period.nama_periode')
+                                        ->label('Periode')
+                                        ->badge()
+                                        ->color('info'),
+                                        
+                                    Infolists\Components\TextEntry::make('status')
+                                        ->label('Status')
+                                        ->badge()
+                                        ->color(fn (string $state): string => match ($state) {
+                                            'draft' => 'gray',
+                                            'active' => 'success',
+                                            'completed' => 'info',
+                                            'cancelled' => 'danger',
+                                            default => 'gray',
+                                        }),
+                                        
+                                    Infolists\Components\TextEntry::make('deskripsi')
+                                        ->label('Deskripsi')
+                                        ->placeholder('Tidak ada deskripsi'),
                                 ])
                                 ->compact(),
 
@@ -164,20 +303,18 @@ class ViewBudgetPlan extends ViewRecord
                                         ->label('Dibuat Oleh')
                                         ->placeholder('Tidak diketahui')
                                         ->icon('heroicon-o-user'),
-
+                                        
                                     Infolists\Components\TextEntry::make('created_at')
                                         ->label('Dibuat Pada')
                                         ->dateTime('d M Y H:i')
                                         ->icon('heroicon-o-calendar'),
-
+                                        
                                     Infolists\Components\TextEntry::make('updated_at')
                                         ->label('Diperbarui')
                                         ->dateTime('d M Y H:i')
                                         ->icon('heroicon-o-clock'),
                                 ])
-                                ->compact()
-                                ->collapsible()
-                                ->collapsed(),
+                                ->compact(),
 
                             // Informasi Persetujuan (jika ada)
                             Infolists\Components\Section::make('Informasi Persetujuan')
@@ -187,20 +324,20 @@ class ViewBudgetPlan extends ViewRecord
                                         ->dateTime('d M Y H:i')
                                         ->placeholder('Belum disetujui')
                                         ->icon('heroicon-o-check-circle'),
-
+                                        
                                     Infolists\Components\TextEntry::make('approvedBy.name')
                                         ->label('Disetujui Oleh')
                                         ->placeholder('Belum disetujui')
                                         ->icon('heroicon-o-user-check'),
-
+                                        
                                     Infolists\Components\TextEntry::make('approval_notes')
                                         ->label('Catatan Persetujuan')
                                         ->placeholder('Tidak ada catatan'),
                                 ])
                                 ->compact()
-                                ->visible(fn($record) => $record->approved_at || $record->approved_by),
+                                ->visible(fn ($record) => $record->approved_at || $record->approved_by),
                         ])
-                            ->columnSpan(1), // Mengambil 1 kolom dari 3
+                        ->columnSpan(1), // Mengambil 1 kolom dari 3
                     ]),
             ]);
     }
@@ -217,7 +354,7 @@ class ViewBudgetPlan extends ViewRecord
     {
         $record = $this->getRecord();
         $allocations = $record->allocations()->with(['category', 'subcategory'])->get();
-
+        
         $report = "LAPORAN BUDGET PLAN\n";
         $report .= "===================\n\n";
         $report .= "Nama Budget: {$record->nama_budget}\n";
@@ -226,10 +363,10 @@ class ViewBudgetPlan extends ViewRecord
         $report .= "Total Dialokasikan: Rp " . number_format($record->total_allocated, 0, ',', '.') . "\n";
         $report .= "Total Terpakai: Rp " . number_format($record->total_used, 0, ',', '.') . "\n";
         $report .= "Sisa Budget: Rp " . number_format($record->remaining_budget, 0, ',', '.') . "\n\n";
-
+        
         $report .= "DETAIL ALOKASI:\n";
         $report .= "===============\n\n";
-
+        
         foreach ($allocations as $allocation) {
             $report .= "Kategori: {$allocation->category->nama_kategori}\n";
             if ($allocation->subcategory) {
@@ -244,7 +381,7 @@ class ViewBudgetPlan extends ViewRecord
             }
             $report .= "\n";
         }
-
+        
         return $report;
     }
 
@@ -255,17 +392,17 @@ class ViewBudgetPlan extends ViewRecord
     {
         try {
             return \App\Models\Transaksi::with([
-                'budgetAllocation.category',
+                'budgetAllocation.category', 
                 'budgetAllocation.subcategory',
                 'createdBy'
             ])
-                ->whereHas('budgetAllocation', function ($query) use ($record) {
-                    $query->where('budget_plan_id', $record->id);
-                })
-                ->where('jenis_transaksi', 'pengeluaran')
-                ->orderBy('tanggal_transaksi', 'desc')
-                ->limit(20) // Batasi 20 transaksi terbaru
-                ->get();
+            ->whereHas('budgetAllocation', function($query) use ($record) {
+                $query->where('budget_plan_id', $record->id);
+            })
+            ->where('jenis_transaksi', 'pengeluaran')
+            ->orderBy('tanggal_transaksi', 'desc')
+            ->limit(20) // Batasi 20 transaksi terbaru
+            ->get();
         } catch (\Exception $e) {
             // Jika ada error, return collection kosong
             return collect();
