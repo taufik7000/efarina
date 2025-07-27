@@ -210,10 +210,23 @@ class TransaksiResource extends Resource
                                             ->label('Alokasi Budget')
                                             ->relationship('budgetAllocation', 'id')
                                             ->getOptionLabelFromRecordUsing(fn($record) => $record->category_name . ' - Rp ' . number_format($record->remaining_amount, 0, ',', '.'))
+                                            ->options(function () {
+                                                return \App\Models\BudgetAllocation::with(['category', 'subcategory', 'budgetPlan'])
+                                                    ->whereHas('budgetPlan', function ($query) {
+                                                        $query->where('status', 'active'); // Hanya budget plan aktif
+                                                    })
+                                                    ->whereRaw('allocated_amount > used_amount') // Hanya yang masih ada sisa
+                                                    ->get()
+                                                    ->mapWithKeys(function ($allocation) {
+                                                        return [
+                                                            $allocation->id => $allocation->category_name . ' - Rp ' . number_format($allocation->remaining_amount, 0, ',', '.')
+                                                        ];
+                                                    });
+                                            })
                                             ->searchable()
                                             ->preload()
                                             ->visible(fn(Forms\Get $get) => $get('jenis_transaksi') === 'pengeluaran')
-                                            ->helperText('Pilih alokasi budget yang akan digunakan'),
+                                            ->helperText('Hanya menampilkan alokasi yang masih memiliki sisa budget'),
 
                                         Forms\Components\Select::make('project_id')
                                             ->label('Project Terkait')

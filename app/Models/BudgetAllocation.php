@@ -1,5 +1,4 @@
 <?php
-// app/Models/BudgetAllocation.php
 
 namespace App\Models;
 
@@ -7,10 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Traits\HasBudgetAuditTrail;
 
 class BudgetAllocation extends Model
 {
-    use HasFactory;
+    use HasFactory, HasBudgetAuditTrail;
 
     protected $fillable = [
         'budget_plan_id',
@@ -118,5 +118,17 @@ class BudgetAllocation extends Model
         static::deleted(function ($allocation) {
             $allocation->budgetPlan->updateTotals();
         });
+    }
+
+    public function logAllocationIncrease(float $additionalAmount, string $reason = null): void
+    {
+        $this->logAudit(
+            'allocation_added',
+            ['allocated_amount' => $this->allocated_amount - $additionalAmount],
+            ['allocated_amount' => $this->allocated_amount],
+            $additionalAmount,
+            "Alokasi ditambah sebesar Rp " . number_format($additionalAmount, 0, ',', '.'),
+            $reason
+        );
     }
 }

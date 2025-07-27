@@ -7,10 +7,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Traits\HasBudgetAuditTrail;
+
 
 class BudgetPlan extends Model
 {
-    use HasFactory;
+    use HasFactory, HasBudgetAuditTrail;
 
     protected $fillable = [
         'budget_period_id',
@@ -113,5 +115,29 @@ class BudgetPlan extends Model
             'approved_by' => $userId,
             'approved_at' => now(),
         ]);
+    }
+
+    public function logBudgetIncrease(float $additionalAmount, string $reason): void
+    {
+        $this->logAudit(
+            'budget_increased',
+            ['total_budget' => $this->total_budget - $additionalAmount],
+            ['total_budget' => $this->total_budget],
+            $additionalAmount,
+            "Total budget ditambah sebesar Rp " . number_format($additionalAmount, 0, ',', '.'),
+            $reason
+        );
+    }
+
+    public function logStatusChange(string $oldStatus, string $newStatus, string $reason = null): void
+    {
+        $this->logAudit(
+            'status_changed',
+            ['status' => $oldStatus],
+            ['status' => $newStatus],
+            null,
+            "Status diubah dari '{$oldStatus}' menjadi '{$newStatus}'",
+            $reason
+        );
     }
 }
