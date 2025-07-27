@@ -21,9 +21,7 @@ class PengajuanAnggaranResource extends Resource
 {
     protected static ?string $model = PengajuanAnggaran::class;
     protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
-    protected static ?string $navigationGroup = 'Finance Management';
     protected static ?string $navigationLabel = 'Pengajuan Anggaran';
-    protected static ?int $navigationSort = 2;
 
  public static function form(Form $form): Form
 {
