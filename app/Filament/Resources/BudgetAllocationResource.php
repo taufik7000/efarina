@@ -17,6 +17,7 @@ class BudgetAllocationResource extends Resource
     protected static ?string $model = BudgetAllocation::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-chart-pie';
+    protected static bool $shouldRegisterNavigation = false;
     protected static ?string $navigationGroup = 'Budget Management';
     protected static ?string $navigationLabel = 'Alokasi';
     protected static ?int $navigationSort = 5;

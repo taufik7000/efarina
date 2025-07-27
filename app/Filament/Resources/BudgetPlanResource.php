@@ -243,12 +243,13 @@ class BudgetPlanResource extends Resource
             ->defaultSort('created_at', 'desc');
     }
 
-    public static function getPages(): array
-    {
-        return [
-            'index' => Pages\ListBudgetPlans::route('/'),
-            'create' => Pages\CreateBudgetPlan::route('/create'),
-            'edit' => Pages\EditBudgetPlan::route('/{record}/edit'),
-        ];
-    }
+public static function getPages(): array
+{
+    return [
+        'index' => Pages\ListBudgetPlans::route('/'),
+        'create' => Pages\CreateBudgetPlan::route('/create'),
+        'view' => Pages\ViewBudgetPlan::route('/{record}'),
+        'edit' => Pages\EditBudgetPlan::route('/{record}/edit'),
+    ];
+}
 }
