@@ -123,7 +123,7 @@ class BudgetAllocationResource extends Resource
                     ->sortable()
                     ->weight('bold'),
 
-                Tables\Columns\TextColumn::make('budget_subcategory.nama_subkategori')
+                Tables\Columns\TextColumn::make('subcategory.nama_subkategori')
                     ->label('Jenis Alokasi')
                     ->searchable()
                     ->wrap(),
