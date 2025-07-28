@@ -26,8 +26,10 @@ class DirekturPanelProvider extends PanelProvider
         return $panel
             ->id('direktur')
             ->path('direktur')
+            ->BrandLogo('/storage/assets/logo-efarina.webp')
+            ->BrandLogoHeight('3rem')
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::Blue,
             ])
             ->databaseNotifications()
             ->discoverResources(in: app_path('Filament/Direktur/Resources'), for: 'App\\Filament\\Direktur\\Resources')
@@ -40,8 +42,12 @@ class DirekturPanelProvider extends PanelProvider
                 \App\Filament\Resources\BudgetSubcategoryResource::class,
                 \App\Filament\Resources\TransaksiResource::class,
                 \App\Filament\Team\Resources\ProjectResource::class,
+                \App\Filament\Team\Resources\PengajuanAnggaranResource::class,
                 \App\Filament\Team\Resources\TaskResource::class,
 
+            ])
+            ->pages([
+                \App\Filament\Hrd\Pages\LaporanKehadiran::class,
             ])
             ->discoverPages(in: app_path('Filament/Direktur/Pages'), for: 'App\\Filament\\Direktur\\Pages')
             ->discoverWidgets(in: app_path('Filament/Direktur/Widgets'), for: 'App\\Filament\\Direktur\\Widgets')

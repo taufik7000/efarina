@@ -105,29 +105,6 @@ class BudgetPlanResource extends Resource
                             ->columnSpanFull(),
                     ])
                     ->columns(2),
-
-                Forms\Components\Section::make('Informasi Penggunaan Budget')
-                    ->schema([
-                        Forms\Components\TextInput::make('total_allocated')
-                            ->label('Total Dialokasikan')
-                            ->prefix('Rp')
-                            ->disabled()
-                            ->placeholder('Akan dihitung otomatis dari alokasi'),
-
-                        Forms\Components\TextInput::make('total_used')
-                            ->label('Total Terpakai')
-                            ->prefix('Rp')
-                            ->disabled()
-                            ->placeholder('Akan dihitung otomatis dari transaksi'),
-
-                        Forms\Components\TextInput::make('remaining_budget')
-                            ->label('Sisa Budget')
-                            ->prefix('Rp')
-                            ->disabled()
-                            ->placeholder('Total Budget - Total Dialokasikan'),
-                    ])
-                    ->columns(3)
-                    ->visible(fn ($record) => $record !== null),
                 Forms\Components\Section::make('Informasi Approval')
                     ->schema([
                         Forms\Components\DateTimePicker::make('approved_at')

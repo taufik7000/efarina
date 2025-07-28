@@ -1,5 +1,8 @@
 <?php
 
+// app/Filament/Hrd/Resources/EmployeeDocumentResource.php
+// UNTUK FILAMENT 3.x
+
 namespace App\Filament\Hrd\Resources;
 
 use App\Filament\Hrd\Resources\EmployeeDocumentResource\Pages;
@@ -36,11 +39,13 @@ class EmployeeDocumentResource extends Resource
                             ->searchable()
                             ->preload()
                             ->required()
-                            ->getOptionLabelFromRecordUsing(fn (User $record): string => 
-                                "{$record->name} - {$record->jabatan?->nama_jabatan}"
-                            )
-                            ->live()
-                            ->afterStateUpdated(fn (Forms\Set $set) => $set('document_type', null)),
+                            ->createOptionForm([
+                                Forms\Components\TextInput::make('name')
+                                    ->required(),
+                                Forms\Components\TextInput::make('email')
+                                    ->email()
+                                    ->required(),
+                            ]),
                     ])
                     ->columns(1),
 
@@ -48,59 +53,58 @@ class EmployeeDocumentResource extends Resource
                     ->schema([
                         Forms\Components\Select::make('document_type')
                             ->label('Jenis Dokumen')
-                            ->options(EmployeeDocument::getDocumentTypeOptions())
+                            ->options([
+                                'ktp' => 'KTP',
+                                'cv' => 'CV/Resume',
+                                'ijazah' => 'Ijazah',
+                                'sertifikat' => 'Sertifikat',
+                                'foto' => 'Foto Profil',
+                                'npwp' => 'NPWP',
+                                'bpjs' => 'BPJS',
+                                'kontrak' => 'Kontrak Kerja',
+                                'other' => 'Lainnya'
+                            ])
                             ->required()
-                            ->live()
-                            ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
-                                $userId = $get('user_id');
-                                if ($userId && $state) {
-                                    // Cek apakah dokumen sudah ada
-                                    $existingDoc = EmployeeDocument::where('user_id', $userId)
-                                        ->where('document_type', $state)
-                                        ->first();
-                                    
-                                    if ($existingDoc) {
-                                        Notification::make()
-                                            ->title('Dokumen Sudah Ada')
-                                            ->body("Karyawan sudah memiliki dokumen {$state}. Upload baru akan mengganti yang lama.")
-                                            ->warning()
-                                            ->send();
-                                    }
-                                }
-                            }),
+                            ->native(false),
 
+                        // FILAMENT 3.x FileUpload - Simple Version
                         Forms\Components\FileUpload::make('file_upload')
                             ->label('Upload Dokumen')
                             ->directory('employee-documents')
-                            ->acceptedFileTypes(['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'])
+                            ->disk('public')
+                            ->visibility('public')
                             ->maxSize(5120) // 5MB
                             ->required()
-                            ->helperText('Format: PDF, JPG, PNG, DOC, DOCX. Maksimal 5MB.')
-                            ->columnSpanFull(),
+                            ->helperText('Maksimal 5MB. Format: PDF, JPG, PNG, DOC, DOCX')
+                            ->columnSpanFull()
+                            // Filament 3.x way to accept file types
+                            ->acceptedFileTypes(['application/pdf', 'image/*', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'])
+                            ->uploadingMessage('Mengupload file...')
+                            ->previewable(false), // Disable preview to avoid issues
 
                         Forms\Components\Textarea::make('description')
-                            ->label('Deskripsi/Keterangan')
+                            ->label('Keterangan')
                             ->placeholder('Deskripsi atau catatan untuk dokumen ini...')
                             ->rows(3)
                             ->columnSpanFull(),
                     ])
-                    ->columns(2),
+                    ->columns(1),
 
                 Forms\Components\Section::make('Status Verifikasi')
                     ->schema([
                         Forms\Components\Toggle::make('is_verified')
-                            ->label('Langsung Verifikasi')
-                            ->helperText('Centang jika dokumen sudah diverifikasi saat upload')
-                            ->live(),
+                            ->label('Sudah Diverifikasi')
+                            ->helperText('Centang jika dokumen sudah diverifikasi')
+                            ->default(false),
 
                         Forms\Components\Textarea::make('verification_notes')
                             ->label('Catatan Verifikasi')
                             ->placeholder('Catatan untuk verifikasi dokumen...')
-                            ->visible(fn (Forms\Get $get): bool => $get('is_verified'))
-                            ->rows(2),
+                            ->rows(2)
+                            ->visible(fn (Forms\Get $get): bool => $get('is_verified')),
                     ])
                     ->columns(1)
-                    ->visible(fn (?EmployeeDocument $record): bool => $record === null), // Hanya tampil saat create
+                    ->collapsible(),
             ]);
     }
 
@@ -108,71 +112,73 @@ class EmployeeDocumentResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\ImageColumn::make('user.photo_url')
-                    ->label('Foto')
-                    ->circular()
-                    ->defaultImageUrl(fn (EmployeeDocument $record): string => 
-                        'https://ui-avatars.com/api/?name=' . urlencode($record->user->name) . '&color=7F9CF5&background=EBF4FF'
-                    )
-                    ->size(40),
-
                 Tables\Columns\TextColumn::make('user.name')
-                    ->label('Nama Karyawan')
+                    ->label('Karyawan')
                     ->searchable()
-                    ->sortable()
-                    ->weight('bold'),
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('user.jabatan.nama_jabatan')
                     ->label('Jabatan')
-                    ->searchable()
-                    ->placeholder('Belum diatur'),
+                    ->placeholder('Tidak ada')
+                    ->toggleable(),
 
-                Tables\Columns\TextColumn::make('document_type_name')
-                    ->label('Jenis Dokumen')
+                Tables\Columns\TextColumn::make('document_type')
+                    ->label('Jenis')
+                    ->formatStateUsing(function (string $state): string {
+                        $types = [
+                            'ktp' => 'KTP',
+                            'cv' => 'CV/Resume',
+                            'ijazah' => 'Ijazah',
+                            'sertifikat' => 'Sertifikat',
+                            'foto' => 'Foto Profil',
+                            'npwp' => 'NPWP',
+                            'bpjs' => 'BPJS',
+                            'kontrak' => 'Kontrak Kerja',
+                            'other' => 'Lainnya'
+                        ];
+                        return $types[$state] ?? ucfirst($state);
+                    })
                     ->badge()
-                    ->color('info')
-                    ->searchable(),
+                    ->color('info'),
 
                 Tables\Columns\TextColumn::make('file_name')
-                    ->label('Nama File')
+                    ->label('File')
+                    ->limit(30)
                     ->searchable()
-                    ->limit(25)
                     ->tooltip(fn (EmployeeDocument $record): string => $record->file_name),
 
-                Tables\Columns\IconColumn::make('file_type_icon')
-                    ->label('Type')
-                    ->icon(fn (EmployeeDocument $record): string => $record->file_type_icon)
-                    ->alignCenter(),
-
-                Tables\Columns\TextColumn::make('file_size_formatted')
+                Tables\Columns\TextColumn::make('file_size')
                     ->label('Ukuran')
-                    ->alignCenter(),
+                    ->formatStateUsing(function (?int $state): string {
+                        if (!$state) return 'Unknown';
+                        
+                        if ($state >= 1048576) {
+                            return number_format($state / 1048576, 2) . ' MB';
+                        } elseif ($state >= 1024) {
+                            return number_format($state / 1024, 2) . ' KB';
+                        }
+                        return $state . ' bytes';
+                    })
+                    ->toggleable(),
 
-                Tables\Columns\BadgeColumn::make('is_verified')
+                Tables\Columns\TextColumn::make('uploaded_at')
+                    ->label('Upload')
+                    ->dateTime('d M Y H:i')
+                    ->sortable(),
+
+                Tables\Columns\IconColumn::make('is_verified')
                     ->label('Status')
-                    ->formatStateUsing(fn (EmployeeDocument $record): string => $record->status_badge['label'])
-                    ->color(fn (EmployeeDocument $record): string => $record->status_badge['color'])
-                    ->icon(fn (EmployeeDocument $record): string => $record->status_badge['icon']),
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('warning'),
 
                 Tables\Columns\TextColumn::make('verifier.name')
                     ->label('Diverifikasi Oleh')
                     ->placeholder('Belum diverifikasi')
-                    ->toggleable(),
-
-                Tables\Columns\TextColumn::make('uploaded_time_ago')
-                    ->label('Diupload')
-                    ->alignCenter()
-                    ->sortable(query: function (Builder $query, string $direction): Builder {
-                        return $query->orderBy('uploaded_at', $direction);
-                    }),
-
-                Tables\Columns\TextColumn::make('verified_at')
-                    ->label('Tgl Verifikasi')
-                    ->dateTime('d M Y')
-                    ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->defaultSort('uploaded_at', 'desc')
             ->filters([
                 Tables\Filters\SelectFilter::make('user')
                     ->relationship('user', 'name')
@@ -182,151 +188,155 @@ class EmployeeDocumentResource extends Resource
 
                 Tables\Filters\SelectFilter::make('document_type')
                     ->label('Jenis Dokumen')
-                    ->options(EmployeeDocument::getDocumentTypeOptions()),
+                    ->options([
+                        'ktp' => 'KTP',
+                        'cv' => 'CV/Resume',
+                        'ijazah' => 'Ijazah',
+                        'sertifikat' => 'Sertifikat',
+                        'foto' => 'Foto Profil',
+                        'npwp' => 'NPWP',
+                        'bpjs' => 'BPJS',
+                        'kontrak' => 'Kontrak Kerja',
+                        'other' => 'Lainnya'
+                    ]),
 
                 Tables\Filters\TernaryFilter::make('is_verified')
                     ->label('Status Verifikasi')
+                    ->placeholder('Semua')
                     ->trueLabel('Terverifikasi')
-                    ->falseLabel('Belum Verifikasi')
-                    ->queries(
-                        true: fn (Builder $query) => $query->where('is_verified', true),
-                        false: fn (Builder $query) => $query->where('is_verified', false),
-                    ),
+                    ->falseLabel('Belum Diverifikasi'),
 
-                Tables\Filters\SelectFilter::make('jabatan')
-                    ->relationship('user.jabatan', 'nama_jabatan')
-                    ->searchable()
-                    ->preload()
-                    ->label('Filter Jabatan'),
-
-                Tables\Filters\SelectFilter::make('divisi')
-                    ->relationship('user.jabatan.divisi', 'nama_divisi')
-                    ->searchable()
-                    ->preload()
-                    ->label('Filter Divisi'),
+                Tables\Filters\Filter::make('uploaded_today')
+                    ->label('Upload Hari Ini')
+                    ->query(fn (Builder $query): Builder => $query->whereDate('uploaded_at', today())),
             ])
             ->actions([
-                Tables\Actions\ActionGroup::make([
-                    Tables\Actions\Action::make('view')
-                        ->label('Lihat File')
-                        ->icon('heroicon-o-eye')
-                        ->color('info')
-                        ->url(fn (EmployeeDocument $record): string => Storage::url($record->file_path))
-                        ->openUrlInNewTab(),
+                Tables\Actions\Action::make('preview')
+                    ->label('Preview')
+                    ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->url(fn (EmployeeDocument $record): string => Storage::disk('public')->url($record->file_path))
+                    ->openUrlInNewTab()
+                    ->visible(function (EmployeeDocument $record): bool {
+                        $extension = strtolower(pathinfo($record->file_name, PATHINFO_EXTENSION));
+                        return in_array($extension, ['pdf', 'jpg', 'jpeg', 'png']);
+                    }),
 
-                    Tables\Actions\Action::make('download')
-                        ->label('Download')
-                        ->icon('heroicon-o-arrow-down-tray')
-                        ->color('success')
-                        ->action(function (EmployeeDocument $record) {
-                            if (!$record->fileExists()) {
-                                Notification::make()
-                                    ->title('File Tidak Ditemukan')
-                                    ->body('File dokumen tidak ditemukan di server.')
-                                    ->danger()
-                                    ->send();
-                                return;
-                            }
+                Tables\Actions\Action::make('download')
+                    ->label('Download')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->action(function (EmployeeDocument $record) {
+                        if (Storage::disk('public')->exists($record->file_path)) {
+                            return Storage::disk('public')->download($record->file_path, $record->file_name);
+                        }
+                        
+                        Notification::make()
+                            ->title('File Tidak Ditemukan')
+                            ->body('File dokumen tidak dapat ditemukan di server.')
+                            ->danger()
+                            ->send();
+                    }),
 
-                            return response()->download(
-                                Storage::path($record->file_path),
-                                $record->file_name
-                            );
-                        }),
+                Tables\Actions\Action::make('verify')
+                    ->label('Verifikasi')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('warning')
+                    ->visible(fn (EmployeeDocument $record): bool => !$record->is_verified)
+                    ->requiresConfirmation()
+                    ->modalHeading('Verifikasi Dokumen')
+                    ->modalDescription('Apakah Anda yakin dokumen ini valid dan dapat diverifikasi?')
+                    ->action(function (EmployeeDocument $record) {
+                        $record->update([
+                            'is_verified' => true,
+                            'verified_by' => auth()->id(),
+                            'verified_at' => now(),
+                        ]);
 
-                    Tables\Actions\Action::make('verify')
-                        ->label('Verifikasi')
-                        ->icon('heroicon-o-check-circle')
-                        ->color('success')
-                        ->visible(fn (EmployeeDocument $record): bool => !$record->is_verified)
-                        ->form([
-                            Forms\Components\Textarea::make('verification_notes')
-                                ->label('Catatan Verifikasi')
-                                ->placeholder('Tambahkan catatan verifikasi...')
-                                ->required(),
-                        ])
-                        ->action(function (EmployeeDocument $record, array $data) {
-                            $record->verify(auth()->user(), $data['verification_notes']);
+                        Notification::make()
+                            ->title('Dokumen Terverifikasi')
+                            ->body('Dokumen telah berhasil diverifikasi.')
+                            ->success()
+                            ->send();
+                    }),
 
-                            Notification::make()
-                                ->title('Dokumen Diverifikasi')
-                                ->body("Dokumen {$record->document_type_name} untuk {$record->user->name} telah diverifikasi.")
-                                ->success()
-                                ->send();
-                        }),
+                Tables\Actions\Action::make('unverify')
+                    ->label('Batalkan')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->visible(fn (EmployeeDocument $record): bool => $record->is_verified)
+                    ->requiresConfirmation()
+                    ->action(function (EmployeeDocument $record) {
+                        $record->update([
+                            'is_verified' => false,
+                            'verified_by' => null,
+                            'verified_at' => null,
+                        ]);
 
-                    Tables\Actions\Action::make('unverify')
-                        ->label('Batalkan Verifikasi')
-                        ->icon('heroicon-o-x-circle')
-                        ->color('warning')
-                        ->visible(fn (EmployeeDocument $record): bool => $record->is_verified)
-                        ->requiresConfirmation()
-                        ->modalHeading('Batalkan Verifikasi')
-                        ->modalDescription(fn (EmployeeDocument $record): string => 
-                            "Apakah Anda yakin ingin membatalkan verifikasi dokumen {$record->document_type_name}?"
-                        )
-                        ->action(function (EmployeeDocument $record) {
-                            $record->unverify();
+                        Notification::make()
+                            ->title('Verifikasi Dibatalkan')
+                            ->body('Verifikasi dokumen telah dibatalkan.')
+                            ->success()
+                            ->send();
+                    }),
 
-                            Notification::make()
-                                ->title('Verifikasi Dibatalkan')
-                                ->body("Verifikasi dokumen {$record->document_type_name} telah dibatalkan.")
-                                ->success()
-                                ->send();
-                        }),
+                Tables\Actions\EditAction::make(),
 
-                    Tables\Actions\EditAction::make()
-                        ->label('Edit'),
-
-                    Tables\Actions\DeleteAction::make()
-                        ->label('Hapus')
-                        ->before(function (EmployeeDocument $record) {
-                            $record->deleteFile();
-                        }),
-                ])
-                ->icon('heroicon-o-ellipsis-vertical')
-                ->button()
-                ->color('gray'),
+                Tables\Actions\DeleteAction::make()
+                    ->before(function (EmployeeDocument $record) {
+                        // Hapus file dari storage
+                        if (Storage::disk('public')->exists($record->file_path)) {
+                            Storage::disk('public')->delete($record->file_path);
+                        }
+                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\Action::make('verify_selected')
+                    Tables\Actions\BulkAction::make('verify_selected')
                         ->label('Verifikasi Terpilih')
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
-                        ->form([
-                            Forms\Components\Textarea::make('verification_notes')
-                                ->label('Catatan Verifikasi')
-                                ->placeholder('Catatan untuk semua dokumen yang dipilih...')
-                                ->required(),
-                        ])
-                        ->action(function (array $data, $records) {
+                        ->requiresConfirmation()
+                        ->action(function ($records) {
                             $count = 0;
                             foreach ($records as $record) {
                                 if (!$record->is_verified) {
-                                    $record->verify(auth()->user(), $data['verification_notes']);
+                                    $record->update([
+                                        'is_verified' => true,
+                                        'verified_by' => auth()->id(),
+                                        'verified_at' => now(),
+                                    ]);
                                     $count++;
                                 }
                             }
 
                             Notification::make()
-                                ->title('Verifikasi Berhasil')
-                                ->body("{$count} dokumen telah diverifikasi.")
+                                ->title('Dokumen Berhasil Diverifikasi')
+                                ->body($count . ' dokumen telah diverifikasi.')
                                 ->success()
                                 ->send();
                         }),
 
                     Tables\Actions\DeleteBulkAction::make()
                         ->before(function ($records) {
+                            // Hapus semua file dari storage
                             foreach ($records as $record) {
-                                $record->deleteFile();
+                                if (Storage::disk('public')->exists($record->file_path)) {
+                                    Storage::disk('public')->delete($record->file_path);
+                                }
                             }
                         }),
                 ]),
             ])
-            ->emptyStateHeading('Belum Ada Dokumen')
-            ->emptyStateDescription('Upload dokumen pertama untuk karyawan.')
-            ->emptyStateIcon('heroicon-o-document-plus');
+            ->defaultSort('uploaded_at', 'desc')
+            ->poll('30s'); // Auto refresh every 30 seconds
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            //
+        ];
     }
 
     public static function getPages(): array
@@ -338,20 +348,13 @@ class EmployeeDocumentResource extends Resource
         ];
     }
 
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()
-            ->with(['user.jabatan.divisi', 'verifier']);
-    }
-
     public static function getNavigationBadge(): ?string
     {
-        $unverifiedCount = static::getModel()::where('is_verified', false)->count();
-        return $unverifiedCount > 0 ? (string) $unverifiedCount : null;
+        return static::getModel()::where('is_verified', false)->count();
     }
 
     public static function getNavigationBadgeColor(): ?string
     {
-        return 'warning';
+        return static::getModel()::where('is_verified', false)->count() > 0 ? 'warning' : 'success';
     }
 }

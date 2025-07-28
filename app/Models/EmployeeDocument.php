@@ -1,5 +1,6 @@
 <?php
 
+// app/Models/EmployeeDocument.php
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -43,6 +44,9 @@ class EmployeeDocument extends Model
         'foto' => 'Foto Profil',
         'npwp' => 'NPWP',
         'bpjs' => 'BPJS',
+        'skck' => 'SKCK',
+        'surat_sehat' => 'Surat Keterangan Sehat',
+        'referensi' => 'Surat Referensi',
         'other' => 'Lainnya'
     ];
 
@@ -69,7 +73,7 @@ class EmployeeDocument extends Model
             return null;
         }
         
-        return Storage::url($this->file_path);
+        return Storage::disk('public')->url($this->file_path);
     }
 
     public function getFileSizeFormattedAttribute(): string
@@ -91,6 +95,25 @@ class EmployeeDocument extends Model
         }
     }
 
+    public function getFileTypeIconAttribute(): string
+    {
+        $mimeType = $this->mime_type ?? '';
+        $extension = strtolower(pathinfo($this->file_name, PATHINFO_EXTENSION));
+        
+        return match(true) {
+            str_contains($mimeType, 'pdf') || $extension === 'pdf' => 'heroicon-o-document',
+            str_contains($mimeType, 'image') || in_array($extension, ['jpg', 'jpeg', 'png', 'gif']) => 'heroicon-o-photo',
+            str_contains($mimeType, 'word') || in_array($extension, ['doc', 'docx']) => 'heroicon-o-document-text',
+            str_contains($mimeType, 'excel') || in_array($extension, ['xls', 'xlsx']) => 'heroicon-o-table-cells',
+            default => 'heroicon-o-document',
+        };
+    }
+
+    public function getUploadedTimeAgoAttribute(): string
+    {
+        return $this->uploaded_at ? $this->uploaded_at->diffForHumans() : 'Unknown';
+    }
+
     public function getStatusBadgeAttribute(): array
     {
         if ($this->is_verified) {
@@ -102,151 +125,88 @@ class EmployeeDocument extends Model
         }
         
         return [
-            'label' => 'Menunggu Verifikasi',
-            'color' => 'warning', 
+            'label' => 'Belum Diverifikasi',
+            'color' => 'warning',
             'icon' => 'heroicon-o-clock'
         ];
     }
 
-    public function getFileTypeIconAttribute(): string
-    {
-        if (!$this->file_name) {
-            return 'heroicon-o-document';
-        }
-
-        $extension = pathinfo($this->file_name, PATHINFO_EXTENSION);
-        
-        return match(strtolower($extension)) {
-            'pdf' => 'heroicon-o-document-text',
-            'jpg', 'jpeg', 'png', 'gif', 'webp' => 'heroicon-o-photo',
-            'doc', 'docx' => 'heroicon-o-document',
-            'xls', 'xlsx' => 'heroicon-o-table-cells',
-            'ppt', 'pptx' => 'heroicon-o-presentation-chart-bar',
-            'zip', 'rar' => 'heroicon-o-archive-box',
-            default => 'heroicon-o-document'
-        };
-    }
-
-    public function getUploadedTimeAgoAttribute(): string
-    {
-        $uploadedAt = $this->uploaded_at ?? $this->created_at;
-        return $uploadedAt->diffForHumans();
-    }
-
-    // ===== HELPER METHODS =====
-    public function verify(User $verifier, ?string $notes = null): bool
-    {
-        return $this->update([
-            'is_verified' => true,
-            'verified_at' => now(),
-            'verified_by' => $verifier->id,
-            'verification_notes' => $notes ?? 'Diverifikasi oleh HRD',
-        ]);
-    }
-
-    public function unverify(): bool
-    {
-        return $this->update([
-            'is_verified' => false,
-            'verified_at' => null,
-            'verified_by' => null,
-            'verification_notes' => null,
-        ]);
-    }
-
-    public function fileExists(): bool
-    {
-        return $this->file_path && Storage::exists($this->file_path);
-    }
-
-    public function deleteFile(): bool
-    {
-        if ($this->fileExists()) {
-            return Storage::delete($this->file_path);
-        }
-        
-        return true;
-    }
-
-    public function isImage(): bool
-    {
-        $imageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-        return in_array($this->mime_type, $imageTypes);
-    }
-
-    public function isPdf(): bool
-    {
-        return $this->mime_type === 'application/pdf';
-    }
-
-    public function isOfficeDocument(): bool
-    {
-        $officeTypes = [
-            'application/msword',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'application/vnd.ms-excel',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'application/vnd.ms-powerpoint',
-            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-        ];
-        
-        return in_array($this->mime_type, $officeTypes);
-    }
-
-    // ===== SCOPES =====
-    public function scopeVerified($query)
-    {
-        return $query->where('is_verified', true);
-    }
-
-    public function scopeUnverified($query)
-    {
-        return $query->where('is_verified', false);
-    }
-
-    public function scopeOfType($query, string $type)
-    {
-        return $query->where('document_type', $type);
-    }
-
-    public function scopeForUser($query, $userId)
-    {
-        return $query->where('user_id', $userId);
-    }
-
-    // ===== BOOT METHODS =====
-    protected static function boot()
-    {
-        parent::boot();
-
-        // Auto-set uploaded_at jika belum diset
-        static::creating(function ($document) {
-            if (!$document->uploaded_at) {
-                $document->uploaded_at = now();
-            }
-        });
-
-        // Hapus file saat model dihapus
-        static::deleting(function ($document) {
-            $document->deleteFile();
-        });
-    }
-
-    // ===== STATIC METHODS =====
+    // ===== METHODS =====
+    
+    /**
+     * Get document type options for forms
+     */
     public static function getDocumentTypeOptions(): array
     {
         return self::DOCUMENT_TYPES;
     }
 
-    public static function getUserDocumentsSummary($userId): array
+    /**
+     * Verify document
+     */
+    public function verify(User $verifier, ?string $notes = null): void
     {
-        $documents = self::where('user_id', $userId)->get();
+        $this->update([
+            'is_verified' => true,
+            'verified_by' => $verifier->id,
+            'verified_at' => now(),
+            'verification_notes' => $notes,
+        ]);
+    }
+
+    /**
+     * Unverify document
+     */
+    public function unverify(): void
+    {
+        $this->update([
+            'is_verified' => false,
+            'verified_by' => null,
+            'verified_at' => null,
+            'verification_notes' => null,
+        ]);
+    }
+
+    /**
+     * Delete file from storage
+     */
+    public function deleteFile(): bool
+    {
+        if ($this->file_path && Storage::disk('public')->exists($this->file_path)) {
+            return Storage::disk('public')->delete($this->file_path);
+        }
         
-        return [
-            'total' => $documents->count(),
-            'verified' => $documents->where('is_verified', true)->count(),
-            'pending' => $documents->where('is_verified', false)->count(),
-            'by_type' => $documents->groupBy('document_type')->map->count(),
-        ];
+        return true;
+    }
+
+    /**
+     * Check if file exists in storage
+     */
+    public function fileExists(): bool
+    {
+        return $this->file_path && Storage::disk('public')->exists($this->file_path);
+    }
+
+    /**
+     * Get file content for download
+     */
+    public function getFileContent()
+    {
+        if ($this->fileExists()) {
+            return Storage::disk('public')->get($this->file_path);
+        }
+        
+        return null;
+    }
+
+    /**
+     * Boot method for model events
+     */
+    protected static function booted(): void
+    {
+        // Auto-delete file when record is deleted
+        static::deleting(function (EmployeeDocument $document) {
+            $document->deleteFile();
+        });
     }
 }
