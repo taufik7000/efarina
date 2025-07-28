@@ -4,7 +4,6 @@ namespace App\Filament\Team\Pages;
 
 use App\Models\EmployeeProfile;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
@@ -43,15 +42,7 @@ class EditProfile extends Page implements HasForms
                 Section::make('Informasi Pribadi untuk ' . Auth::user()->name)
                     ->description('Lengkapi data pribadi Anda sesuai KTP.')
                     ->schema([
-                        // Input untuk foto profil
-                        FileUpload::make('profile_photo_path')
-                            ->label('Foto Profil')
-                            ->image()
-                            ->avatar()
-                            ->directory('profile-photos')
-                            ->disk('public')
-                            ->visibility('public') 
-                            ->imageEditor(),
+                        // Input untuk foto profi
 
                         TextInput::make('nik_ktp')
                             ->label('NIK (Nomor Induk Kependudukan)')

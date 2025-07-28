@@ -22,14 +22,6 @@ export default ({ mode }) => {
                     'resources/css/filament/hrd/theme.css',
                 ],
                 
-                // INI ADALAH BAGIAN KUNCINYA:
-                // Secara otomatis mengganti URL 'localhost' dengan URL server
-                // yang sedang diakses (misalnya, alamat IP lokal Anda).
-                // Ini memperbaiki masalah CSS yang rusak di dalam dasbor Filament.
-                transformOnServe: (code, devServerUrl) => {
-                    return code.replace(/http:\/\/localhost:5173/g, devServerUrl);
-                },
-                
                 // Refresh: true adalah cara sederhana untuk mengaktifkan hot-reload
                 refresh: true,
             }),

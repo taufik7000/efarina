@@ -244,25 +244,28 @@ class EmployeeProfileResource extends Resource
         return $infolist
             ->schema([
                 // GRID UTAMA UNTUK MEMBUAT 2 KOLOM
-                Components\Grid::make()->columns(['lg' => 2])->schema([
+                Components\Grid::make()->columns(['lg' => 3])->schema([
 
                     // ===================================
                     // KOLOM KIRI
                     // ===================================
                     Components\Grid::make(1)->schema([
                         // SECTION 1: Informasi Dasar dengan Foto
-                        Components\Section::make('👤 Informasi Dasar')
+                        Components\Section::make('Informasi Dasar')
+                            ->icon('heroicon-o-information-circle')
                             ->schema([
                                 Components\Split::make([
                                     // Left side - Photo
-                                    Components\ImageEntry::make('profile.profile_photo_path')
+                                    Components\ImageEntry::make('photo_url')
                                         ->label('')
-                                        ->disk('public')
-                    ->defaultImageUrl(function (User $record): string {
-                        // Avatar default jika tidak ada gambar
-                        return 'https://ui-avatars.com/api/?name=' . urlencode($record->name) .
-                               '&color=7F9CF5&background=EBF4FF&size=300';
-                    })
+                                        ->state(function (User $record): ?string {
+                                            $photo = $record->getDocument('foto');
+                                            return $photo ? Storage::disk('public')->url($photo->file_path) : null;
+                                        })
+                                        ->defaultImageUrl(function (User $record): string {
+                                            return 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . 
+                                                   '&color=7F9CF5&background=EBF4FF&size=300';
+                                        })
                                         ->circular()
                                         ->size(150)
                                         ->grow(false),
@@ -328,7 +331,8 @@ class EmployeeProfileResource extends Resource
                             ->columns(1),
 
                         // SECTION 2: Data Personal
-                        Components\Section::make('📋 Data Personal')
+                        Components\Section::make('Data Personal')
+                            ->icon('heroicon-o-credit-card')
                             ->schema([
                                 Components\TextEntry::make('employeeProfile.nik_ktp')
                                     ->label('NIK (KTP)')
@@ -487,6 +491,7 @@ class EmployeeProfileResource extends Resource
                                                 // Document Type & Icon
                                                 Components\TextEntry::make('document_type')
                                                     ->label('Jenis')
+                                                    ->columnSpan('2')
                                                     ->formatStateUsing(function (string $state): string {
                                                         $types = [
                                                             'ktp' => '🆔 KTP',
@@ -507,11 +512,6 @@ class EmployeeProfileResource extends Resource
                                                     ->badge()
                                                     ->color('info'),
 
-                                                // File Name
-                                                Components\TextEntry::make('file_name')
-                                                    ->label('File')
-                                                    ->limit(25)
-                                                    ->tooltip(fn ($record): string => $record->file_name ?? ''),
 
                                                 // File Size
                                                 Components\TextEntry::make('file_size')
@@ -546,11 +546,7 @@ class EmployeeProfileResource extends Resource
                                                     ->badge()
                                                     ->color(fn (bool $state): string => $state ? 'success' : 'warning'),
 
-                                                // Description
-                                                Components\TextEntry::make('description')
-                                                    ->label('Keterangan')
-                                                    ->limit(20)
-                                                    ->placeholder('Tidak ada'),
+
 
                                                 // Actions menggunakan Filament Actions
                                                 Components\Actions::make([
@@ -559,6 +555,7 @@ class EmployeeProfileResource extends Resource
                                                         ->label('Preview')
                                                         ->icon('heroicon-o-eye')
                                                         ->color('info')
+                                                        ->size('xs')
                                                         ->url(function ($record): ?string {
                                                             if (!Storage::disk('public')->exists($record->file_path)) {
                                                                 return null;
@@ -583,6 +580,7 @@ class EmployeeProfileResource extends Resource
                                                         ->label('Download')
                                                         ->icon('heroicon-o-arrow-down-tray')
                                                         ->color('success')
+                                                        ->size('xs')
                                                         ->action(function ($record) {
                                                             if (Storage::disk('public')->exists($record->file_path)) {
                                                                 return Storage::disk('public')->download($record->file_path, $record->file_name);
@@ -600,6 +598,7 @@ class EmployeeProfileResource extends Resource
                                                         ->label('Verifikasi')
                                                         ->icon('heroicon-o-check-circle')
                                                         ->color('success')
+                                                        ->size('xs')
                                                         ->requiresConfirmation()
                                                         ->modalHeading('Verifikasi Dokumen')
                                                         ->modalDescription('Apakah Anda yakin dokumen ini valid dan dapat diverifikasi?')
@@ -622,6 +621,7 @@ class EmployeeProfileResource extends Resource
                                                         ->label('Batal')
                                                         ->icon('heroicon-o-x-circle')
                                                         ->color('warning')
+                                                        ->size('xs')
                                                         ->requiresConfirmation()
                                                         ->modalHeading('Batalkan Verifikasi')
                                                         ->modalDescription('Apakah Anda yakin ingin membatalkan verifikasi dokumen ini?')
@@ -644,6 +644,7 @@ class EmployeeProfileResource extends Resource
                                                         ->label('Hapus')
                                                         ->icon('heroicon-o-trash')
                                                         ->color('danger')
+                                                        ->size('xs')
                                                         ->requiresConfirmation()
                                                         ->modalHeading('Hapus Dokumen')
                                                         ->modalDescription('Apakah Anda yakin ingin menghapus dokumen ini? Tindakan ini tidak dapat dibatalkan.')
@@ -682,14 +683,12 @@ class EmployeeProfileResource extends Resource
                             )
                             ->collapsible(),
 
-                    ])->columnSpan(1), // Akhir dari Kolom Kiri
+                    ])->columnSpan(2),
 
-                    // ===================================
-                    // KOLOM KANAN
-                    // ===================================
                     Components\Grid::make(1)->schema([
                         // SECTION 3: Kontak Darurat
-                        Components\Section::make('🚨 Kontak Darurat')
+                        Components\Section::make('Kontak Darurat')
+                            ->icon('heroicon-o-phone-arrow-up-right')
                             ->schema([
                                 Components\TextEntry::make('employeeProfile.kontak_darurat_nama')
                                     ->label('Nama')
@@ -706,10 +705,11 @@ class EmployeeProfileResource extends Resource
                                     ->badge()
                                     ->color('warning'),
                             ])
-                            ->columns(3),
+                            ->columns(1),
 
                         // SECTION 4: Informasi Keuangan
-                        Components\Section::make('💰 Informasi Keuangan')
+                        Components\Section::make('Informasi Keuangan')
+                            ->icon('heroicon-o-banknotes')
                             ->schema([
                                 Components\TextEntry::make('employeeProfile.formatted_gaji')
                                     ->label('Gaji Pokok')
@@ -725,13 +725,13 @@ class EmployeeProfileResource extends Resource
                                     ->label('NPWP')
                                     ->placeholder('Belum diisi'),
                             ])
-                            ->columns(3)
-                            ->collapsible(),
+                            ->columns(1),
 
                         // SECTION 5: Status Profile & Overview
-                        Components\Section::make('📊 Status Profile')
+                        Components\Section::make('Status Profile')
+                            ->icon('heroicon-o-chart-bar')
                             ->schema([
-                                Components\Grid::make(4)
+                                Components\Grid::make(2)
                                     ->schema([
                                         Components\TextEntry::make('profile_completion_percentage')
                                             ->label('Kelengkapan Profile')
@@ -768,7 +768,7 @@ class EmployeeProfileResource extends Resource
                                             ),
                                     ]),
                             ])
-                            ->columns(1),
+                            ->columns(),
 
                     ])->columnSpan(1), // Akhir dari Kolom Kanan
 

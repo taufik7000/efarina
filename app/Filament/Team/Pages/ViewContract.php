@@ -25,7 +25,7 @@ class ViewContract extends Page
     {
         // Cari dokumen dengan jenis 'kontrak_kerja' milik user yang login
         $this->contractDocument = EmployeeDocument::where('user_id', Auth::id())
-            ->where('document_type', 'kontrak_kerja')
+            ->where('document_type', 'kontrak')
             ->first();
     }
 }

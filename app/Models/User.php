@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,6 +11,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 use Carbon\Carbon;
+
 
 class User extends Authenticatable
 {
@@ -54,48 +56,17 @@ class User extends Authenticatable
     }
 
     // ===== RELASI EMPLOYEE PROFILE & DOCUMENTS =====
-
-    /**
-     * Metode untuk mengambil URL avatar kustom untuk Filament.
-     * Disesuaikan untuk struktur direktori di mana folder foto
-     * berada langsung di dalam folder 'public'.
-     */
-
     protected $with = ['profile'];
-
-
-
 
     public function profile(): HasOne
     {
         return $this->hasOne(EmployeeProfile::class);
     }
-    public function getFilamentAvatarUrl(): ?string
+    public function employeeProfile(): HasOne
     {
-        // 1. Ambil path foto dari relasi yang sudah pasti termuat karena '$with'.
-        $path = $this->profile?->profile_photo_path;
-
-        // 2. Jika path ADA dan TIDAK KOSONG...
-        if ($path) {
-            // 3. ...GUNAKAN Storage::url() untuk membuat URL yang benar.
-            //    Fungsi ini secara otomatis menggunakan konfigurasi `filesystems.php`
-            //    dan `APP_URL` dari .env Anda. Ini adalah cara yang paling tepat.
-            return Storage::disk('public')->url($path);
-        }
-
-        // 4. Jika path KOSONG, kembalikan null agar Filament menampilkan avatar default.
-        return null;
+        return $this->profile();
     }
 
-        public function canAccessPanel(Panel $panel): bool
-    {
-        // Sesuaikan dengan logika peran Anda, misalnya:
-        if ($panel->getId() === 'team') {
-            return $this->hasRole(['team', 'admin']);
-        }
-
-        return $this->hasRole('admin');
-    }
     /**
      * Employee documents
      */
@@ -105,7 +76,7 @@ class User extends Authenticatable
     }
 
     // ===== RELASI YANG SUDAH ADA =====
-
+    
     public function kehadiran(): HasMany
     {
         return $this->hasMany(Kehadiran::class);
@@ -411,162 +382,162 @@ class User extends Authenticatable
 
     // ===== HELPER METHODS UNTUK EMPLOYEE PROFILE =====
 
-    public function getOrCreateProfile(): EmployeeProfile
-    {
-        return $this->employeeProfile()->firstOrCreate([
-            'user_id' => $this->id
-        ]);
+public function getOrCreateProfile(): EmployeeProfile
+{
+    return $this->employeeProfile()->firstOrCreate([
+        'user_id' => $this->id
+    ]);
+}
+
+/**
+ * Check if user has complete profile
+ */
+public function hasCompleteProfile(): bool
+{
+    $profile = $this->employeeProfile;
+    
+    if (!$profile) {
+        return false;
     }
-
-    /**
-     * Check if user has complete profile
-     */
-    public function hasCompleteProfile(): bool
-    {
-        $profile = $this->employeeProfile;
-
-        if (!$profile) {
+    
+    // Field wajib yang harus diisi
+    $requiredFields = [
+        'nik_ktp',
+        'tempat_lahir', 
+        'tanggal_lahir',
+        'jenis_kelamin',
+        'agama',
+        'alamat',
+        'no_telepon',
+    ];
+    
+    foreach ($requiredFields as $field) {
+        if (empty($profile->$field)) {
             return false;
         }
+    }
+    
+    return true;
+}
 
-        // Field wajib yang harus diisi
-        $requiredFields = [
-            'nik_ktp',
-            'tempat_lahir',
-            'tanggal_lahir',
-            'jenis_kelamin',
-            'agama',
-            'alamat',
-            'no_telepon',
-        ];
-
-        foreach ($requiredFields as $field) {
-            if (empty($profile->$field)) {
-                return false;
-            }
+/**
+ * Get profile completion percentage
+ */
+public function getProfileCompletionPercentage(): int
+{
+    $profile = $this->employeeProfile;
+    
+    if (!$profile) {
+        return 0;
+    }
+    
+    // Semua field yang bisa diisi
+    $allFields = [
+        'nik_ktp',
+        'tempat_lahir',
+        'tanggal_lahir', 
+        'jenis_kelamin',
+        'agama',
+        'status_nikah',
+        'alamat',
+        'no_telepon',
+        'kontak_darurat_nama',
+        'kontak_darurat_telp',
+        'kontak_darurat_hubungan',
+        'gaji_pokok',
+        'no_rekening',
+        'npwp',
+    ];
+    
+    $filledFields = 0;
+    
+    foreach ($allFields as $field) {
+        if (!empty($profile->$field)) {
+            $filledFields++;
         }
-
-        return true;
     }
+    
+    return round(($filledFields / count($allFields)) * 100);
+}
 
-    /**
-     * Get profile completion percentage
-     */
-    public function getProfileCompletionPercentage(): int
-    {
-        $profile = $this->employeeProfile;
+/**
+ * Get verified documents count
+ */
+public function getVerifiedDocumentsCount(): int
+{
+    return $this->employeeDocuments()->where('is_verified', true)->count();
+}
 
-        if (!$profile) {
-            return 0;
-        }
+/**
+ * Get unverified documents count
+ */
+public function getUnverifiedDocumentsCount(): int
+{
+    return $this->employeeDocuments()->where('is_verified', false)->count();
+}
 
-        // Semua field yang bisa diisi
-        $allFields = [
-            'nik_ktp',
-            'tempat_lahir',
-            'tanggal_lahir',
-            'jenis_kelamin',
-            'agama',
-            'status_nikah',
-            'alamat',
-            'no_telepon',
-            'kontak_darurat_nama',
-            'kontak_darurat_telp',
-            'kontak_darurat_hubungan',
-            'gaji_pokok',
-            'no_rekening',
-            'npwp',
-        ];
+/**
+ * Get specific document by type
+ */
+public function getDocument(string $type): ?EmployeeDocument
+{
+    return $this->employeeDocuments()->where('document_type', $type)->first();
+}
 
-        $filledFields = 0;
+/**
+ * Check if has unverified documents
+ */
+public function hasUnverifiedDocuments(): bool
+{
+    return $this->employeeDocuments()->where('is_verified', false)->exists();
+}
 
-        foreach ($allFields as $field) {
-            if (!empty($profile->$field)) {
-                $filledFields++;
-            }
-        }
+// ===== QUERY SCOPES =====
 
-        return round(($filledFields / count($allFields)) * 100);
-    }
+/**
+ * Scope users with complete profile
+ */
+public function scopeWithCompleteProfile($query)
+{
+    return $query->whereHas('employeeProfile', function ($q) {
+        $q->whereNotNull('nik_ktp')
+          ->whereNotNull('tempat_lahir')
+          ->whereNotNull('tanggal_lahir')
+          ->whereNotNull('jenis_kelamin')
+          ->whereNotNull('agama')
+          ->whereNotNull('alamat')
+          ->whereNotNull('no_telepon');
+    });
+}
 
-    /**
-     * Get verified documents count
-     */
-    public function getVerifiedDocumentsCount(): int
-    {
-        return $this->employeeDocuments()->where('is_verified', true)->count();
-    }
+/**
+ * Scope users with incomplete profile
+ */
+public function scopeWithIncompleteProfile($query)
+{
+    return $query->where(function ($q) {
+        $q->doesntHave('employeeProfile')
+          ->orWhereHas('employeeProfile', function ($subQ) {
+              $subQ->where(function ($innerQ) {
+                  $innerQ->whereNull('nik_ktp')
+                         ->orWhereNull('tempat_lahir')
+                         ->orWhereNull('tanggal_lahir')
+                         ->orWhereNull('jenis_kelamin')
+                         ->orWhereNull('agama')
+                         ->orWhereNull('alamat')
+                         ->orWhereNull('no_telepon');
+              });
+          });
+    });
+}
 
-    /**
-     * Get unverified documents count
-     */
-    public function getUnverifiedDocumentsCount(): int
-    {
-        return $this->employeeDocuments()->where('is_verified', false)->count();
-    }
-
-    /**
-     * Get specific document by type
-     */
-    public function getDocument(string $type): ?EmployeeDocument
-    {
-        return $this->employeeDocuments()->where('document_type', $type)->first();
-    }
-
-    /**
-     * Check if has unverified documents
-     */
-    public function hasUnverifiedDocuments(): bool
-    {
-        return $this->employeeDocuments()->where('is_verified', false)->exists();
-    }
-
-    // ===== QUERY SCOPES =====
-
-    /**
-     * Scope users with complete profile
-     */
-    public function scopeWithCompleteProfile($query)
-    {
-        return $query->whereHas('employeeProfile', function ($q) {
-            $q->whereNotNull('nik_ktp')
-                ->whereNotNull('tempat_lahir')
-                ->whereNotNull('tanggal_lahir')
-                ->whereNotNull('jenis_kelamin')
-                ->whereNotNull('agama')
-                ->whereNotNull('alamat')
-                ->whereNotNull('no_telepon');
-        });
-    }
-
-    /**
-     * Scope users with incomplete profile
-     */
-    public function scopeWithIncompleteProfile($query)
-    {
-        return $query->where(function ($q) {
-            $q->doesntHave('employeeProfile')
-                ->orWhereHas('employeeProfile', function ($subQ) {
-                    $subQ->where(function ($innerQ) {
-                        $innerQ->whereNull('nik_ktp')
-                            ->orWhereNull('tempat_lahir')
-                            ->orWhereNull('tanggal_lahir')
-                            ->orWhereNull('jenis_kelamin')
-                            ->orWhereNull('agama')
-                            ->orWhereNull('alamat')
-                            ->orWhereNull('no_telepon');
-                    });
-                });
-        });
-    }
-
-    /**
-     * Scope users with unverified documents
-     */
-    public function scopeWithUnverifiedDocuments($query)
-    {
-        return $query->whereHas('employeeDocuments', function ($q) {
-            $q->where('is_verified', false);
-        });
-    }
+/**
+ * Scope users with unverified documents
+ */
+public function scopeWithUnverifiedDocuments($query)
+{
+    return $query->whereHas('employeeDocuments', function ($q) {
+        $q->where('is_verified', false);
+    });
+}
 }

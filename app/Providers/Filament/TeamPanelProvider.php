@@ -30,7 +30,6 @@ class TeamPanelProvider extends PanelProvider
         return $panel
             ->id('team')
             ->path('team')
-            ->profile()
             ->colors([
                 'primary' => Color::Blue,
             ])
