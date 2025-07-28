@@ -13,6 +13,7 @@ class EmployeeProfile extends Model
 
     protected $fillable = [
         'user_id',
+        'profile_photo_path',
         'nik_ktp',
         'tempat_lahir',
         'tanggal_lahir',

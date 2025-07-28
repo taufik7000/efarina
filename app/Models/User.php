@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
@@ -55,10 +56,32 @@ class User extends Authenticatable
     }
 
     // ===== RELASI EMPLOYEE PROFILE & DOCUMENTS =====
-    
+
+    public function getFilamentAvatarUrl(): ?string
+    {
+        // Ambil path foto dari relasi
+        $path = $this->profile?->profile_photo_path;
+
+        // 1. Cek apakah path ada dan tidak kosong
+        // 2. Cek apakah file benar-benar ada di disk 'public'
+        if ($path && Storage::disk('public')->exists($path)) {
+            // Jika semua kondisi terpenuhi, kembalikan URL
+            return Storage::disk('public')->url($path);
+        }
+
+        // Jika salah satu kondisi gagal, kembalikan null
+        return null;
+    }
+
     /**
      * Employee profile detail
      */
+
+
+    public function profile(): HasOne
+    {
+        return $this->hasOne(EmployeeProfile::class);
+    }
     public function employeeProfile(): HasOne
     {
         return $this->hasOne(EmployeeProfile::class);
@@ -73,7 +96,7 @@ class User extends Authenticatable
     }
 
     // ===== RELASI YANG SUDAH ADA =====
-    
+
     public function kehadiran(): HasMany
     {
         return $this->hasMany(Kehadiran::class);
@@ -379,162 +402,162 @@ class User extends Authenticatable
 
     // ===== HELPER METHODS UNTUK EMPLOYEE PROFILE =====
 
-public function getOrCreateProfile(): EmployeeProfile
-{
-    return $this->employeeProfile()->firstOrCreate([
-        'user_id' => $this->id
-    ]);
-}
-
-/**
- * Check if user has complete profile
- */
-public function hasCompleteProfile(): bool
-{
-    $profile = $this->employeeProfile;
-    
-    if (!$profile) {
-        return false;
+    public function getOrCreateProfile(): EmployeeProfile
+    {
+        return $this->employeeProfile()->firstOrCreate([
+            'user_id' => $this->id
+        ]);
     }
-    
-    // Field wajib yang harus diisi
-    $requiredFields = [
-        'nik_ktp',
-        'tempat_lahir', 
-        'tanggal_lahir',
-        'jenis_kelamin',
-        'agama',
-        'alamat',
-        'no_telepon',
-    ];
-    
-    foreach ($requiredFields as $field) {
-        if (empty($profile->$field)) {
+
+    /**
+     * Check if user has complete profile
+     */
+    public function hasCompleteProfile(): bool
+    {
+        $profile = $this->employeeProfile;
+
+        if (!$profile) {
             return false;
         }
-    }
-    
-    return true;
-}
 
-/**
- * Get profile completion percentage
- */
-public function getProfileCompletionPercentage(): int
-{
-    $profile = $this->employeeProfile;
-    
-    if (!$profile) {
-        return 0;
-    }
-    
-    // Semua field yang bisa diisi
-    $allFields = [
-        'nik_ktp',
-        'tempat_lahir',
-        'tanggal_lahir', 
-        'jenis_kelamin',
-        'agama',
-        'status_nikah',
-        'alamat',
-        'no_telepon',
-        'kontak_darurat_nama',
-        'kontak_darurat_telp',
-        'kontak_darurat_hubungan',
-        'gaji_pokok',
-        'no_rekening',
-        'npwp',
-    ];
-    
-    $filledFields = 0;
-    
-    foreach ($allFields as $field) {
-        if (!empty($profile->$field)) {
-            $filledFields++;
+        // Field wajib yang harus diisi
+        $requiredFields = [
+            'nik_ktp',
+            'tempat_lahir',
+            'tanggal_lahir',
+            'jenis_kelamin',
+            'agama',
+            'alamat',
+            'no_telepon',
+        ];
+
+        foreach ($requiredFields as $field) {
+            if (empty($profile->$field)) {
+                return false;
+            }
         }
+
+        return true;
     }
-    
-    return round(($filledFields / count($allFields)) * 100);
-}
 
-/**
- * Get verified documents count
- */
-public function getVerifiedDocumentsCount(): int
-{
-    return $this->employeeDocuments()->where('is_verified', true)->count();
-}
+    /**
+     * Get profile completion percentage
+     */
+    public function getProfileCompletionPercentage(): int
+    {
+        $profile = $this->employeeProfile;
 
-/**
- * Get unverified documents count
- */
-public function getUnverifiedDocumentsCount(): int
-{
-    return $this->employeeDocuments()->where('is_verified', false)->count();
-}
+        if (!$profile) {
+            return 0;
+        }
 
-/**
- * Get specific document by type
- */
-public function getDocument(string $type): ?EmployeeDocument
-{
-    return $this->employeeDocuments()->where('document_type', $type)->first();
-}
+        // Semua field yang bisa diisi
+        $allFields = [
+            'nik_ktp',
+            'tempat_lahir',
+            'tanggal_lahir',
+            'jenis_kelamin',
+            'agama',
+            'status_nikah',
+            'alamat',
+            'no_telepon',
+            'kontak_darurat_nama',
+            'kontak_darurat_telp',
+            'kontak_darurat_hubungan',
+            'gaji_pokok',
+            'no_rekening',
+            'npwp',
+        ];
 
-/**
- * Check if has unverified documents
- */
-public function hasUnverifiedDocuments(): bool
-{
-    return $this->employeeDocuments()->where('is_verified', false)->exists();
-}
+        $filledFields = 0;
 
-// ===== QUERY SCOPES =====
+        foreach ($allFields as $field) {
+            if (!empty($profile->$field)) {
+                $filledFields++;
+            }
+        }
 
-/**
- * Scope users with complete profile
- */
-public function scopeWithCompleteProfile($query)
-{
-    return $query->whereHas('employeeProfile', function ($q) {
-        $q->whereNotNull('nik_ktp')
-          ->whereNotNull('tempat_lahir')
-          ->whereNotNull('tanggal_lahir')
-          ->whereNotNull('jenis_kelamin')
-          ->whereNotNull('agama')
-          ->whereNotNull('alamat')
-          ->whereNotNull('no_telepon');
-    });
-}
+        return round(($filledFields / count($allFields)) * 100);
+    }
 
-/**
- * Scope users with incomplete profile
- */
-public function scopeWithIncompleteProfile($query)
-{
-    return $query->where(function ($q) {
-        $q->doesntHave('employeeProfile')
-          ->orWhereHas('employeeProfile', function ($subQ) {
-              $subQ->where(function ($innerQ) {
-                  $innerQ->whereNull('nik_ktp')
-                         ->orWhereNull('tempat_lahir')
-                         ->orWhereNull('tanggal_lahir')
-                         ->orWhereNull('jenis_kelamin')
-                         ->orWhereNull('agama')
-                         ->orWhereNull('alamat')
-                         ->orWhereNull('no_telepon');
-              });
-          });
-    });
-}
+    /**
+     * Get verified documents count
+     */
+    public function getVerifiedDocumentsCount(): int
+    {
+        return $this->employeeDocuments()->where('is_verified', true)->count();
+    }
 
-/**
- * Scope users with unverified documents
- */
-public function scopeWithUnverifiedDocuments($query)
-{
-    return $query->whereHas('employeeDocuments', function ($q) {
-        $q->where('is_verified', false);
-    });
-}
+    /**
+     * Get unverified documents count
+     */
+    public function getUnverifiedDocumentsCount(): int
+    {
+        return $this->employeeDocuments()->where('is_verified', false)->count();
+    }
+
+    /**
+     * Get specific document by type
+     */
+    public function getDocument(string $type): ?EmployeeDocument
+    {
+        return $this->employeeDocuments()->where('document_type', $type)->first();
+    }
+
+    /**
+     * Check if has unverified documents
+     */
+    public function hasUnverifiedDocuments(): bool
+    {
+        return $this->employeeDocuments()->where('is_verified', false)->exists();
+    }
+
+    // ===== QUERY SCOPES =====
+
+    /**
+     * Scope users with complete profile
+     */
+    public function scopeWithCompleteProfile($query)
+    {
+        return $query->whereHas('employeeProfile', function ($q) {
+            $q->whereNotNull('nik_ktp')
+                ->whereNotNull('tempat_lahir')
+                ->whereNotNull('tanggal_lahir')
+                ->whereNotNull('jenis_kelamin')
+                ->whereNotNull('agama')
+                ->whereNotNull('alamat')
+                ->whereNotNull('no_telepon');
+        });
+    }
+
+    /**
+     * Scope users with incomplete profile
+     */
+    public function scopeWithIncompleteProfile($query)
+    {
+        return $query->where(function ($q) {
+            $q->doesntHave('employeeProfile')
+                ->orWhereHas('employeeProfile', function ($subQ) {
+                    $subQ->where(function ($innerQ) {
+                        $innerQ->whereNull('nik_ktp')
+                            ->orWhereNull('tempat_lahir')
+                            ->orWhereNull('tanggal_lahir')
+                            ->orWhereNull('jenis_kelamin')
+                            ->orWhereNull('agama')
+                            ->orWhereNull('alamat')
+                            ->orWhereNull('no_telepon');
+                    });
+                });
+        });
+    }
+
+    /**
+     * Scope users with unverified documents
+     */
+    public function scopeWithUnverifiedDocuments($query)
+    {
+        return $query->whereHas('employeeDocuments', function ($q) {
+            $q->where('is_verified', false);
+        });
+    }
 }
