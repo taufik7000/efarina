@@ -7,6 +7,7 @@ use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use App\Filament\Resources\LeaveRequestResource;
+use App\Models\User;
 use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -29,12 +30,13 @@ class TeamPanelProvider extends PanelProvider
         return $panel
             ->id('team')
             ->path('team')
+            ->profile()
             ->colors([
                 'primary' => Color::Blue,
             ])
             ->databaseNotifications()
             ->databaseNotificationsPolling('5s')
-            ->viteTheme('resources/css/filament/team/theme.css')
+            ->viteTheme('resources/css/filament/team/theme.css')         
             ->discoverResources(in: app_path('Filament/Team/Resources'), for: 'App\\Filament\\Team\\Resources')
             ->resources([
                 LeaveRequestResource::class,

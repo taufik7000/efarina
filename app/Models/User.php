@@ -2,12 +2,10 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
@@ -57,36 +55,47 @@ class User extends Authenticatable
 
     // ===== RELASI EMPLOYEE PROFILE & DOCUMENTS =====
 
-    public function getFilamentAvatarUrl(): ?string
-    {
-        // Ambil path foto dari relasi
-        $path = $this->profile?->profile_photo_path;
-
-        // 1. Cek apakah path ada dan tidak kosong
-        // 2. Cek apakah file benar-benar ada di disk 'public'
-        if ($path && Storage::disk('public')->exists($path)) {
-            // Jika semua kondisi terpenuhi, kembalikan URL
-            return Storage::disk('public')->url($path);
-        }
-
-        // Jika salah satu kondisi gagal, kembalikan null
-        return null;
-    }
-
     /**
-     * Employee profile detail
+     * Metode untuk mengambil URL avatar kustom untuk Filament.
+     * Disesuaikan untuk struktur direktori di mana folder foto
+     * berada langsung di dalam folder 'public'.
      */
+
+    protected $with = ['profile'];
+
+
 
 
     public function profile(): HasOne
     {
         return $this->hasOne(EmployeeProfile::class);
     }
-    public function employeeProfile(): HasOne
+    public function getFilamentAvatarUrl(): ?string
     {
-        return $this->hasOne(EmployeeProfile::class);
+        // 1. Ambil path foto dari relasi yang sudah pasti termuat karena '$with'.
+        $path = $this->profile?->profile_photo_path;
+
+        // 2. Jika path ADA dan TIDAK KOSONG...
+        if ($path) {
+            // 3. ...GUNAKAN Storage::url() untuk membuat URL yang benar.
+            //    Fungsi ini secara otomatis menggunakan konfigurasi `filesystems.php`
+            //    dan `APP_URL` dari .env Anda. Ini adalah cara yang paling tepat.
+            return Storage::disk('public')->url($path);
+        }
+
+        // 4. Jika path KOSONG, kembalikan null agar Filament menampilkan avatar default.
+        return null;
     }
 
+        public function canAccessPanel(Panel $panel): bool
+    {
+        // Sesuaikan dengan logika peran Anda, misalnya:
+        if ($panel->getId() === 'team') {
+            return $this->hasRole(['team', 'admin']);
+        }
+
+        return $this->hasRole('admin');
+    }
     /**
      * Employee documents
      */

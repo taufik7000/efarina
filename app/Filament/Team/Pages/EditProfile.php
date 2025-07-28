@@ -50,6 +50,7 @@ class EditProfile extends Page implements HasForms
                             ->avatar()
                             ->directory('profile-photos')
                             ->disk('public')
+                            ->visibility('public') 
                             ->imageEditor(),
 
                         TextInput::make('nik_ktp')
@@ -116,6 +117,7 @@ class EditProfile extends Page implements HasForms
         try {
             $data = $this->form->getState();
             Auth::user()->profile()->update($data);
+            Auth::user()->touch(); 
 
             Notification::make()
                 ->title('Profil berhasil diperbarui')

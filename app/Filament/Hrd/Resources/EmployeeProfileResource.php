@@ -255,16 +255,14 @@ class EmployeeProfileResource extends Resource
                             ->schema([
                                 Components\Split::make([
                                     // Left side - Photo
-                                    Components\ImageEntry::make('photo_url')
+                                    Components\ImageEntry::make('profile.profile_photo_path')
                                         ->label('')
-                                        ->state(function (User $record): ?string {
-                                            $photo = $record->getDocument('foto');
-                                            return $photo ? Storage::disk('public')->url($photo->file_path) : null;
-                                        })
-                                        ->defaultImageUrl(function (User $record): string {
-                                            return 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . 
-                                                   '&color=7F9CF5&background=EBF4FF&size=300';
-                                        })
+                                        ->disk('public')
+                    ->defaultImageUrl(function (User $record): string {
+                        // Avatar default jika tidak ada gambar
+                        return 'https://ui-avatars.com/api/?name=' . urlencode($record->name) .
+                               '&color=7F9CF5&background=EBF4FF&size=300';
+                    })
                                         ->circular()
                                         ->size(150)
                                         ->grow(false),
