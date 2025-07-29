@@ -124,6 +124,65 @@
         padding-right: 1rem;
     }
 }
+
+/* Enhanced Mobile Styles - Maintains side-by-side layout */
+@media (max-width: 768px) {
+    .news-card, .featured-card {
+        margin-bottom: 1rem;
+        border-radius: 0.75rem;
+        overflow: hidden;
+    }
+    
+    /* Mobile thumbnail sizing */
+    .mobile-thumbnail {
+        width: 120px !important;
+        height: 90px !important;
+    }
+    
+    /* Better text sizing on mobile */
+    .mobile-title {
+        font-size: 0.95rem;
+        line-height: 1.3;
+        margin-bottom: 0.5rem;
+    }
+    
+    .mobile-excerpt {
+        font-size: 0.8rem;
+        line-height: 1.4;
+        margin-bottom: 0.5rem;
+    }
+    
+    .mobile-meta {
+        font-size: 0.7rem;
+    }
+    
+    /* Ensure proper spacing on mobile */
+    .mobile-content {
+        padding: 0.75rem;
+    }
+}
+
+/* Tablet and small desktop */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .tablet-thumbnail {
+        width: 140px;
+        height: 105px;
+    }
+}
+
+/* Desktop specific styles */
+@media (min-width: 1025px) {
+    .desktop-thumbnail {
+        width: 192px;
+        height: 128px;
+    }
+}
+
+/* General image styles */
+.news-card img, .featured-card img {
+    border-top-left-radius: 0.75rem;
+    border-bottom-left-radius: 0.75rem;
+}
 </style>
 @endpush
 
@@ -196,62 +255,127 @@
         
         {{-- Left Content --}}
         <div class="lg:col-span-2 space-y-8">
-            {{-- Berita Terbaru Section --}}
-            @if($latestNews->count() > 0)
-            <section>
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-xl lg:text-2xl font-bold text-gray-900 flex items-center">
-                        <div class="w-1 h-8 bg-red-600 rounded-full mr-3"></div>
-                        Berita Terbaru
-                    </h2>
-                    <a href="{{ route('news.index') }}" 
-                       class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
-                        Lihat Semua
+{{-- Berita Terbaru Section - Mobile Friendly Version --}}
+@if($latestNews->count() > 0)
+<section>
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl lg:text-2xl font-bold text-gray-900 flex items-center">
+            <div class="w-1 h-8 bg-red-600 rounded-full mr-3"></div>
+            Berita Terbaru
+        </h2>
+        <a href="{{ route('news.index') }}" 
+           class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
+            Lihat Semua
+        </a>
+    </div>
+
+    <div class="space-y-4">
+        @foreach($latestNews as $news)
+        <div class="news-card">
+            <div class="flex">
+                {{-- Thumbnail - Responsive sizing but always on the left --}}
+                <div class="flex-shrink-0">
+                    <a href="{{ route('news.show', $news->slug) }}">
+                        <img src="{{ $news->thumbnail ? asset('storage/' . $news->thumbnail) : 'https://via.placeholder.com/400x250' }}" 
+                             alt="{{ $news->judul }}" 
+                             class="w-28 h-20 md:w-40 md:h-28 lg:w-48 lg:h-32 object-cover">
                     </a>
                 </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    @foreach($latestNews as $news)
-                    <div class="news-card">
-                        <div class="relative">
-                            <img src="{{ $news->thumbnail ? asset('storage/' . $news->thumbnail) : 'https://via.placeholder.com/400x250' }}" 
-                                 alt="{{ $news->judul }}" 
-                                 class="w-full h-48 object-cover">
-                            <span class="category-badge absolute top-3 left-3" style="background-color: {{ $news->category->color }}; color: white;">
-                                {{ $news->category->nama_kategori }}
-                            </span>
-                        </div>
-                        <div class="p-3">
-                            <h3 class="font-semibold text-gray-900 mb-2 leading-tight hover:text-red-600 transition-colors text-base">
-                                <a href="{{ route('news.show', $news->slug) }}">{{ Str::limit($news->judul) }}</a>
-                            </h3>
-                            @if($news->excerpt)
-                            <p class="text-gray-600 text-sm mb-3 line-clamp-2">{{ Str::limit($news->excerpt, 70) }}</p>
-                            @endif
-                            <div class="flex items-center justify-between text-sm text-gray-500 text-sm">
-                                <div class="flex items-center">
-                                    <i class="fas fa-clock mr-1"></i>
-                                    {{ $news->published_at ? $news->published_at->format('d M Y') : $news->created_at->format('d M Y') }}
-                                </div>
-                                <div class="flex items-center">
-                                    <i class="fas fa-eye mr-1"></i>
-                                    {{ number_format($news->views_count) }}
-                                </div>
-                            </div>
-                        </div>
+                
+                {{-- Content - Always on the right, flexible width --}}
+                <div class="flex-1 p-3 md:p-4">
+                    <h3 class="font-semibold mobile-title md:text-base lg:text-lg leading-tight text-gray-900 mb-2 hover:text-red-600 transition-colors">
+                        <a href="{{ route('news.show', $news->slug) }}">{{ $news->judul }}</a>
+                    </h3>
+                    
+                    @if($news->excerpt)
+                    <p class="text-gray-600 mobile-excerpt md:text-sm mb-3 line-clamp-2">
+                        {{ Str::limit($news->excerpt, 100) }}
+                    </p>
+                    @endif
+                    
+                    <div class="flex items-center mobile-meta md:text-xs text-gray-500">
+                        <span class="font-semibold mr-2" style="color: {{ $news->category->color }};">
+                            {{ $news->category->nama_kategori }}
+                        </span>
+                        <span>•</span>
+                        <span class="ml-2">
+                            {{ $news->published_at ? $news->published_at->format('d M Y') : $news->created_at->format('d M Y') }}
+                        </span>
                     </div>
-                    @endforeach
                 </div>
-            </section>
-            @endif
+            </div>
+        </div>
+        @endforeach
+    </div>
+</section>
+@endif
+{{-- Video Terbaru Section - Menggunakan komponen terpisah --}}
+@include('components.latest-videos', ['latestVideos' => $latestVideos])
+            
 
-            {{-- Video Terbaru Section - Menggunakan komponen terpisah --}}
-            @include('components.latest-videos', ['latestVideos' => $latestVideos])
+{{-- Berita Lainnya Section - Mobile Friendly Version --}}
+{{-- Berita Lainnya Section - Mobile Friendly Version --}}
+@if($otherNews->count() > 0)
+<section class="mt-8">
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl lg:text-2xl font-bold text-gray-900 flex items-center">
+            <div class="w-1 h-8 bg-blue-600 rounded-full mr-3"></div>
+            Berita Lainnya
+        </h2>
+    </div>
 
+    <div class="space-y-4">
+        @foreach($otherNews as $news)
+        <div class="featured-card">
+            <div class="flex">
+                {{-- Thumbnail - Responsive sizing but always on the left --}}
+                <div class="flex-shrink-0">
+                    <a href="{{ route('news.show', $news->slug) }}">
+                        <img src="{{ $news->thumbnail ? asset('storage/' . $news->thumbnail) : 'https://via.placeholder.com/400x250' }}" 
+                             alt="{{ $news->judul }}" 
+                             class="w-28 h-20 md:w-40 md:h-28 lg:w-48 lg:h-32 object-cover">
+                    </a>
+                </div>
+                
+                {{-- Content - Always on the right, flexible width --}}
+                <div class="flex-1 p-3 md:p-4">
+                    <h3 class="font-semibold mobile-title md:text-base lg:text-lg leading-tight text-gray-900 mb-2 hover:text-red-600 transition-colors">
+                        <a href="{{ route('news.show', $news->slug) }}">{{ $news->judul }}</a>
+                    </h3>
+                    
+                    <p class="text-gray-600 mobile-excerpt md:text-sm mb-3 line-clamp-2">
+                        {{ $news->excerpt }}
+                    </p>
+                    
+                    <div class="flex items-center mobile-meta md:text-xs text-gray-500">
+                        <span class="font-semibold mr-2" style="color: {{ $news->category->color }};">
+                            {{ $news->category->nama_kategori }}
+                        </span>
+                        <span>•</span>
+                        <span class="ml-2">
+                            {{ $news->published_at ? $news->published_at->format('d M Y') : $news->created_at->format('d M Y') }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endforeach
+    </div>
+</section>
+@endif
         </div>
 
         {{-- Right Sidebar --}}
         <div class="lg:col-span-1">
+
+                            {{-- KOTAK ABU-ABU BARU --}}
+            <div class="bg-gray-200 rounded-lg text-center mb-6 px-8 py-20">
+                <p class="text-sm text-gray-600">Advertisement</p>
+                <h4 class="text-base font-semibold text-gray-700">Pasang Iklan Anda Disini</h4>
+                <p class="text-sm text-gray-500">marketing@efarinatv.net</p>
+            </div>
+
             
             {{-- Berita Populer --}}
             @if($popularNews->count() > 0)
@@ -282,31 +406,6 @@
                 </div>
             </div>
             @endif
-
-            {{-- Kategori Berita --}}
-            @if($newsCategories->count() > 0)
-            <div class="bg-white rounded-lg shadow-md p-4 mb-6">
-                <h3 class="text-lg font-bold text-gray-900 mb-3 flex items-center">
-                    <i class="fas fa-list text-blue-500 mr-2"></i>
-                    Kategori Berita
-                </h3>
-                <div class="space-y-1">
-                    @foreach($newsCategories as $category)
-                    <a href="{{ route('news.category', $category->slug) }}" 
-                       class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors group">
-                        <div class="flex items-center">
-                            <div class="w-3 h-3 rounded-full mr-3" style="background-color: {{ $category->color }}"></div>
-                            <span class="text-gray-700 group-hover:text-blue-600 transition-colors">{{ $category->nama_kategori }}</span>
-                        </div>
-                        <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs font-medium">
-                            {{ $category->news_count }}
-                        </span>
-                    </a>
-                    @endforeach
-                </div>
-            </div>
-            @endif
-
             {{-- Video Unggulan Widget - Menggunakan komponen terpisah --}}
             @include('components.featured-videos-sidebar', ['featuredVideos' => $featuredVideos])
 

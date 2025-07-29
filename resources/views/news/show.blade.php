@@ -197,7 +197,7 @@ body {
 .tag-item {
     background: var(--background-light);
     color: var(--text-secondary);
-    padding: 0.25rem 0.75rem;
+    padding: 0.25rem 0.45rem;
     border-radius: 1rem;
     font-size: 0.875rem;
     text-decoration: none;
@@ -214,7 +214,7 @@ body {
     background: var(--background-light);
     padding: 1.5rem;
     border-radius: 0.5rem;
-    margin: 2rem 0;
+    margin: 1rem 0;
 }
 
 .share-buttons {
@@ -327,7 +327,7 @@ body {
             {{-- Tags --}}
             @if($news->tags && $news->tags->count() > 0)
             <div class="article-tags">
-                <div class="text-sm font-medium text-gray-700 mb-3">Tags:</div>
+                <div class="text-sm font-medium text-gray-700 mb-2">Tags:</div>
                 <div class="tags-list">
                     @foreach($news->tags as $tag)
                     <a href="{{ route('news.tag', $tag->slug) }}" class="tag-item">

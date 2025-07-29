@@ -25,7 +25,16 @@ class HomeController extends Controller
             ->where('status', 'published')
             ->where('is_featured', false)
             ->orderBy('created_at', 'desc')
-            ->limit(6)
+            ->limit(3)
+            ->get();
+
+        $excludedIds = $featuredNews->pluck('id')->merge($latestNews->pluck('id'));
+
+        // 2. Ambil 5 berita lainnya, kecuali yang sudah ditampilkan
+        $otherNews = News::with('category')->where('status', 'published')
+            ->whereNotIn('id', $excludedIds)
+            ->latest('published_at')
+            ->take(5) // Ambil 5 berita
             ->get();
 
         // Berita populer berdasarkan views
@@ -71,7 +80,8 @@ class HomeController extends Controller
             'latestVideos', 
             'featuredVideos',
             'newsCategories', 
-            'videoCategories'
+            'videoCategories',
+            'otherNews',
         ));
     }
 }
