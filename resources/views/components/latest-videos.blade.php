@@ -4,12 +4,10 @@
 @if($latestVideos->isNotEmpty())
 <section class="mb-12">
     <div class="flex items-center justify-between mb-8">
-        <h2 class="text-2xl lg:text-3xl font-bold text-gray-900 flex items-center">
-            <div class="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center mr-4">
-                <i class="fas fa-play text-white text-lg"></i>
-            </div>
-            Video Terbaru
-        </h2>
+                    <h2 class="text-xl lg:text-2xl font-bold text-gray-900 flex items-center">
+                        <div class="w-1 h-8 bg-red-600 rounded-full mr-3"></div>
+                        Video Terbaru
+                    </h2>
         <a href="{{ route('video.index') }}" 
            class="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-300 text-sm font-medium shadow-sm hover:shadow-md">
             <span>Lihat Semua</span>
@@ -17,7 +15,7 @@
         </a>
     </div>
 
-    <div class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+    <div class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-1">
         @foreach($latestVideos as $video)
         <article class="video-card group bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-xl transition-all duration-500 transform hover:-translate-y-2 border border-gray-100">
             {{-- Video Thumbnail Container --}}

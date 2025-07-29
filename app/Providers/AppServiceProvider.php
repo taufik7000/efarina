@@ -12,6 +12,7 @@ use App\Models\LeaveRequest;
 use App\Models\Transaksi;
 use App\Observers\ProjectObserver;
 use App\Observers\TransaksiObserver;
+use App\Http\Middleware\HandleRedirects;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -31,10 +32,6 @@ class AppServiceProvider extends ServiceProvider
 
         Route::pushMiddlewareToGroup('web', \App\Http\Middleware\HandleRedirects::class);
         
-        // Debug: log untuk memastikan middleware terdaftar
-        if (config('app.debug')) {
-            \Log::info('HandleRedirects middleware registered to web group');
-        }
         // Registrasi observer yang sudah ada
         Project::observe(ProjectObserver::class);
         Transaksi::observe(TransaksiObserver::class);

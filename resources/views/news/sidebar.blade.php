@@ -30,7 +30,7 @@
     }
 
     .sidebar-content {
-        padding: 1.5rem;
+        padding: 1.1rem;
     }
 
     /* Popular News */
@@ -326,7 +326,11 @@
     @if(isset($popularNews) && $popularNews->count() > 0)
     <div class="sidebar-card">
         <div class="sidebar-header">
-            <h3 class="sidebar-title">📈 Trending</h3>
+        <h3 class="sidebar-title flex items-center">
+        {{-- Menggunakan ikon "outline" dari Heroicons --}}
+        <x-heroicon-o-sparkles class="w-6 h-6 mr-2 text-red-600"/>
+        Trending
+    </h3>
         </div>
         <div class="sidebar-content">
             @foreach($popularNews as $index => $popular)
@@ -349,39 +353,14 @@
     </div>
     @endif
 
-    {{-- Categories --}}
-    <div class="sidebar-card">
-        <div class="sidebar-header">
-            <h3 class="sidebar-title">📁 Kategori</h3>
-        </div>
-        <div class="sidebar-content">
-            @php
-            $categories = \App\Models\NewsCategory::active()
-                ->withCount(['news' => function ($query) {
-                    $query->where('status', 'published');
-                }])
-                ->orderBy('news_count', 'desc')
-                ->limit(8)
-                ->get();
-            @endphp
-            
-            @foreach($categories as $category)
-            <a href="{{ route('news.category', $category->slug) }}" class="category-item">
-                <div class="category-content">
-                    <div class="category-color" style="background-color: {{ $category->color ?? '#6b7280' }}"></div>
-                    <span class="category-name">{{ $category->nama_kategori }}</span>
-                </div>
-                <span class="category-count">{{ $category->news_count }}</span>
-            </a>
-            @endforeach
-        </div>
-    </div>
-
     {{-- Related News --}}
     @if(isset($relatedNews) && $relatedNews->count() > 0)
     <div class="sidebar-card">
         <div class="sidebar-header">
-            <h3 class="sidebar-title">🔗 Berita Terkait</h3>
+            <h3 class="sidebar-title flex items-center">
+        {{-- Menggunakan ikon "outline" dari Heroicons --}}
+        <x-heroicon-o-sparkles class="w-6 h-6 mr-2 text-eslate-600"/>
+                 Berita Terkait</h3>
         </div>
         <div class="sidebar-content">
             @foreach($relatedNews as $related)
@@ -437,96 +416,4 @@
             @endforeach
         </div>
     </div>
-
-    {{-- Newsletter Subscribe --}}
-    <div class="sidebar-card">
-        <div class="sidebar-header">
-            <h3 class="sidebar-title">📧 Newsletter</h3>
-        </div>
-        <div class="sidebar-content">
-            <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.5;">
-                Dapatkan berita terbaru langsung di email Anda.
-            </p>
-            <form class="newsletter-form" onsubmit="subscribeNewsletter(event)">
-                <input type="email" 
-                       class="newsletter-input" 
-                       placeholder="Email Anda"
-                       required>
-                <button type="submit" class="newsletter-btn">
-                    Berlangganan
-                </button>
-            </form>
-        </div>
-    </div>
-
-    {{-- Tags Cloud --}}
-    <div class="sidebar-card">
-        <div class="sidebar-header">
-            <h3 class="sidebar-title">🏷️ Tags Populer</h3>
-        </div>
-        <div class="sidebar-content">
-            @php
-            $popularTags = \App\Models\NewsTag::active()
-                ->withCount(['news' => function ($query) {
-                    $query->where('status', 'published');
-                }])
-                ->orderBy('news_count', 'desc')
-                ->limit(12)
-                ->get();
-            @endphp
-            
-            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                @foreach($popularTags as $tag)
-                <a href="{{ route('news.tag', $tag->slug) }}" 
-                   style="background: var(--background-light); 
-                          color: var(--text-secondary); 
-                          padding: 0.375rem 0.75rem; 
-                          border-radius: 1rem; 
-                          font-size: 0.75rem; 
-                          text-decoration: none; 
-                          transition: all 0.2s ease; 
-                          border: 1px solid var(--border);"
-                   onmouseover="this.style.background='var(--primary-light)'; this.style.color='var(--primary)';"
-                   onmouseout="this.style.background='var(--background-light)'; this.style.color='var(--text-secondary)';">
-                    {{ $tag->nama_tag }}
-                </a>
-                @endforeach
-            </div>
-        </div>
-    </div>
 </aside>
-
-<script>
-function subscribeNewsletter(event) {
-    event.preventDefault();
-    const email = event.target.querySelector('input[type="email"]').value;
-    
-    // Simple notification
-    const notification = document.createElement('div');
-    notification.textContent = 'Terima kasih! Anda telah berlangganan newsletter.';
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #10b981;
-        color: white;
-        padding: 12px 20px;
-        border-radius: 6px;
-        font-size: 14px;
-        z-index: 1000;
-        animation: fadeInOut 4s ease-in-out;
-    `;
-    
-    document.body.appendChild(notification);
-    setTimeout(() => {
-        if (notification.parentNode) {
-            document.body.removeChild(notification);
-        }
-    }, 4000);
-    
-    // Reset form
-    event.target.reset();
-    
-    // Here you would typically send the email to your backend
-    console.log('Newsletter subscription:', email);
-}

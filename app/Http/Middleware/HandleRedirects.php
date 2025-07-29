@@ -5,119 +5,85 @@ namespace App\Http\Middleware;
 use App\Models\Redirect;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
 
 class HandleRedirects
 {
     public function handle(Request $request, Closure $next): Response
     {
-        Log::info('🚀 MIDDLEWARE EXECUTING', [
-            'url' => $request->fullUrl(),
-            'path' => $request->getPathInfo(),
-        ]);
-
-        // Skip jika sudah ada route yang match
-        if ($this->hasMatchingRoute($request)) {
-            Log::info('⏭️ SKIPPING - Route already exists', [
-                'path' => $request->getPathInfo()
-            ]);
-            return $next($request);
-        }
-
-        // Skip untuk admin panel dll
+        // Skip redirect untuk admin panel, API, dan asset files
         if ($this->shouldSkipRedirect($request)) {
-            Log::info('⏭️ SKIPPING - Admin/API path', [
-                'path' => $request->getPathInfo()
-            ]);
             return $next($request);
         }
 
         $requestPath = $request->getPathInfo();
         $cleanPath = ltrim($requestPath, '/');
         
-        Log::info('🔍 SEARCHING DATABASE', [
-            'clean_path' => $cleanPath,
-        ]);
-
-        $redirect = Redirect::where('is_active', true)
-            ->where('old_url', $cleanPath)
-            ->first();
+        // Cache redirect untuk performance (cache selama 1 jam)
+        $cacheKey = 'redirect:' . md5($cleanPath);
+        
+        $redirect = Cache::remember($cacheKey, 3600, function () use ($cleanPath) {
+            return Redirect::active()
+                ->where('old_url', $cleanPath)
+                ->first();
+        });
 
         if ($redirect) {
-            Log::info('🎯 EXECUTING REDIRECT', [
-                'from' => $cleanPath,
-                'to' => $redirect->new_url,
-                'status_code' => $redirect->status_code,
-            ]);
+            // Update hit count secara async
+            dispatch(function () use ($redirect) {
+                $redirect->incrementHitCount();
+            })->afterResponse();
 
-            $redirect->increment('hit_count');
-            $redirect->update(['last_accessed_at' => now()]);
+            $newUrl = $redirect->new_url;
+            
+            // Pastikan URL absolut jika internal
+            if (!str_starts_with($newUrl, 'http')) {
+                $newUrl = url($newUrl);
+            }
 
-            return redirect($redirect->new_url, $redirect->status_code);
+            return redirect($newUrl, $redirect->status_code);
         }
-
-        Log::info('❌ NO REDIRECT FOUND', [
-            'searched_for' => $cleanPath,
-        ]);
 
         return $next($request);
-    }
-
-    private function hasMatchingRoute(Request $request): bool
-    {
-        try {
-            // Check if there's already a defined route for this path
-            $routes = Route::getRoutes();
-            $method = $request->method();
-            $path = $request->getPathInfo();
-            
-            foreach ($routes as $route) {
-                if (in_array($method, $route->methods()) && $route->matches($request)) {
-                    // Skip jika route adalah fallback atau catch-all
-                    $uri = $route->uri();
-                    if (str_contains($uri, '{any}') || 
-                        str_contains($uri, 'fallback') ||
-                        $route->isFallback) {
-                        return false; // Tetap proses redirect
-                    }
-                    return true; // Ada route spesifik
-                }
-            }
-        } catch (\Exception $e) {
-            Log::warning('Error checking route match', ['error' => $e->getMessage()]);
-        }
-        
-        return false;
     }
 
     private function shouldSkipRedirect(Request $request): bool
     {
         $path = $request->getPathInfo();
         
+        // Daftar path yang tidak perlu di-redirect
         $skipPaths = [
-            '/admin', '/api', '/storage', '/livewire',
-            '/hrd', '/team', '/bisnis', '/redaksi', '/direktur',
-            '/_debugbar', '/telescope', '/horizon'
+            '/admin',           // Filament admin
+            '/api',             // API routes
+            '/storage',         // Storage files
+            '/livewire',        // Livewire assets
+            '/_debugbar',       // Debug bar
+            '/telescope',       // Laravel Telescope
+            '/horizon',         // Laravel Horizon
+            '/hrd',             // Panel HRD
+            '/team',            // Panel Team
+            '/bisnis',          // Panel Bisnis
+            '/redaksi',         // Panel Redaksi
+            '/direktur',        // Panel Direktur
+            '/keuangan',        // Panel Keuangan
         ];
-        
+
         foreach ($skipPaths as $skipPath) {
             if (str_starts_with($path, $skipPath)) {
                 return true;
             }
         }
 
-        // Skip file extensions
-        if (str_contains($path, '.')) {
-            $extension = '.' . pathinfo($path, PATHINFO_EXTENSION);
-            $skipExtensions = ['.js', '.css', '.jpg', '.png', '.gif', '.svg', '.ico', '.pdf', '.zip'];
-            if (in_array($extension, $skipExtensions)) {
+        // Skip untuk file dengan ekstensi tertentu
+        $skipExtensions = ['.js', '.css', '.jpg', '.jpeg', '.png', '.gif', '.svg', '.ico', '.pdf', '.zip', '.woff', '.woff2', '.ttf'];
+        foreach ($skipExtensions as $extension) {
+            if (str_ends_with($path, $extension)) {
                 return true;
             }
         }
 
-        // Skip AJAX
+        // Skip untuk AJAX requests
         if ($request->ajax() || $request->wantsJson()) {
             return true;
         }

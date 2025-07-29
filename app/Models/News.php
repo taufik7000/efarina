@@ -319,7 +319,7 @@ class News extends Model
     }
 
 
-    public static function generateSmartSlug(string $title, int $maxLength = 50): string
+    public static function generateSmartSlug(string $title, int $maxLength = 120): string
 {
     // Daftar kata-kata yang bisa dihapus untuk mempersingkat
     $stopWords = [

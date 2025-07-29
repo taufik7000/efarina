@@ -48,7 +48,7 @@ class NewsResource extends Resource
                                         $currentSlug = $get('slug');
 
                                         if (empty($currentSlug) || $currentSlug === Str::slug($get('original_title') ?? '')) {
-                                            $newSlug = self::truncateSlug($state, 50);
+                                            $newSlug = self::truncateSlug($state, 100);
                                             $set('slug', $newSlug);
                                         }
 
@@ -96,7 +96,6 @@ class NewsResource extends Resource
 
                                 Forms\Components\Textarea::make('excerpt')
                                     ->label('Ringkasan/Excerpt')
-                                    ->required()
                                     ->maxLength(300)
                                     ->rows(3)
                                     ->hint('Ringkasan singkat yang akan ditampilkan di preview'),
@@ -130,7 +129,7 @@ class NewsResource extends Resource
                             ->schema([
                                 Forms\Components\TextInput::make('seo_title')
                                     ->label('SEO Title')
-                                    ->maxLength(60)
+                                    ->maxLength(120)
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
                                         if (empty($state) && $get('judul')) {
@@ -139,12 +138,12 @@ class NewsResource extends Resource
                                     })
                                     ->helperText(function ($state) {
                                         $length = strlen($state ?? '');
-                                        return "Karakter: {$length}/60 (Optimal: 50-60)";
+                                        return "Karakter: {$length}/120 (Optimal: 80-120)";
                                     }),
 
                                 Forms\Components\Textarea::make('seo_description')
                                     ->label('Meta Description')
-                                    ->maxLength(160)
+                                    ->maxLength(250)
                                     ->rows(3)
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
@@ -154,7 +153,7 @@ class NewsResource extends Resource
                                     })
                                     ->helperText(function ($state) {
                                         $length = strlen($state ?? '');
-                                        return "Karakter: {$length}/160 (Optimal: 150-160)";
+                                        return "Karakter: {$length}/250 (Optimal: 150-250)";
                                     }),
 
                                 Forms\Components\TextInput::make('focus_keyword')
@@ -195,7 +194,7 @@ class NewsResource extends Resource
                                     ->schema([
                                         Forms\Components\TextInput::make('og_title')
                                             ->label('OG Title')
-                                            ->maxLength(95)
+                                            ->maxLength(120)
                                             ->helperText('Judul untuk social media sharing'),
 
                                         Forms\Components\Textarea::make('og_description')
@@ -378,27 +377,19 @@ class NewsResource extends Resource
             ->columns([
                 Tables\Columns\ImageColumn::make('thumbnail')
                     ->label('Thumbnail')
-                    ->size(60)
-                    ->circular(),
+                    ->size(60),
 
                 Tables\Columns\TextColumn::make('judul')
                     ->label('Judul')
                     ->searchable()
-                    ->sortable()
                     ->limit(50)
-                    ->wrap(),
+                    ->sortable(),
+
 
                 Tables\Columns\TextColumn::make('category.nama_kategori')
                     ->label('Kategori')
                     ->badge()
                     ->sortable(),
-
-                Tables\Columns\TextColumn::make('tags.nama_tag')
-                    ->label('Tags')
-                    ->badge()
-                    ->separator(', ')
-                    ->limit(20)
-                    ->wrap(),
 
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')

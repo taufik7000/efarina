@@ -1,7 +1,7 @@
 {{-- Updated home.blade.php dengan Hero Section + Video Unggulan di Sidebar --}}
 @extends('layouts.app')
 
-@section('title', 'Portal Berita Timnas Indonesia')
+@section('title', 'Efarina TV - Live Streaming & Berita Sumut Terbaru')
 
 @push('styles')
 <style>
@@ -16,7 +16,7 @@
 
 /* Container consistency */
 .container {
-    max-width: 1100px;
+    max-width: 1150px;
 }
 
 .hero-section {
@@ -39,6 +39,7 @@
 
 .news-card {
     background: white;
+    margin-bottom: 1.1rem;
     border-radius: 0.75rem;
     overflow: hidden;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -131,64 +132,59 @@
 <section class="hero-section">
     <div class="container mx-auto px-4">
         @if($featuredNews->count() > 0)
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {{-- Main Featured News --}}
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            
+            {{-- Main Featured News (Tidak ada perubahan di sini) --}}
             <div class="lg:col-span-2">
                 @php $mainFeatured = $featuredNews->first(); @endphp
-                <div class="featured-card h-full">
-                    <div class="relative">
-                        <img src="{{ $mainFeatured->thumbnail ? asset('storage/' . $mainFeatured->thumbnail) : 'https://via.placeholder.com/800x450' }}" 
-                             alt="{{ $mainFeatured->judul }}" 
-                             class="w-full h-80 lg:h-96 object-cover">
-                        <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
-                        <span class="category-badge absolute top-4 left-4" style="background-color: {{ $mainFeatured->category->color }}; color: white;">
+                <div class="featured-card h-full relative">
+                    <img src="{{ $mainFeatured->thumbnail ? asset('storage/' . $mainFeatured->thumbnail) : 'https://via.placeholder.com/800x450' }}" 
+                         alt="{{ $mainFeatured->judul }}" 
+                         class="w-full h-full object-cover rounded-lg">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent rounded-lg"></div>
+                    <div class="absolute bottom-0 left-0 right-0 p-6 text-white">
+                        <span class="category-badge mb-2" style="background-color: {{ $mainFeatured->category->color }}; color: white;">
                             {{ $mainFeatured->category->nama_kategori }}
                         </span>
-                        <div class="absolute bottom-0 left-0 right-0 p-6 text-white">
-                            <h1 class="text-xl lg:text-3xl font-bold mb-2 leading-tight">
-                                <a href="{{ route('news.show', $mainFeatured->slug) }}" class="hover:text-red-300 transition-colors">
-                                    {{ $mainFeatured->judul }}
-                                </a>
-                            </h1>
-                            @if($mainFeatured->excerpt)
-                            <p class="text-gray-200 mb-3 text-sm lg:text-base line-clamp-2">{{ Str::limit($mainFeatured->excerpt, 150) }}</p>
-                            @endif
-                            <div class="flex items-center text-sm text-gray-300">
-                                <i class="fas fa-clock mr-2"></i>
-                                {{ $mainFeatured->published_at ? $mainFeatured->published_at->format('d M Y, H:i') : $mainFeatured->created_at->format('d M Y, H:i') }}
-                                <span class="mx-3">•</span>
-                                <i class="fas fa-eye mr-1"></i>
-                                {{ number_format($mainFeatured->views_count) }}
-                            </div>
+                        <h1 class="text-xl lg:text-3xl font-bold mb-2 leading-tight">
+                            <a href="{{ route('news.show', $mainFeatured->slug) }}" class="hover:text-red-300 transition-colors">
+                                {{ $mainFeatured->judul }}
+                            </a>
+                        </h1>
+                        @if($mainFeatured->excerpt)
+                        <p class="text-gray-200 mb-3 text-sm lg:text-base d-none d-md-block line-clamp-2">{{ Str::limit($mainFeatured->excerpt, 150) }}</p>
+                        @endif
+                        <div class="flex items-center text-sm text-gray-300">
+                            <i class="fas fa-clock mr-2"></i>
+                            {{ $mainFeatured->published_at ? $mainFeatured->published_at->format('d M Y') : $mainFeatured->created_at->format('d M Y') }}
                         </div>
                     </div>
                 </div>
             </div>
 
-            {{-- Secondary Featured News --}}
-            <div class="space-y-4">
-                @foreach($featuredNews->skip(1)->take(3) as $news)
-                <div class="featured-card">
-                    <div class="flex">
-                        <img src="{{ $news->thumbnail ? asset('storage/' . $news->thumbnail) : 'https://via.placeholder.com/200x120' }}" 
-                             alt="{{ $news->judul }}" 
-                             class="w-24 h-20 object-cover rounded-l-lg">
-                        <div class="flex-1 p-3">
-                            <span class="category-badge text-xs mb-1" style="background-color: {{ $news->category->color }}; color: white;">
-                                {{ $news->category->nama_kategori }}
-                            </span>
-                            <h3 class="font-semibold text-gray-900 text-sm leading-tight mb-1 hover:text-red-600 transition-colors">
-                                <a href="{{ route('news.show', $news->slug) }}">{{ Str::limit($news->judul, 80) }}</a>
-                            </h3>
-                            <div class="text-xs text-gray-500">
-                                <i class="fas fa-clock mr-1"></i>
-                                {{ $news->published_at ? $news->published_at->format('d M') : $news->created_at->format('d M') }}
-                            </div>
-                        </div>
+            {{-- Secondary Featured News (BAGIAN YANG DIUBAH) --}}
+            <div class="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-1 gap-4">
+                @foreach($featuredNews->skip(1)->take(2) as $news)
+                {{-- Kartu Berita Sekunder --}}
+                <div class="featured-card h-64 relative"> {{-- Tinggi kartu diatur di sini --}}
+                    <img src="{{ $news->thumbnail ? asset('storage/' . $news->thumbnail) : 'https://via.placeholder.com/400x250' }}" 
+                         alt="{{ $news->judul }}" 
+                         class="w-full h-full object-cover rounded-lg">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent rounded-lg"></div>
+                    <div class="absolute bottom-0 left-0 right-0 p-4 text-white">
+                        <span class="category-badge mb-1 text-xs" style="background-color: {{ $news->category->color }}; color: white;">
+                            {{ $news->category->nama_kategori }}
+                        </span>
+                        <h3 class="font-bold text-md leading-tight">
+                            <a href="{{ route('news.show', $news->slug) }}" class="hover:text-red-300 transition-colors">
+                                {{ Str::limit($news->judul, 60) }}
+                            </a>
+                        </h3>
                     </div>
                 </div>
                 @endforeach
             </div>
+
         </div>
         @endif
     </div>
@@ -196,11 +192,10 @@
 
 {{-- Main Content --}}
 <main class="container mx-auto px-4 py-8">
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
         
         {{-- Left Content --}}
         <div class="lg:col-span-2 space-y-8">
-
             {{-- Berita Terbaru Section --}}
             @if($latestNews->count() > 0)
             <section>
@@ -215,7 +210,7 @@
                     </a>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
                     @foreach($latestNews as $news)
                     <div class="news-card">
                         <div class="relative">
@@ -226,14 +221,14 @@
                                 {{ $news->category->nama_kategori }}
                             </span>
                         </div>
-                        <div class="p-4">
-                            <h3 class="font-semibold text-gray-900 mb-2 leading-tight hover:text-red-600 transition-colors">
-                                <a href="{{ route('news.show', $news->slug) }}">{{ Str::limit($news->judul, 80) }}</a>
+                        <div class="p-3">
+                            <h3 class="font-semibold text-gray-900 mb-2 leading-tight hover:text-red-600 transition-colors text-base">
+                                <a href="{{ route('news.show', $news->slug) }}">{{ Str::limit($news->judul) }}</a>
                             </h3>
                             @if($news->excerpt)
-                            <p class="text-gray-600 text-sm mb-3 line-clamp-2">{{ Str::limit($news->excerpt, 100) }}</p>
+                            <p class="text-gray-600 text-sm mb-3 line-clamp-2">{{ Str::limit($news->excerpt, 70) }}</p>
                             @endif
-                            <div class="flex items-center justify-between text-sm text-gray-500">
+                            <div class="flex items-center justify-between text-sm text-gray-500 text-sm">
                                 <div class="flex items-center">
                                     <i class="fas fa-clock mr-1"></i>
                                     {{ $news->published_at ? $news->published_at->format('d M Y') : $news->created_at->format('d M Y') }}

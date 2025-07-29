@@ -9,6 +9,7 @@ use App\Http\Controllers\NewsController;
 use App\Http\Controllers\VideoController;
 use App\Http\Controllers\SecureAttendanceController;
 use App\Exports\AttendanceReportExport;
+use App\Http\Middleware\HandleRedirects;
 
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
@@ -86,19 +87,17 @@ Route::middleware(['auth'])->group(function () {
 });
 
 
-// 1. ROUTE SPESIFIK DULU (tanpa parameter, tidak akan conflict)
-Route::get('/berita', [NewsController::class, 'index'])->name('news.index');
-Route::get('/berita/terbaru', [NewsController::class, 'latest'])->name('news.latest');
-Route::get('/berita/kategori', [NewsController::class, 'categories'])->name('news.categories'); // Index kategori
+// News routes
+Route::prefix('berita')->name('news.')->group(function () {
+    Route::get('/', [NewsController::class, 'index'])->name('index');
+    Route::get('/kategori/{category:slug}', [NewsController::class, 'category'])->name('category');
+    Route::get('/tag/{tag:slug}', [NewsController::class, 'tag'])->name('tag');
+    Route::get('/{news:slug}', [NewsController::class, 'show'])->name('show');
+});
 
-// 2. ROUTE DENGAN PARAMETER SPESIFIK (sebelum route dengan parameter bebas)
-Route::get('/berita/kategori/{category}', [NewsController::class, 'category'])->name('news.category');
-Route::get('/berita/tag/{tag}', [NewsController::class, 'tag'])->name('news.tag');
-
-// 3. ROUTE DENGAN PARAMETER BEBAS TERAKHIR (dengan constraint ketat)
-Route::get('/berita/{slug}', [NewsController::class, 'show'])
-    ->name('news.show')
-    ->where('slug', '[a-zA-Z0-9\-_]+');
+Route::post('/api/news/{news}/view', [NewsController::class, 'incrementView'])
+    ->name('api.news.view')
+    ->middleware('throttle:100,1');
 
 
 Route::get('/video/{videoId}', [VideoController::class, 'show'])
@@ -292,5 +291,15 @@ Route::get('/hrd/attendance-report/print', function() {
         'periode' => \Carbon\Carbon::create($tahun, $bulan, 1)->format('F Y')
     ]);
 })->name('hrd.attendance-report.print')->middleware(['auth', 'role:hrd']);
+
+
+Route::middleware([HandleRedirects::class])->group(function () {
+    
+    // Catch-all untuk semua URL lainnya (termasuk WordPress)
+    Route::get('{path}', function ($path) {
+        abort(404); // Jika middleware tidak redirect
+    })->where('path', '.*'); // Accept any path
+    
+});
 
 

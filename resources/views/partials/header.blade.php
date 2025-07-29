@@ -1,13 +1,13 @@
 <header class="backdrop-blur-fallback shadow-lg fixed top-0 left-0 right-0 z-50">
     <!-- Top Bar dengan Logo -->
     <div class="bg-white border-b border-gray-200">
-        <div class="max-w-6xl mx-auto px-4">
-            <div class="flex items-center justify-between h-16">
+        <div class="max-w-6xl mx-auto py-3">
+            <div class="flex items-center justify-between h-19">
                 <!-- Logo -->
             <div class="flex items-center">
                 <a href="{{ route('home') }}" class="flex items-center">
                     {{-- Ganti div tulisan dengan tag img --}}
-                <img src="{{ asset('assets/logo-efarina.webp') }}" alt="Logo Efarina TV" class="h-11 w-auto">
+                <img src="{{ asset('assets/logo-efarina.webp') }}" alt="Logo Efarina TV" class="h-12 w-auto">
                 </a>
             </div>
 
@@ -52,23 +52,23 @@
                     </a>
                     
                     <!-- Navigation Links -->
-                    <a href="" class="px-4 h-12 flex items-center text-white text-sm font-medium hover:bg-blue-900 transition-colors border-l border-blue-800">
+                    <a href="/berita" class="px-4 h-12 flex items-center text-white text-sm font-medium hover:bg-blue-900 transition-colors border-l border-blue-800">
                         Terbaru
                     </a>
-                    <a href="#" class="px-4 h-12 flex items-center text-white text-sm font-medium hover:bg-blue-900 transition-colors border-l border-blue-800">
+                    <a href="/berita/kategori/simalungun" class="px-4 h-12 flex items-center text-white text-sm font-medium hover:bg-blue-900 transition-colors border-l border-blue-800">
+                        Simalungun
+                    </a>
+                    <a href="/berita/kategori/sumut" class="px-4 h-12 flex items-center text-white text-sm font-medium hover:bg-blue-900 transition-colors border-l border-blue-800">
+                        Sumut
+                    </a>
+                    <a href="/berita/kategori/nasional" class="px-4 h-12 flex items-center text-white text-sm font-medium hover:bg-blue-900 transition-colors border-l border-blue-800">
                         Nasional
                     </a>
-                    <a href="#" class="px-4 h-12 flex items-center text-white text-sm font-medium hover:bg-blue-900 transition-colors border-l border-blue-800">
+                    <a href="/berita/kategori/internasional" class="px-4 h-12 flex items-center text-white text-sm font-medium hover:bg-blue-900 transition-colors border-l border-blue-800">
                         Internasional
                     </a>
-                    <a href="#" class="px-4 h-12 flex items-center text-white text-sm font-medium hover:bg-blue-900 transition-colors border-l border-blue-800">
-                        Luar Negeri
-                    </a>
-                    <a href="#" class="px-4 h-12 flex items-center text-white text-sm font-medium hover:bg-blue-900 transition-colors border-l border-blue-800">
-                        Olahraga
-                    </a>
-                    <a href="#" class="px-4 h-12 flex items-center text-white text-sm font-medium hover:bg-blue-900 transition-colors border-l border-blue-800">
-                        Gaya Hidup
+                    <a href="/berita/kategori/kesehatan" class="px-4 h-12 flex items-center text-white text-sm font-medium hover:bg-blue-900 transition-colors border-l border-blue-800">
+                        Kesehatan
                     </a>
                     <a href="#" class="px-4 h-12 flex items-center text-white text-sm font-medium hover:bg-blue-900 transition-colors border-l border-blue-800">
                         Efarina Daily
@@ -84,7 +84,7 @@
                 <!-- Live Streaming Indicator - Updated dengan Warna Biru -->
                 <div class="hidden lg:flex items-center space-x-2 bg-blue-600 px-3 py-1 rounded-full header-live-badge">
                     <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                    <span class="text-white text-xs font-medium">LIVESTREAM</span>
+                    <span  class="text-white text-xs font-medium"><a href="/live">LIVESTREAM</a></span>
                 </div>
             </div>
         </div>
@@ -94,9 +94,7 @@
     <div class="bg-gray-100 border-b border-gray-200">
         <div class="max-w-6xl mx-auto px-4">
             <div class="hidden lg:flex items-center h-10 space-x-0">         
-                <!-- Regional Links -->
-                <a href="#" class="px-3 text-sm text-gray-700 hover:text-blue-600 transition-colors border-r border-gray-300">Simalungun</a>
-                <a href="#" class="px-3 text-sm text-gray-700 hover:text-blue-600 transition-colors border-l border-gray-300">Pematangsiantar</a>
+                <a href="/berita/kategori/pematangsiantar" class="px-3 text-sm text-gray-700 hover:text-blue-600 transition-colors border-l border-gray-300">Pematangsiantar</a>
                 <a href="#" class="px-3 text-sm text-gray-700 hover:text-blue-600 transition-colors border-l border-gray-300">Medan</a>
                 <a href="#" class="px-3 text-sm text-gray-700 hover:text-blue-600 transition-colors border-l border-gray-300">Tebing Tinggi</a>
                 <a href="#" class="px-3 text-sm text-gray-700 hover:text-blue-600 transition-colors border-l border-gray-300">Kisaran</a>
@@ -128,7 +126,7 @@
             <div class="pt-4 border-t border-gray-200">
                 <div class="flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 rounded-lg">
                     <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                    <span class="text-white text-sm font-medium">LIVESTREAM</span>
+                    <span class="text-white text-sm font-medium"><a href="/live">LIVESTREAM</a></span>
                 </div>
             </div>
         </div>

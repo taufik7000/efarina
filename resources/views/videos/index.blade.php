@@ -10,7 +10,7 @@
     {{-- Breadcrumb Component --}}
     @include('videos.components.breadcrumb')
 
-    <div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="max-w-6xl mx-auto px-4 py-8">
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {{-- Main Content --}}
             <div class="lg:col-span-3 space-y-8">

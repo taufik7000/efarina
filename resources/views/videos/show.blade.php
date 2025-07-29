@@ -35,7 +35,7 @@
     </div>
 
     <div class="max-w-7xl mx-auto px-4 py-8">
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
             {{-- Main Video Content --}}
             <div class="lg:col-span-3">
                 {{-- Video Player --}}

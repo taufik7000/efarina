@@ -18,19 +18,20 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    line-height: 1.6;
+    line-height: 1.4;
     color: var(--text-primary);
     background: var(--background-light);
 }
 
 .container {
-    max-width: 1200px;
+    max-width: 1150px;
+    margin-top: 150px;
 }
 
 .main-grid {
     display: grid;
     grid-template-columns: 1fr 320px;
-    gap: 2rem;
+    gap: 1rem;
     align-items: start;
 }
 
@@ -44,7 +45,7 @@ body {
 /* Breadcrumb */
 .breadcrumb {
     background: var(--background);
-    padding: 1rem 0;
+    padding: 1rem 1rem;
     border-bottom: 1px solid var(--border);
     font-size: 0.875rem;
     color: var(--text-secondary);
@@ -94,7 +95,7 @@ body {
 }
 
 .article-excerpt {
-    font-size: 1.125rem;
+    font-size: 1rem;
     color: var(--text-secondary);
     margin-bottom: 1.5rem;
     line-height: 1.6;
@@ -123,9 +124,8 @@ body {
 }
 
 .article-content {
-    max-width: 65ch;
-    font-size: 1.125rem;
-    line-height: 1.8;
+    font-size: 1rem;
+    line-height: 1.5;
     color: var(--text-primary);
     margin-bottom: 2rem;
 }
@@ -134,12 +134,12 @@ body {
     .article-content {
         max-width: none;
         font-size: 1rem;
+        line-height: 1.5;
     }
 }
 
 .article-content p {
-    margin-bottom: 1.5rem;
-    text-align: justify;
+    margin-bottom: 1rem;
 }
 
 .article-content h1,
@@ -159,7 +159,6 @@ body {
 
 .article-content a {
     color: var(--primary);
-    text-decoration: underline;
     text-decoration-color: rgba(37, 99, 235, 0.3);
     text-underline-offset: 2px;
 }
@@ -245,11 +244,18 @@ body {
 .share-btn.whatsapp { background: #25d366; color: white; }
 .share-btn.telegram { background: #0088cc; color: white; }
 .share-btn.copy { background: var(--text-secondary); color: white; }
+
+
+.attachment__caption {
+    color: #888888; 
+    font-size: 0.875rem;
+    text-decoration: none !important;
+}
 </style>
 @endpush
 
 @section('content')
-<div class="container mx-auto px-4 py-4">
+<div class="container mx-auto mt-20 px-4 py-4">
     
     {{-- Breadcrumb --}}
     <nav class="breadcrumb">
@@ -264,7 +270,7 @@ body {
 
     <div class="main-grid">
         {{-- Main Content --}}
-        <main class="bg-white rounded-lg shadow-md p-6">
+        <main class="bg-white rounded-lg shadow-md p-3">
             {{-- Article Header --}}
             <header class="article-header">
                 <a href="{{ route('news.category', $news->category->slug) }}" class="category-tag">
@@ -433,4 +439,40 @@ function fallbackCopyToClipboard(text) {
     document.body.removeChild(textArea);
 }
 </script>
+
+@push('scripts')
+<script>
+    // Jalankan skrip ini setelah seluruh konten halaman dimuat
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // Ambil CSRF token dari tag meta
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+        // URL API untuk increment view, menggunakan ID berita saat ini
+        const url = `{{ route('api.news.view', $news->id) }}`;
+
+        // Kirim permintaan POST ke API menggunakan Fetch API
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Untuk debugging, Anda bisa lihat hasilnya di console browser
+            if (data.success) {
+                console.log('View count incremented. Total views:', data.views);
+            } else {
+                console.error('Failed to increment view count.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+
+    });
+</script>
+@endpush
 @endpush

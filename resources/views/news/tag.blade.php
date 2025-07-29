@@ -6,7 +6,7 @@
 <div class="bg-gray-50 min-h-screen">
     {{-- Header Section --}}
     <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-12">
-        <div class="max-w-7xl mx-auto px-4">
+        <div class="max-w-6xl mx-auto mt-20 px-4">
             <div class="text-center">
                 <div class="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4" style="background-color: {{ $tag->color }}">
                     <i class="fas fa-tag text-2xl"></i>
@@ -19,7 +19,7 @@
 
     {{-- Breadcrumb --}}
     <div class="bg-white border-b">
-        <div class="max-w-7xl mx-auto px-4 py-3">
+        <div class="max-w-6xl mx-auto px-4 py-3">
             <nav class="text-sm text-gray-500">
                 <a href="{{ route('home') }}" class="hover:text-blue-600">Beranda</a>
                 <span class="mx-2">/</span>
@@ -30,7 +30,7 @@
         </div>
     </div>
 
-    <div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="max-w-6xl mx-auto px-4 py-8">
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {{-- Main Content --}}
             <div class="lg:col-span-3">

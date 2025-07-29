@@ -17,7 +17,7 @@ class HomeController extends Controller
             ->where('status', 'published')
             ->where('is_featured', true)
             ->orderBy('created_at', 'desc')
-            ->limit(4)
+            ->limit(3)
             ->get();
 
         // Berita terbaru (non-featured)
@@ -25,7 +25,7 @@ class HomeController extends Controller
             ->where('status', 'published')
             ->where('is_featured', false)
             ->orderBy('created_at', 'desc')
-            ->limit(8)
+            ->limit(6)
             ->get();
 
         // Berita populer berdasarkan views

@@ -266,31 +266,8 @@
                     </div>
                 </div>
 
-                {{-- Newsletter --}}
-                <div class="bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl p-6 text-white">
-                    <h3 class="font-bold text-xl mb-2">Stay Updated</h3>
-                    <p class="text-blue-100 mb-4">Get the latest articles delivered to your inbox.</p>
-                    <form class="space-y-3" onsubmit="subscribeNewsletter(event)">
-                        <input type="email" 
-                               placeholder="Enter your email" 
-                               class="w-full px-4 py-3 rounded-xl bg-white/20 backdrop-blur-sm border border-white/30 placeholder-white/70 text-white focus:ring-2 focus:ring-white/50 focus:border-transparent outline-none"
-                               required>
-                        <button type="submit" 
-                                class="w-full bg-white text-blue-600 px-4 py-3 rounded-xl font-semibold hover:bg-gray-100 transition-colors">
-                            Subscribe Now
-                        </button>
-                    </form>
-                </div>
             </div>
         </div>
     </div>
 </div>
-
-<script>
-function subscribeNewsletter(event) {
-    event.preventDefault();
-    alert('Thank you for subscribing!');
-    event.target.reset();
-}
-</script>
 @endsection
