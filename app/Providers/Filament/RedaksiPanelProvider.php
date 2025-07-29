@@ -26,9 +26,12 @@ class RedaksiPanelProvider extends PanelProvider
         return $panel
             ->id('redaksi')
             ->path('redaksi')
+            ->BrandLogo('/storage/assets/logo-efarina.webp')
+            ->BrandLogoHeight('3rem')
             ->colors([
                 'primary' => Color::Blue,
             ])
+            ->sidebarCollapsibleOnDesktop()
             ->databaseNotifications()
             ->viteTheme('resources/css/filament/redaksi/theme.css')
             ->discoverResources(in: app_path('Filament/Redaksi/Resources'), for: 'App\\Filament\\Redaksi\\Resources')

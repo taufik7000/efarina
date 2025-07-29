@@ -4,13 +4,12 @@
         <div class="max-w-6xl mx-auto px-4">
             <div class="flex items-center justify-between h-16">
                 <!-- Logo -->
-                <div class="flex items-center">
-                    <a href="{{ route('home') }}" class="flex items-center">
-                        <div class="logo-efarina header-logo">
-                            <span class="text-blue-600">efarina</span><span class="text-blue-800">TV</span>
-                        </div>
-                    </a>
-                </div>
+            <div class="flex items-center">
+                <a href="{{ route('home') }}" class="flex items-center">
+                    {{-- Ganti div tulisan dengan tag img --}}
+                <img src="{{ asset('assets/logo-efarina.webp') }}" alt="Logo Efarina TV" class="h-11 w-auto">
+                </a>
+            </div>
 
                 <!-- Right Side Actions -->
                 <div class="flex items-center space-x-4">
@@ -202,21 +201,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Header scroll effect
-    const header = document.querySelector('header');
-    let lastScrollY = window.scrollY;
-    
-    window.addEventListener('scroll', function() {
-        const currentScrollY = window.scrollY;
-        
-        if (currentScrollY > 100) {
-            header.style.transform = lastScrollY > currentScrollY ? 'translateY(0)' : 'translateY(-100%)';
-            header.style.backgroundColor = 'rgba(255, 255, 255, 0.98)';
-        } else {
-            header.style.transform = 'translateY(0)';
-            header.style.backgroundColor = 'rgba(255, 255, 255, 0.95)';
-        }
-        
-        lastScrollY = currentScrollY;
-    });
+ 
 });
 </script>
