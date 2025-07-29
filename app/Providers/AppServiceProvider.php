@@ -4,8 +4,10 @@ namespace App\Providers;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use App\Models\Project;
+use App\Models\Redirect;
 use App\Models\LeaveRequest;
 use App\Models\Transaksi;
 use App\Observers\ProjectObserver;
@@ -26,6 +28,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+
+        Route::pushMiddlewareToGroup('web', \App\Http\Middleware\HandleRedirects::class);
+        
+        // Debug: log untuk memastikan middleware terdaftar
+        if (config('app.debug')) {
+            \Log::info('HandleRedirects middleware registered to web group');
+        }
         // Registrasi observer yang sudah ada
         Project::observe(ProjectObserver::class);
         Transaksi::observe(TransaksiObserver::class);
@@ -40,6 +49,7 @@ class AppServiceProvider extends ServiceProvider
         if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https' || $this->app->environment('production')) {
             URL::forceScheme('https');
         }
+
     }
 
     /**

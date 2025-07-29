@@ -70,18 +70,6 @@
         </article>
         @endforeach
     </div>
-    
-    {{-- Load More Section --}}
-    @if($latestVideos->count() >= 6)
-    <div class="mt-12 text-center">
-        <a href="{{ route('video.index') }}" 
-           class="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-2xl hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1">
-            <i class="fas fa-play-circle mr-3 text-lg"></i>
-            <span>Lihat Semua Video</span>
-            <i class="fas fa-arrow-right ml-3"></i>
-        </a>
-    </div>
-    @endif
 </section>
 
 {{-- Enhanced CSS Styles --}}

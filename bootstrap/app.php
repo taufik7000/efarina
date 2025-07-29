@@ -4,6 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\CheckRole;
+use App\Http\Middleware\HandleRedirects;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -13,6 +14,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // PINDAHKAN middleware redirect ke PREPEND (berjalan lebih awal)
+        $middleware->web(prepend: [
+            \App\Http\Middleware\HandleRedirects::class,
+        ]);
+        
         $middleware->alias([
             'role' => CheckRole::class,
         ]);

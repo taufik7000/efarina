@@ -85,13 +85,25 @@ Route::middleware(['auth'])->group(function () {
         ->where(['projectId' => '[0-9]+', 'pengajuanId' => '[0-9]+']);
 });
 
-// News routes
-Route::prefix('berita')->name('news.')->group(function () {
-    Route::get('/', [NewsController::class, 'index'])->name('index');
-    Route::get('/kategori/{category:slug}', [NewsController::class, 'category'])->name('category');
-    Route::get('/tag/{tag:slug}', [NewsController::class, 'tag'])->name('tag');
-    Route::get('/{news:slug}', [NewsController::class, 'show'])->name('show');
-});
+
+// 1. ROUTE SPESIFIK DULU (tanpa parameter, tidak akan conflict)
+Route::get('/berita', [NewsController::class, 'index'])->name('news.index');
+Route::get('/berita/terbaru', [NewsController::class, 'latest'])->name('news.latest');
+Route::get('/berita/kategori', [NewsController::class, 'categories'])->name('news.categories'); // Index kategori
+
+// 2. ROUTE DENGAN PARAMETER SPESIFIK (sebelum route dengan parameter bebas)
+Route::get('/berita/kategori/{category}', [NewsController::class, 'category'])->name('news.category');
+Route::get('/berita/tag/{tag}', [NewsController::class, 'tag'])->name('news.tag');
+
+// 3. ROUTE DENGAN PARAMETER BEBAS TERAKHIR (dengan constraint ketat)
+Route::get('/berita/{slug}', [NewsController::class, 'show'])
+    ->name('news.show')
+    ->where('slug', '[a-zA-Z0-9\-_]+');
+
+
+Route::get('/video/{videoId}', [VideoController::class, 'show'])
+    ->name('video.show')
+    ->where('videoId', '[a-zA-Z0-9\-_]+');
 
 // API routes for views counter
 Route::post('/api/news/{news}/view', [NewsController::class, 'incrementView'])
@@ -280,3 +292,5 @@ Route::get('/hrd/attendance-report/print', function() {
         'periode' => \Carbon\Carbon::create($tahun, $bulan, 1)->format('F Y')
     ]);
 })->name('hrd.attendance-report.print')->middleware(['auth', 'role:hrd']);
+
+
