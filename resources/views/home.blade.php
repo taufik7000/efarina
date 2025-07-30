@@ -363,7 +363,7 @@
         {{-- Tombol Load More --}}
     <div class="text-center mt-8">
         <button id="load-more-btn" 
-                class="bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:bg-gray-400">
+                class="bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:bg-gray-400 text-sm">
             Muat Lebih Banyak
         </button>
     </div>

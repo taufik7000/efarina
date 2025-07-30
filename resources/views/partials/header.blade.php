@@ -1,13 +1,13 @@
 <header class="backdrop-blur-fallback shadow-lg fixed top-0 left-0 right-0 z-50">
     <!-- Top Bar dengan Logo -->
     <div class="bg-white border-b border-gray-200">
-        <div class="max-w-6xl mx-auto py-3">
+        <div class="max-w-6xl mx-auto py-3 px-1">
             <div class="flex items-center justify-between h-19">
                 <!-- Logo -->
             <div class="flex items-center">
                 <a href="{{ route('home') }}" class="flex items-center">
                     {{-- Ganti div tulisan dengan tag img --}}
-                <img src="{{ asset('assets/logo-efarina.webp') }}" alt="Logo Efarina TV" class="h-12 w-auto">
+                <img src="{{ asset('assets/logo-efarina.webp') }}" alt="Logo Efarina TV" class="px-4 h-12 w-auto">
                 </a>
             </div>
 
@@ -55,9 +55,6 @@
                     <a href="/berita" class="px-4 h-12 flex items-center text-white text-sm font-medium hover:bg-blue-900 transition-colors border-l border-blue-800">
                         Terbaru
                     </a>
-                    <a href="/berita/kategori/simalungun" class="px-4 h-12 flex items-center text-white text-sm font-medium hover:bg-blue-900 transition-colors border-l border-blue-800">
-                        Simalungun
-                    </a>
                     <a href="/berita/kategori/sumut" class="px-4 h-12 flex items-center text-white text-sm font-medium hover:bg-blue-900 transition-colors border-l border-blue-800">
                         Sumut
                     </a>
@@ -93,15 +90,18 @@
     <!-- Secondary Navigation (Regional) -->
     <div class="bg-gray-100 border-b border-gray-200">
         <div class="max-w-6xl mx-auto px-4">
-            <div class="hidden lg:flex items-center h-10 space-x-0">         
+            <div class="hidden lg:flex items-center h-10 space-x-0">
+                <a href="/berita/kategori/simalungun" class="px-3 text-sm text-gray-700 hover:text-blue-600 transition-colors border-l border-gray-300">Simalungun</a>        
                 <a href="/berita/kategori/pematangsiantar" class="px-3 text-sm text-gray-700 hover:text-blue-600 transition-colors border-l border-gray-300">Pematangsiantar</a>
-                <a href="#" class="px-3 text-sm text-gray-700 hover:text-blue-600 transition-colors border-l border-gray-300">Medan</a>
+                <a href="/berita/kategori/medan" class="px-3 text-sm text-gray-700 hover:text-blue-600 transition-colors border-l border-gray-300">Medan</a>
                 <a href="#" class="px-3 text-sm text-gray-700 hover:text-blue-600 transition-colors border-l border-gray-300">Tebing Tinggi</a>
                 <a href="#" class="px-3 text-sm text-gray-700 hover:text-blue-600 transition-colors border-l border-gray-300">Kisaran</a>
                 <a href="#" class="px-3 text-sm text-gray-700 hover:text-blue-600 transition-colors border-l border-gray-300">Karo</a>
                 <a href="#" class="px-3 text-sm text-gray-700 hover:text-blue-600 transition-colors border-l border-gray-300">Asahan</a>
                 <a href="#" class="px-3 text-sm text-gray-700 hover:text-blue-600 transition-colors border-l border-gray-300">Batu Bara</a>
                 <a href="#" class="px-3 text-sm text-gray-700 hover:text-blue-600 transition-colors border-l border-gray-300">Tanjung Balai</a>
+                <a href="#" class="px-3 text-sm text-gray-700 hover:text-blue-600 transition-colors border-l border-gray-300">Tapanuli Utara</a>
+                <a href="#" class="px-3 text-sm text-gray-700 hover:text-blue-600 transition-colors border-l border-gray-300">Tapanuli Selatan</a>
             </div>
         </div>
     </div>
