@@ -9,30 +9,6 @@
                 Kategori Video
             </h3>
         </div>
-        <div class="p-6 space-y-2">
-            <a href="{{ route('video.index') }}" 
-               class="flex items-center justify-between p-3 rounded-lg transition-colors {{ !request('category') ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'hover:bg-gray-50' }}">
-                <span class="font-medium flex items-center">
-                    <i class="fas fa-play-circle mr-2 {{ !request('category') ? 'text-blue-500' : 'text-gray-400' }}"></i>
-                    Semua Video
-                </span>
-                <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs font-medium">
-                    {{ $paginationInfo['total'] ?? 0 }}
-                </span>
-            </a>
-            @foreach($categories as $category)
-            <a href="{{ route('video.index', ['category' => $category->slug]) }}" 
-               class="flex items-center justify-between p-3 rounded-lg transition-colors {{ request('category') == $category->slug ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'hover:bg-gray-50' }}">
-                <div class="flex items-center">
-                    <div class="w-3 h-3 rounded-full mr-3" style="background-color: {{ $category->color }};"></div>
-                    <span class="font-medium">{{ $category->nama_kategori }}</span>
-                </div>
-                <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs font-medium">
-                    {{ $category->videos_count ?? 0 }}
-                </span>
-            </a>
-            @endforeach
-        </div>
     </div>
     @endif
 
