@@ -141,13 +141,13 @@
     
     /* Better text sizing on mobile */
     .mobile-title {
-        font-size: 0.95rem;
+        font-size: 0.9rem;
         line-height: 1.3;
         margin-bottom: 0.5rem;
     }
     
     .mobile-excerpt {
-        font-size: 0.8rem;
+        font-size: 0.7rem;
         line-height: 1.4;
         margin-bottom: 0.5rem;
     }
@@ -180,13 +180,14 @@
 
 /* General image styles */
 .news-card img, .featured-card img {
-    border-top-left-radius: 0.75rem;
-    border-bottom-left-radius: 0.75rem;
+    border-top-left-radius: 0.35rem;
+    border-bottom-left-radius: 0.35rem;
 }
 </style>
 @endpush
 
 @section('content')
+
 {{-- Hero Section dengan Berita Unggulan --}}
 <section class="hero-section">
     <div class="container mx-auto px-4">
@@ -210,9 +211,6 @@
                                 {{ $mainFeatured->judul }}
                             </a>
                         </h1>
-                        @if($mainFeatured->excerpt)
-                        <p class="text-gray-200 mb-3 text-sm lg:text-base d-none d-md-block line-clamp-2">{{ Str::limit($mainFeatured->excerpt, 150) }}</p>
-                        @endif
                         <div class="flex items-center text-sm text-gray-300">
                             <i class="fas fa-clock mr-2"></i>
                             {{ $mainFeatured->published_at ? $mainFeatured->published_at->format('d M Y') : $mainFeatured->created_at->format('d M Y') }}
@@ -272,7 +270,7 @@
     <div class="space-y-4">
         @foreach($latestNews as $news)
         <div class="news-card">
-            <div class="flex">
+            <div class="flex items-center min-h-[120px]">
                 {{-- Thumbnail - Responsive sizing but always on the left --}}
                 <div class="flex-shrink-0">
                     <a href="{{ route('news.show', $news->slug) }}">
@@ -321,14 +319,14 @@
     <div class="flex items-center justify-between mb-6">
         <h2 class="text-xl lg:text-2xl font-bold text-gray-900 flex items-center">
             <div class="w-1 h-8 bg-blue-600 rounded-full mr-3"></div>
-            Berita Lainnya
+            Jangan Lewatkan
         </h2>
     </div>
 
-    <div class="space-y-4">
+    <div class="space-y-4" id="other-news-container">
         @foreach($otherNews as $news)
         <div class="featured-card">
-            <div class="flex">
+            <div class="flex items-center min-h-[120px]">
                 {{-- Thumbnail - Responsive sizing but always on the left --}}
                 <div class="flex-shrink-0">
                     <a href="{{ route('news.show', $news->slug) }}">
@@ -362,6 +360,13 @@
         </div>
         @endforeach
     </div>
+        {{-- Tombol Load More --}}
+    <div class="text-center mt-8">
+        <button id="load-more-btn" 
+                class="bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:bg-gray-400">
+            Muat Lebih Banyak
+        </button>
+    </div>
 </section>
 @endif
         </div>
@@ -385,7 +390,7 @@
                     Berita Populer
                 </h3>
                 <div class="space-y-3">
-                    @foreach($popularNews->take(5) as $popular)
+                    @foreach($popularNews->take(8) as $popular)
                     <div class="flex items-start space-x-3 pb-3 border-b border-gray-100 last:border-b-0 last:pb-0">
                         <img src="{{ $popular->thumbnail ? asset('storage/' . $popular->thumbnail) : 'https://via.placeholder.com/80x60' }}" 
                              alt="{{ $popular->judul }}" 
@@ -412,4 +417,55 @@
         </div>
     </div>
 </main>
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const loadMoreBtn = document.getElementById('load-more-btn');
+        const container = document.getElementById('other-news-container');
+        let page = 2; // Halaman selanjutnya yang akan dimuat
+
+        if (loadMoreBtn) {
+            loadMoreBtn.addEventListener('click', function () {
+                // Tampilkan loading text dan nonaktifkan tombol
+                loadMoreBtn.textContent = 'Memuat...';
+                loadMoreBtn.disabled = true;
+
+                fetch('{{ route("news.load-more") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ page: page })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.html.trim() !== '') {
+                        // Tambahkan berita baru ke kontainer
+                        container.insertAdjacentHTML('beforeend', data.html);
+                        page++; // Naikkan nomor halaman untuk permintaan berikutnya
+                        
+                        // Kembalikan tombol ke keadaan semula
+                        loadMoreBtn.textContent = 'Muat Lebih Banyak';
+                        loadMoreBtn.disabled = false;
+                    } else {
+                        // Jika tidak ada berita lagi, sembunyikan tombol
+                        loadMoreBtn.textContent = 'Tidak Ada Berita Lagi';
+                        loadMoreBtn.disabled = true;
+                        setTimeout(() => {
+                           loadMoreBtn.style.display = 'none';
+                        }, 2000);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    loadMoreBtn.textContent = 'Gagal Memuat';
+                    loadMoreBtn.disabled = false;
+                });
+            });
+        }
+    });
+</script>
+@endpush
 @endsection

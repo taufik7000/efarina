@@ -24,7 +24,7 @@ class HomeController extends Controller
         $latestNews = News::with(['category', 'tags', 'author'])
             ->where('status', 'published')
             ->where('is_featured', false)
-            ->orderBy('created_at', 'desc')
+            ->orderBy('published_at', 'desc')
             ->limit(3)
             ->get();
 
@@ -41,7 +41,7 @@ class HomeController extends Controller
         $popularNews = News::with(['category', 'tags', 'author'])
             ->where('status', 'published')
             ->orderBy('views_count', 'desc')
-            ->limit(5)
+            ->limit(8)
             ->get();
 
         // Video terbaru
@@ -56,7 +56,7 @@ class HomeController extends Controller
             ->featured()
             ->with('category')
             ->latest('published_at')
-            ->limit(3)
+            ->limit(5)
             ->get();
 
         // Kategori berita aktif
@@ -83,5 +83,35 @@ class HomeController extends Controller
             'videoCategories',
             'otherNews',
         ));
+    }
+
+
+    public function loadMoreNews(Request $request)
+    {
+        // Validasi halaman yang diminta
+        $request->validate(['page' => 'required|integer|min:2']);
+
+        $page = $request->page;
+
+        // Ambil ID berita yang sudah ditampilkan di section lain
+        $featuredNews = News::published()->featured()->latest()->take(4)->get();
+        $latestNews = News::published()->where('is_featured', false)->latest()->take(6)->get();
+        $excludedIds = $featuredNews->pluck('id')->merge($latestNews->pluck('id'));
+
+        // Query untuk "Berita Lainnya" dengan pagination
+        $otherNews = News::published()
+            ->whereNotIn('id', $excludedIds)
+            ->latest()
+            ->paginate(5, ['*'], 'page', $page); // <-- Gunakan paginate di sini
+
+        // Jika tidak ada berita lagi, kirim respons kosong
+        if ($otherNews->isEmpty()) {
+            return response()->json(['html' => '']);
+        }
+
+        // Render komponen Blade terpisah yang berisi HTML untuk setiap item berita
+        $html = view('components.news-list-item', ['newsItems' => $otherNews])->render();
+        
+        return response()->json(['html' => $html]);
     }
 }

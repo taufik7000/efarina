@@ -249,6 +249,7 @@ body {
 .attachment__caption {
     color: #888888; 
     font-size: 0.875rem;
+    margin-bottom: 20px;
     text-decoration: none !important;
 }
 </style>

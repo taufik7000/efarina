@@ -386,7 +386,7 @@ class News extends Model
 }
 
 // Update method truncateSlug untuk menggunakan smart generator
-public static function truncateSlug(string $text, int $maxLength = 50): string
+public static function truncateSlug(string $text, int $maxLength = 80): string
 {
     return self::generateSmartSlug($text, $maxLength);
 }
@@ -397,7 +397,7 @@ protected static function boot()
     
     static::creating(function ($news) {
         if (empty($news->slug)) {
-            $news->slug = self::generateShortSlug($news->judul, 50);
+            $news->slug = self::generateShortSlug($news->judul, 80);
         }
         $news->seo_score = $news->calculateSeoScore();
     });
@@ -405,7 +405,7 @@ protected static function boot()
     static::updating(function ($news) {
         // Update slug jika judul berubah
         if ($news->isDirty('judul')) {
-            $news->slug = self::generateShortSlug($news->judul, 50);
+            $news->slug = self::generateShortSlug($news->judul, 80);
         }
         // Update SEO score ketika field SEO berubah
         if ($news->isDirty(['judul', 'excerpt', 'konten', 'seo_title', 'seo_description', 'focus_keyword'])) {

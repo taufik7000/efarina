@@ -302,4 +302,6 @@ Route::middleware([HandleRedirects::class])->group(function () {
     
 });
 
+Route::post('/load-more-news', [App\Http\Controllers\HomeController::class, 'loadMoreNews'])->name('news.load-more');
+
 

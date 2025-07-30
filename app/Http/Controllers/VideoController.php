@@ -76,7 +76,7 @@ class VideoController extends Controller
             ->select(['id', 'video_id', 'title', 'description', 'custom_description', 'thumbnail_url', 'published_at', 'view_count', 'duration_seconds', 'video_category_id'])
             ->with(['category:id,nama_kategori,color'])
             ->orderBy('published_at', 'desc')
-            ->limit(3)
+            ->limit(5)
             ->get();
 
         // Pagination info

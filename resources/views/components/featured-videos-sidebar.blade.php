@@ -9,7 +9,7 @@
     </h3>
     
     <div class="space-y-4">
-        @foreach($featuredVideos->take(4) as $index => $video)
+        @foreach($featuredVideos->take(5) as $index => $video)
         <div class="group relative bg-white border border-gray-200 rounded-lg overflow-hidden hover:border-red-300 hover:shadow-md transition-all duration-300">
             {{-- Video Thumbnail --}}
             <div class="relative overflow-hidden">
@@ -78,17 +78,6 @@
         </div>
         @endforeach
     </div>
-    
-    {{-- View All Button --}}
-    @if($featuredVideos->count() > 4)
-    <div class="mt-4 text-center">
-        <a href="{{ route('video.index', ['featured' => 1]) }}" 
-           class="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors">
-            <i class="fas fa-play-circle mr-2"></i>
-            Lihat Semua
-        </a>
-    </div>
-    @endif
 </div>
 
 {{-- CSS untuk line-clamp --}}

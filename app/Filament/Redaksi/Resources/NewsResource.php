@@ -62,7 +62,7 @@ class NewsResource extends Resource
                                 Forms\Components\TextInput::make('slug')
                                     ->label('Slug URL')
                                     ->required()
-                                    ->maxLength(50)
+                                    ->maxLength(80)
                                     ->unique(ignoreRecord: true)
                                     ->live(onBlur: true)
                                     ->suffixAction(
@@ -96,6 +96,7 @@ class NewsResource extends Resource
 
                                 Forms\Components\Textarea::make('excerpt')
                                     ->label('Ringkasan/Excerpt')
+                                    ->required()
                                     ->maxLength(300)
                                     ->rows(3)
                                     ->hint('Ringkasan singkat yang akan ditampilkan di preview'),
@@ -530,7 +531,7 @@ class NewsResource extends Resource
             ->with(['category', 'tags', 'author']);
     }
 
-    private static function truncateSlug(string $text, int $maxLength = 50): string
+    private static function truncateSlug(string $text, int $maxLength = 80): string
 {
     $slug = Str::slug($text);
     
