@@ -1,13 +1,13 @@
 <header class="backdrop-blur-fallback shadow-lg fixed top-0 left-0 right-0 z-50">
     <!-- Top Bar dengan Logo -->
     <div class="bg-white border-b border-gray-200">
-        <div class="max-w-6xl mx-auto py-3 px-1">
+        <div class="max-w-5xl mx-auto py-3 px-1">
             <div class="flex items-center justify-between h-19">
                 <!-- Logo -->
             <div class="flex items-center">
                 <a href="{{ route('home') }}" class="flex items-center">
                     {{-- Ganti div tulisan dengan tag img --}}
-                <img src="{{ asset('assets/logo-efarina.webp') }}" alt="Logo Efarina TV" class="px-4 h-12 w-auto">
+                <img src="{{ asset('storage/assets/logo-efarina.webp') }}" alt="Logo Efarina TV" class="px-4 h-12 w-auto">
                 </a>
             </div>
 
@@ -40,7 +40,7 @@
 
     <!-- Navigation Bar - Updated dengan Warna Biru -->
     <div class="bg-blue-950 header-nav-blue">
-        <div class="max-w-6xl mx-auto px-4">
+        <div class="max-w-5xl mx-auto px-4">
             <div class="flex items-center justify-between">
                 <!-- Main Navigation -->
                 <nav class="hidden lg:flex items-center space-x-0">
@@ -89,7 +89,7 @@
 
     <!-- Secondary Navigation (Regional) -->
     <div class="bg-gray-100 border-b border-gray-200">
-        <div class="max-w-6xl mx-auto px-4">
+        <div class="max-w-5xl mx-auto px-4">
             <div class="hidden lg:flex items-center h-10 space-x-0">
                 <a href="/berita/kategori/simalungun" class="px-3 text-sm text-gray-700 hover:text-blue-600 transition-colors border-l border-gray-300">Simalungun</a>        
                 <a href="/berita/kategori/pematangsiantar" class="px-3 text-sm text-gray-700 hover:text-blue-600 transition-colors border-l border-gray-300">Pematangsiantar</a>
@@ -100,8 +100,7 @@
                 <a href="#" class="px-3 text-sm text-gray-700 hover:text-blue-600 transition-colors border-l border-gray-300">Asahan</a>
                 <a href="#" class="px-3 text-sm text-gray-700 hover:text-blue-600 transition-colors border-l border-gray-300">Batu Bara</a>
                 <a href="#" class="px-3 text-sm text-gray-700 hover:text-blue-600 transition-colors border-l border-gray-300">Tanjung Balai</a>
-                <a href="#" class="px-3 text-sm text-gray-700 hover:text-blue-600 transition-colors border-l border-gray-300">Tapanuli Utara</a>
-                <a href="#" class="px-3 text-sm text-gray-700 hover:text-blue-600 transition-colors border-l border-gray-300">Tapanuli Selatan</a>
+
             </div>
         </div>
     </div>

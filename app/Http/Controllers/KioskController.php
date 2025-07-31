@@ -148,4 +148,41 @@ class KioskController extends Controller
         $angle = 2 * asin(sqrt(pow(sin($latDelta / 2), 2) + cos($latFrom) * cos($latTo) * pow(sin($lonDelta / 2), 2)));
         return $angle * $earthRadius;
     }
+
+    public function cekStatusAbsensi()
+{
+    try {
+        $pengguna = Auth::user();
+        if (!$pengguna) {
+            return response()->json(['pesan' => 'Sesi tidak ditemukan.'], 401);
+        }
+
+        $hariIni = Carbon::now('Asia/Jakarta')->toDateString();
+        $kehadiranHariIni = Kehadiran::where('user_id', $pengguna->id)
+                                     ->whereDate('tanggal', $hariIni)
+                                     ->first();
+
+        $data = [
+            'jam_masuk' => null,
+            'jam_pulang' => null,
+            'sudah_masuk' => false,
+            'sudah_pulang' => false,
+            'status' => null,
+        ];
+
+        if ($kehadiranHariIni) {
+            $data['jam_masuk'] = $kehadiranHariIni->jam_masuk;
+            $data['jam_pulang'] = $kehadiranHariIni->jam_pulang;
+            $data['sudah_masuk'] = !is_null($kehadiranHariIni->jam_masuk);
+            $data['sudah_pulang'] = !is_null($kehadiranHariIni->jam_pulang);
+            $data['status'] = $kehadiranHariIni->status;
+        }
+
+        return response()->json($data);
+    } catch (Exception $e) {
+        Log::error('Error cek status absensi', ['error' => $e->getMessage()]);
+        return response()->json(['pesan' => 'Terjadi kesalahan.'], 500);
+    }
+}
+    
 }

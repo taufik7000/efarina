@@ -16,7 +16,7 @@
 
 /* Container consistency */
 .container {
-    max-width: 1150px;
+    max-width: 1024px;
 }
 
 .hero-section {

@@ -30,6 +30,8 @@ class TeamPanelProvider extends PanelProvider
         return $panel
             ->id('team')
             ->path('team')
+            ->BrandLogo('/storage/assets/logo-efarina.webp')
+            ->BrandLogoHeight('3rem')
             ->colors([
                 'primary' => Color::Blue,
             ])

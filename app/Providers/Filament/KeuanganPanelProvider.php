@@ -30,6 +30,8 @@ class KeuanganPanelProvider extends PanelProvider
                 'primary' => Color::Blue,
             ])
             ->databaseNotifications()
+            ->BrandLogo('/storage/assets/logo-efarina.webp')
+            ->BrandLogoHeight('3rem')
             ->viteTheme('resources/css/filament/keuangan/theme.css')
             ->discoverResources(in: app_path('Filament/Keuangan/Resources'), for: 'App\\Filament\\Keuangan\\Resources')
             ->resources([

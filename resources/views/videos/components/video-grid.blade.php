@@ -1,6 +1,6 @@
 {{-- Video Grid Component --}}
 @if($videos->isNotEmpty())
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
     @foreach($videos as $video)
     <div class="group bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg hover:border-blue-200 transition-all duration-300">
         <div class="relative">

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Video Terbaru - Portal Berita')
+@section('title', 'Tayangan Video Terbaru - Efarina TV')
 
 @push('styles')
 <style>
@@ -15,15 +15,15 @@
 
 /* Container consistency */
 .container {
-    max-width: 1150px;
+    max-width: 1024px;
 }
 
 .hero-section {
-    margin-top: 180px;
-    background: #2d3d5f;
+
     position: relative;
     overflow: hidden;
     padding: 2rem 0 3rem 0;
+    margin-top: 50px;
 }
 
 .hero-section::before {
@@ -33,7 +33,6 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(135deg, rgba(45, 61, 95, 0.95) 0%, rgba(35, 47, 73, 0.98) 100%);
     pointer-events: none;
 }
 
@@ -44,9 +43,6 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-image: 
-        radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
-        radial-gradient(circle at 80% 20%, rgba(239, 68, 68, 0.1) 0%, transparent 50%);
     pointer-events: none;
 }
 
@@ -305,17 +301,11 @@ input:focus, select:focus, button:focus, a:focus {
 @endpush
 
 @section('content')
-<div class="bg-gray-50 min-h-screen">
+<div class="bg-blue-950 header-nav-blue">
     {{-- Hero Section dengan Video Unggulan --}}
     <section class="hero-section">
         
-        {{-- Hero Title --}}
-        <div class="container mx-auto px-4 relative z-10 mb-6">
-            <h1 class="hero-title">Video Terbaru</h1>
-            <p class="text-white/80 text-lg">Tonton video berita terkini dan terpercaya dari Sumatra Utara</p>
-        </div>
-        
-        <div class="container mx-auto px-4 relative z-10">
+        <div class="container mx-auto px-4 relative mt-28">
             @if($featuredVideos->count() > 0)
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 
@@ -326,7 +316,7 @@ input:focus, select:focus, button:focus, a:focus {
                         <img src="{{ $mainFeatured->thumbnail_maxres ?? $mainFeatured->thumbnail_hq ?? 'https://via.placeholder.com/800x450' }}" 
                              alt="{{ $mainFeatured->title }}" 
                              class="w-full h-full object-cover rounded-lg">
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent rounded-lg"></div>
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent rounded-lg"></div>
                         
                         {{-- Play Button --}}
                         <a href="{{ route('video.show', $mainFeatured->video_id) }}" class="play-button">
@@ -364,7 +354,7 @@ input:focus, select:focus, button:focus, a:focus {
 
                 {{-- Sidebar Video Unggulan --}}
                 <div class="space-y-4">
-                    @foreach($featuredVideos->skip(1)->take(4) as $index => $video)
+                    @foreach($featuredVideos->skip(1)->take(3) as $index => $video)
                     <div class="video-card group">
                         <div class="flex">
                             <div class="relative flex-shrink-0 w-32 h-20 lg:w-40 lg:h-24">
@@ -411,10 +401,10 @@ input:focus, select:focus, button:focus, a:focus {
 
 
 
-    <div class="max-w-6xl mx-auto px-4 py-8">
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+    <div class="max-w-5xl mx-auto px-4 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-2">
             {{-- Main Content --}}
-            <div class="lg:col-span-3 space-y-8">
+            <div class="lg:col-span-2 space-y-8">
 
                 {{-- Video Grid Component --}}
                 @include('videos.components.video-grid', ['videos' => $videos])

@@ -25,6 +25,8 @@ class HrdPanelProvider extends PanelProvider
         return $panel
             ->id('hrd')
             ->path('hrd')
+            ->BrandLogo('/storage/assets/logo-efarina.webp')
+            ->BrandLogoHeight('3rem')
             ->colors([
                 'primary' => Color::Amber,
             ])

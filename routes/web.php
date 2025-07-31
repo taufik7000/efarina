@@ -69,6 +69,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
 Route::middleware(['web', 'auth'])->prefix('api')->group(function () {
     Route::post('/absensi/validasi', [KioskController::class, 'validasiAbsensi']);
     Route::get('/absensi/status', [KioskController::class, 'cekStatusAbsensi']);
+
+    Route::get('/absensi/status-hari-ini', [KioskController::class, 'getStatusHariIni']);
+    Route::post('/absensi/validasi-terpisah', [KioskController::class, 'validasiAbsensiTerpisah']);
 });
 
 // Secure file routes - harus login

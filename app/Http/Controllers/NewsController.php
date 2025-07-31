@@ -71,7 +71,7 @@ class NewsController extends Controller
             ->where('status', 'published')
             ->where('id', '!=', $news->id)
             ->orderBy('views_count', 'desc')
-            ->limit(5)
+            ->limit(10)
             ->get();
 
         return view('news.show', compact('news', 'relatedNews', 'popularNews'));

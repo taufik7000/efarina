@@ -16,7 +16,7 @@
 @endsection
 
 @section('content')
-<div class="bg-gray-50 min-h-screen">
+<div class="max-w-5xl mx-auto bg-gray-50 min-h-screen mt-24">
     {{-- Breadcrumb --}}
     <div class="bg-white border-b">
         <div class="max-w-7xl mx-auto px-4 py-3">
@@ -34,10 +34,10 @@
         </div>
     </div>
 
-    <div class="max-w-6xl mx-auto px-4 py-8">
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+    <div class="px-4 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {{-- Main Video Content --}}
-            <div class="lg:col-span-3">
+            <div class="lg:col-span-2">
                 {{-- Video Player --}}
                 <div class="bg-black rounded-lg overflow-hidden mb-6">
                     <div class="relative aspect-video">
@@ -78,24 +78,9 @@
                         @endif
                     </div>
 
-                    {{-- Channel Info --}}
-                    <div class="flex items-center gap-3 mb-4 pb-4 border-b border-gray-200">
-                        <div class="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center text-white font-semibold">
-                            {{ substr($video->channel_title, 0, 1) }}
-                        </div>
-                        <div>
-                            <h3 class="font-semibold text-gray-900">{{ $video->channel_title }}</h3>
-                            <a href="{{ $video->channel_url }}" target="_blank" 
-                               class="text-sm text-red-600 hover:text-red-700 transition-colors">
-                                Lihat Channel →
-                            </a>
-                        </div>
-                    </div>
-
                     {{-- Description --}}
                     @if($video->display_description)
                     <div class="mb-6">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-3">Deskripsi</h3>
                         <div class="text-gray-700 whitespace-pre-line">{{ $video->display_description }}</div>
                     </div>
                     @endif
@@ -148,23 +133,6 @@
 
             {{-- Sidebar --}}
             <div class="lg:col-span-1">
-                {{-- Action Buttons --}}
-                <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-                    <h3 class="font-semibold text-gray-900 mb-4">Tonton di YouTube</h3>
-                    <div class="space-y-3">
-                        <a href="{{ $video->watch_url }}" 
-                           target="_blank" 
-                           class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
-                            <i class="fab fa-youtube text-xl"></i>
-                            Tonton di YouTube
-                        </a>
-                        <a href="{{ route('video.index') }}" 
-                           class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                            <i class="fas fa-arrow-left"></i>
-                            Kembali ke Video
-                        </a>
-                    </div>
-                </div>
 
                 {{-- Related Videos --}}
                 @if($relatedVideos->isNotEmpty())

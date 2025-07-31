@@ -5,7 +5,7 @@
     .sidebar {
         display: flex;
         flex-direction: column;
-        gap: 2rem;
+        gap: 1rem;
     }
 
     .sidebar-card {
@@ -322,98 +322,33 @@
     }
     </style>
 
-    {{-- Popular News --}}
-    @if(isset($popularNews) && $popularNews->count() > 0)
-    <div class="sidebar-card">
-        <div class="sidebar-header">
-        <h3 class="sidebar-title flex items-center">
-        {{-- Menggunakan ikon "outline" dari Heroicons --}}
-        <x-heroicon-o-sparkles class="w-6 h-6 mr-2 text-red-600"/>
-        Trending
-    </h3>
-        </div>
-        <div class="sidebar-content">
-            @foreach($popularNews as $index => $popular)
-            <a href="{{ route('news.show', $popular->slug) }}" class="popular-item">
-                <div class="popular-rank rank-{{ $index + 1 <= 3 ? $index + 1 : 'default' }}">
-                    {{ $index + 1 }}
-                </div>
-                <div class="popular-content">
-                    <h4 class="popular-title">{{ Str::limit($popular->judul, 60) }}</h4>
-                    <div class="popular-meta">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z"/>
-                        </svg>
-                        <span>{{ number_format($popular->views_count ?? 0) }}</span>
+                {{-- Berita Populer --}}
+            @if($popularNews->count() > 0)
+            <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+                <h3 class="text-lg font-bold text-gray-900 mb-3 flex items-center">
+                    <i class="fas fa-fire text-orange-500 mr-2"></i>
+                    Berita Populer
+                </h3>
+                <div class="space-y-3">
+                    @foreach($popularNews->take(8) as $popular)
+                    <div class="flex items-start space-x-3 pb-3 border-b border-gray-100 last:border-b-0 last:pb-0">
+                        <img src="{{ $popular->thumbnail ? asset('storage/' . $popular->thumbnail) : 'https://via.placeholder.com/80x60' }}" 
+                             alt="{{ $popular->judul }}" 
+                             class="w-16 h-12 object-cover rounded flex-shrink-0">
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-medium text-gray-900 text-sm leading-tight mb-1 hover:text-red-600 transition-colors line-clamp-2">
+                                <a href="{{ route('news.show', $popular->slug) }}">{{ Str::limit($popular->judul, 80) }}</a>
+                            </h4>
+                            <div class="flex items-center text-xs text-gray-500">
+                                <i class="fas fa-eye mr-1"></i>
+                                {{ number_format($popular->views_count) }}
+                                <span class="mx-2">•</span>
+                                <span>{{ $popular->published_at ? $popular->published_at->format('d M') : $popular->created_at->format('d M') }}</span>
+                            </div>
+                        </div>
                     </div>
+                    @endforeach
                 </div>
-            </a>
-            @endforeach
-        </div>
-    </div>
-    @endif
-
-    {{-- Related News --}}
-    @if(isset($relatedNews) && $relatedNews->count() > 0)
-    <div class="sidebar-card">
-        <div class="sidebar-header">
-            <h3 class="sidebar-title flex items-center">
-        {{-- Menggunakan ikon "outline" dari Heroicons --}}
-        <x-heroicon-o-sparkles class="w-6 h-6 mr-2 text-eslate-600"/>
-                 Berita Terkait</h3>
-        </div>
-        <div class="sidebar-content">
-            @foreach($relatedNews as $related)
-            <a href="{{ route('news.show', $related->slug) }}" class="related-item">
-                <img src="{{ $related->thumbnail ? asset('storage/' . $related->thumbnail) : 'https://via.placeholder.com/64x48' }}" 
-                     alt="{{ $related->judul }}" 
-                     class="related-image">
-                <div class="related-content">
-                    <h4 class="related-title">{{ Str::limit($related->judul, 70) }}</h4>
-                    <div class="related-meta">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
-                        </svg>
-                        {{ $related->created_at->format('d M Y') }}
-                    </div>
-                </div>
-            </a>
-            @endforeach
-        </div>
-    </div>
-    @endif
-
-    {{-- Recent News --}}
-    <div class="sidebar-card">
-        <div class="sidebar-header">
-            <h3 class="sidebar-title">🕒 Terbaru</h3>
-        </div>
-        <div class="sidebar-content">
-            @php
-            $recentNews = \App\Models\News::with(['category'])
-                ->where('status', 'published')
-                ->where('id', '!=', $news->id)
-                ->latest()
-                ->limit(5)
-                ->get();
-            @endphp
-            
-            @foreach($recentNews as $recent)
-            <a href="{{ route('news.show', $recent->slug) }}" class="recent-item">
-                <img src="{{ $recent->thumbnail ? asset('storage/' . $recent->thumbnail) : 'https://via.placeholder.com/64x48' }}" 
-                     alt="{{ $recent->judul }}" 
-                     class="recent-image">
-                <div class="recent-content">
-                    <h4 class="recent-title">{{ Str::limit($recent->judul, 60) }}</h4>
-                    <div class="recent-meta">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
-                        </svg>
-                        {{ $recent->created_at->format('d M Y') }}
-                    </div>
-                </div>
-            </a>
-            @endforeach
-        </div>
-    </div>
+            </div>
+            @endif
 </aside>

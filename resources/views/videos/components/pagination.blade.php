@@ -40,11 +40,11 @@
             @if($videos->hasMorePages())
             <a href="{{ $videos->nextPageUrl() }}" 
                class="px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 transition-all">
-                Selanjutnya<i class="fas fa-chevron-right ml-1"></i>
+                Next<i class="fas fa-chevron-right ml-1"></i>
             </a>
             @else
             <span class="px-3 py-2 text-sm text-gray-400 bg-gray-100 rounded-lg cursor-not-allowed">
-                Selanjutnya<i class="fas fa-chevron-right ml-1"></i>
+                Next<i class="fas fa-chevron-right ml-1"></i>
             </span>
             @endif
         </div>

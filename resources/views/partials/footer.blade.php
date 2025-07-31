@@ -1,37 +1,77 @@
-<!-- Footer -->
-<footer class="bg-gray-800 text-white py-12">
-    <div class="max-w-7xl mx-auto px-4">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div>
-                <h3 class="text-xl font-bold mb-4">
-                    <i class="fas fa-newspaper mr-2"></i>
-                    Portal Berita
-                </h3>
-                <p class="text-gray-300">
-                    Menyajikan berita terkini dan terpercaya untuk masyarakat Indonesia.
+<footer class="bg-gray-800 text-gray-300 pt-16 pb-8">
+    <div class="container mx-auto px-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+
+            {{-- Kolom 1: Logo dan Deskripsi --}}
+            <div class="space-y-4">
+                <a href="{{ route('home') }}" class="inline-block">
+                    {{-- Pastikan path logo sudah benar --}}
+                    <img src="{{ asset('storage/assets/logo-efarina.webp') }}" alt="Logo Efarina TV" class="h-10">
+                </a>
+                <p class="text-sm text-gray-400">
+                    Efarina TV dapat dinikmati di seluruh Indonesia dengan memilih Satelit Telkom 4 H 3978.
                 </p>
-            </div>
-            
-            <div>
-                <h4 class="text-lg font-semibold mb-4">Navigasi</h4>
-                <ul class="space-y-2">
-                    <li><a href="{{ route('home') }}" class="text-gray-300 hover:text-white transition-colors">Beranda</a></li>
-                    <li><a href="{{ route('news.index') }}" class="text-gray-300 hover:text-white transition-colors">Berita</a></li>
-                </ul>
-            </div>
-            
-            <div>
-                <h4 class="text-lg font-semibold mb-4">Hubungi Kami</h4>
-                <div class="space-y-2 text-gray-300">
-                    <p><i class="fas fa-envelope mr-2"></i> info@portalberita.com</p>
-                    <p><i class="fas fa-phone mr-2"></i> (021) 1234-5678</p>
-                    <p><i class="fas fa-map-marker-alt mr-2"></i> Jakarta, Indonesia</p>
+                {{-- Ikon Media Sosial --}}
+                <div class="flex space-x-4">
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                        <i class="fab fa-facebook-f fa-lg"></i>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                        <i class="fab fa-youtube fa-lg"></i>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                        <i class="fab fa-instagram fa-lg"></i>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                        <i class="fab fa-tiktok fa-lg"></i>
+                    </a>
                 </div>
             </div>
+
+            {{-- Kolom 2: Informasi --}}
+            <div>
+                <h3 class="text-white font-semibold text-lg mb-4">Informasi</h3>
+                <ul class="space-y-3 text-sm">
+                    <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Tentang</a></li>
+                    <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Kontak</a></li>
+                    <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Pedoman Media</a></li>
+                    <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Privacy</a></li>
+                    <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Karir</a></li>
+                </ul>
+            </div>
+
+            {{-- Kolom 3: Program --}}
+            <div>
+                <h3 class="text-white font-semibold text-lg mb-4">Program</h3>
+                <ul class="space-y-3 text-sm">
+                    <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Si Ucok</a></li>
+                    <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Dendang Irama</a></li>
+                    <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Sumut Terkini</a></li>
+                    <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Marragam Ragam</a></li>
+                    <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Etah Melalak</a></li>
+                </ul>
+            </div>
+
+            {{-- Kolom 4: Berita --}}
+            <div>
+                <h3 class="text-white font-semibold text-lg mb-4">Berita</h3>
+                <ul class="space-y-3 text-sm">
+                    <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Simalungun</a></li>
+                    <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Pematangsiantar</a></li>
+                    <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Batu Bara</a></li>
+                    <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Asahan</a></li>
+                    <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Tanjung Balai</a></li>
+                </ul>
+            </div>
+
         </div>
-        
-        <div class="border-t border-gray-700 mt-8 pt-8 text-center text-gray-300">
-            <p>&copy; {{ date('Y') }} Portal Berita. All rights reserved.</p>
+
+        {{-- Bagian Bawah Footer: Hak Cipta --}}
+        <div class="border-t border-gray-700 pt-6 mt-8">
+            <p class="text-center text-sm text-gray-500">
+                Efarina TV © {{ date('Y') }} All rights Reserved.
+            </p>
         </div>
+
     </div>
 </footer>
