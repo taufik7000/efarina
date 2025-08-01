@@ -101,7 +101,7 @@ class HomeController extends Controller
         // Query untuk "Berita Lainnya" dengan pagination
         $otherNews = News::published()
             ->whereNotIn('id', $excludedIds)
-            ->latest()
+            ->latest('published_at')
             ->paginate(5, ['*'], 'page', $page); // <-- Gunakan paginate di sini
 
         // Jika tidak ada berita lagi, kirim respons kosong

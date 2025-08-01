@@ -9,7 +9,7 @@
                         Video Terbaru
                     </h2>
         <a href="{{ route('video.index') }}" 
-           class="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-300 text-sm font-medium shadow-sm hover:shadow-md">
+           class="inline-flex items-center px-5 py-1 text-gray-600 rounded-xl transition-all text-sm font-medium">
             <span>Lihat Semua</span>
             <i class="fas fa-arrow-right ml-2 text-xs"></i>
         </a>

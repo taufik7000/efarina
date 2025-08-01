@@ -30,8 +30,8 @@
     <main>
         @yield('content')
     </main>
-    @include('partials.footer')
     <!-- Additional Scripts -->
     @stack('scripts')
+    @include('partials.footer')
 </body>
 </html>

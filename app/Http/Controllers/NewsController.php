@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\News;
 use App\Models\NewsCategory;
 use App\Models\NewsTag;
+use App\Models\YoutubeVideo;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Http\JsonResponse;
@@ -73,8 +74,37 @@ class NewsController extends Controller
             ->orderBy('views_count', 'desc')
             ->limit(10)
             ->get();
+            
+        $featuredVideos = YoutubeVideo::active()
+            ->featured()
+            ->with('category')
+            ->latest('published_at')
+            ->limit(5)
+            ->get();
 
-        return view('news.show', compact('news', 'relatedNews', 'popularNews'));
+        return view('news.show', compact('news', 'relatedNews', 'popularNews', 'featuredVideos'));
+    }
+
+    public function apiRelatedNews(Request $request)
+    {
+        // Validasi request (category_id dihapus)
+        $request->validate([
+            'exclude_id' => 'required|integer|exists:news,id',
+        ]);
+
+        $relatedNews = News::with(['category:id,nama_kategori,slug,color', 'author:id,name'])
+            ->select('id', 'slug', 'judul', 'thumbnail', 'excerpt', 'published_at', 'news_category_id', 'author_id')
+            ->where('status', 'published')
+            ->where('id', '!=', $request->exclude_id)
+            // ->where('news_category_id', $request->category_id) // <-- HAPUS BARIS INI
+            ->latest('published_at')
+            ->paginate(4);
+
+        if ($relatedNews->isEmpty()) {
+            return response('');
+        }
+
+        return view('news.components.related-news-items', ['newsItems' => $relatedNews]);
     }
 
     public function category(NewsCategory $category): View

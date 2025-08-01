@@ -39,7 +39,7 @@
     </div>
 
     <!-- Navigation Bar - Updated dengan Warna Biru -->
-    <div class="bg-blue-950 header-nav-blue">
+    <div class="bg-blue-950">
         <div class="max-w-5xl mx-auto px-4">
             <div class="flex items-center justify-between">
                 <!-- Main Navigation -->

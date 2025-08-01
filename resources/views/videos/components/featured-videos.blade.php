@@ -4,7 +4,7 @@
     <div class="border-b border-gray-200 px-6 py-4">
         <h2 class="text-xl font-bold text-gray-900 flex items-center">
             <div class="w-2 h-6 bg-gradient-to-b from-blue-600 to-blue-800 rounded-full mr-3"></div>
-            Video Unggulan
+            Direkomendasikan
         </h2>
     </div>
     <div class="p-6">
@@ -27,7 +27,7 @@
                     </div>
                     <div class="absolute top-2 left-2">
                         <span class="bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-2 py-1 rounded text-xs font-medium">
-                            <i class="fas fa-star mr-1"></i>UNGGULAN
+                            <i class="fas fa-star mr-1"></i>Unggulan
                         </span>
                     </div>
                 </div>

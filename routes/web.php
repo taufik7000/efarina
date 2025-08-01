@@ -45,6 +45,8 @@ Route::get('/redaksi/login', function() {
     return redirect('/login');
 });
 
+Route::get('/live', [VideoController::class, 'live'])->name('video.live');
+
 
 Route::get('/team/login', function() {
     return redirect('/login');
@@ -103,6 +105,8 @@ Route::post('/api/news/{news}/view', [NewsController::class, 'incrementView'])
     ->middleware('throttle:100,1');
 
 
+Route::get('/news/related', [NewsController::class, 'apiRelatedNews'])->name('api.news.related');
+
 Route::get('/video/{videoId}', [VideoController::class, 'show'])
     ->name('video.show')
     ->where('videoId', '[a-zA-Z0-9\-_]+');
@@ -123,6 +127,8 @@ Route::prefix('video')->name('video.')->group(function () {
 Route::prefix('api/video')->name('api.video.')->group(function () {
     Route::get('/', [App\Http\Controllers\VideoController::class, 'apiIndex'])->name('index');
 });
+
+Route::get('/videos/rendered-grid', [VideoController::class, 'apiRenderedGrid'])->name('api.video.renderedGrid');
 
 
 // Route GET untuk PDF export

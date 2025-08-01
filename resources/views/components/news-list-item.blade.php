@@ -12,7 +12,7 @@
         
         {{-- Konten - Selalu di kanan dengan lebar fleksibel --}}
         <div class="flex-1 p-3 md:p-4">
-            <h3 class="font-semibold mobile-title md:text-base lg:text-lg leading-tight text-gray-900 mb-2 hover:text-red-600 transition-colors">
+            <h3 class="font-semibold mobile-title md:text-base lg:text-lg leading-tight text-gray-900 mb-2 hover:text-red-600 transition-colors line-clamp-2">
                 <a href="{{ route('news.show', $news->slug) }}">{{ $news->judul }}</a>
             </h3>
             

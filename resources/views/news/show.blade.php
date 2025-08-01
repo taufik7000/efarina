@@ -341,7 +341,7 @@ body {
 
             {{-- Share Section --}}
             <div class="share-section">
-                <div class="text-base font-medium text-gray-900 mb-3">Bagikan Artikel:</div>
+                <div class="text-base font-medium text-gray-900 mb-1">Bagikan Artikel:</div>
                 <div class="share-buttons">
                     <a href="https://www.facebook.com/sharer/sharer.php?u={{ urlencode(request()->url()) }}" 
                        target="_blank" class="share-btn facebook">
@@ -372,6 +372,26 @@ body {
                     </button>
                 </div>
             </div>
+
+<section class="mt-12 pt-8 border-t border-gray-200">
+    <h2 class="text-2xl font-bold text-gray-900 mb-6">Berita Terbaru Lainnya</h2>
+
+    {{-- DIUBAH: Kontainer diubah menjadi grid yang responsif --}}
+    <div id="related-news-container" class="space-y-4">
+        {{-- Kartu berita akan dimuat di sini oleh JavaScript --}}
+    </div>
+
+    {{-- Tombol Load More (tidak berubah) --}}
+    <div id="load-more-news-wrapper" class="mt-8 text-center">
+        <button id="load-more-news-btn" 
+                class="bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-blue-700 transition-all"
+                data-page="1" 
+                data-exclude="{{ $news->id }}">
+            <span id="news-btn-text">Muat Lebih Banyak</span>
+            <span id="news-btn-loader" class="hidden"><i class="fas fa-spinner fa-spin"></i> Memuat...</span>
+        </button>
+    </div>
+</section>
         </main>
 
         {{-- Sidebar --}}
@@ -381,6 +401,7 @@ body {
                 'relatedNews' => $relatedNews ?? [], 
                 'popularNews' => $popularNews ?? []
             ])
+            @include('components.featured-videos-sidebar', ['featuredVideos' => $featuredVideos])
         </aside>
     </div>
 </div>
@@ -433,8 +454,6 @@ function fallbackCopyToClipboard(text) {
     document.body.removeChild(textArea);
 }
 </script>
-
-@push('scripts')
 <script>
     // Jalankan skrip ini setelah seluruh konten halaman dimuat
     document.addEventListener('DOMContentLoaded', function() {
@@ -468,5 +487,59 @@ function fallbackCopyToClipboard(text) {
 
     });
 </script>
-@endpush
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const loadMoreBtn = document.getElementById('load-more-news-btn');
+    const newsContainer = document.getElementById('related-news-container');
+    const loadMoreWrapper = document.getElementById('load-more-news-wrapper');
+    const btnText = document.getElementById('news-btn-text');
+    const btnLoader = document.getElementById('news-btn-loader');
+    
+    // Fungsi untuk memuat berita
+    function loadRelatedNews() {
+        if (!loadMoreBtn) return; // Hentikan jika tombol tidak ada
+
+        let page = parseInt(loadMoreBtn.getAttribute('data-page'));
+        const excludeId = loadMoreBtn.getAttribute('data-exclude');
+        const categoryId = loadMoreBtn.getAttribute('data-category');
+
+        // Tampilkan loader
+        btnText.classList.add('hidden');
+        btnLoader.classList.remove('hidden');
+        loadMoreBtn.disabled = true;
+
+        const url = `{{ route('api.news.related') }}?page=${page}&exclude_id=${excludeId}&category_id=${categoryId}`;
+
+        fetch(url)
+            .then(response => response.text())
+            .then(html => {
+                if (html.trim() !== '') {
+                    // Jika ada konten, tambahkan ke kontainer
+                    newsContainer.insertAdjacentHTML('beforeend', html);
+                    // Naikkan nomor halaman untuk request berikutnya
+                    loadMoreBtn.setAttribute('data-page', page + 1);
+                } else {
+                    // Jika tidak ada konten lagi, sembunyikan tombol
+                    if(loadMoreWrapper) loadMoreWrapper.style.display = 'none';
+                }
+            })
+            .catch(error => console.error('Error loading related news:', error))
+            .finally(() => {
+                // Kembalikan tombol ke keadaan normal
+                btnText.classList.remove('hidden');
+                btnLoader.classList.add('hidden');
+                loadMoreBtn.disabled = false;
+            });
+    }
+
+    // Panggil fungsi untuk memuat berita pertama kali saat halaman dibuka
+    loadRelatedNews();
+
+    // Tambahkan event listener untuk klik pada tombol
+    if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', loadRelatedNews);
+    }
+});
+</script>
 @endpush

@@ -19,9 +19,7 @@
     max-width: 1024px;
 }
 
-.hero-section {
-    margin-top: 180px;
-}
+
 
 .featured-card {
     position: relative;
@@ -190,7 +188,7 @@
 
 {{-- Hero Section dengan Berita Unggulan --}}
 <section class="hero-section">
-    <div class="container mx-auto px-4">
+    <div class="container mx-auto px-4 mt-24">
         @if($featuredNews->count() > 0)
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
             
@@ -261,10 +259,6 @@
             <div class="w-1 h-8 bg-red-600 rounded-full mr-3"></div>
             Berita Terbaru
         </h2>
-        <a href="{{ route('news.index') }}" 
-           class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
-            Lihat Semua
-        </a>
     </div>
 
     <div class="space-y-4">
@@ -276,14 +270,14 @@
                     <a href="{{ route('news.show', $news->slug) }}">
                         <img src="{{ $news->thumbnail ? asset('storage/' . $news->thumbnail) : 'https://via.placeholder.com/400x250' }}" 
                              alt="{{ $news->judul }}" 
-                             class="w-28 h-20 md:w-40 md:h-28 lg:w-48 lg:h-32 object-cover">
+                             class="h-28 w-40 rounded-md object-cover">
                     </a>
                 </div>
                 
                 {{-- Content - Always on the right, flexible width --}}
                 <div class="flex-1 p-3 md:p-4">
-                    <h3 class="font-semibold mobile-title md:text-base lg:text-lg leading-tight text-gray-900 mb-2 hover:text-red-600 transition-colors">
-                        <a href="{{ route('news.show', $news->slug) }}">{{ $news->judul }}</a>
+                    <h3 class="font-semibold mobile-title md:text-base lg:text-lg leading-tight text-gray-900 mb-2 hover:text-red-600 transition-colors line-clamp-2">
+                        <a href="{{ route('news.show', $news->slug) }}">{{ $news->judul}}</a>
                     </h3>
                     
                     @if($news->excerpt)
@@ -338,7 +332,7 @@
                 
                 {{-- Content - Always on the right, flexible width --}}
                 <div class="flex-1 p-3 md:p-4">
-                    <h3 class="font-semibold mobile-title md:text-base lg:text-lg leading-tight text-gray-900 mb-2 hover:text-red-600 transition-colors">
+                    <h3 class="font-semibold mobile-title md:text-base lg:text-lg leading-tight text-gray-900 mb-2 hover:text-red-600 transition-colors line-clamp-2">
                         <a href="{{ route('news.show', $news->slug) }}">{{ $news->judul }}</a>
                     </h3>
                     

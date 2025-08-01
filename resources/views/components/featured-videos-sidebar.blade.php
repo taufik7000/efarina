@@ -4,8 +4,8 @@
 @if($featuredVideos->isNotEmpty())
 <div class="bg-white rounded-lg shadow-md p-4 mb-6">
     <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
-        <i class="fas fa-star text-yellow-500 mr-2"></i>
-        Video Unggulan
+        <i class="fas fa-circle-play text-orange-500 mr-2"></i>
+        Tayangan Unggulan
     </h3>
     
     <div class="space-y-4">
@@ -67,12 +67,6 @@
                         <i class="fas fa-calendar-alt mr-1"></i>
                         <span>{{ $video->published_at ? $video->published_at->format('d M') : $video->created_at->format('d M') }}</span>
                     </div>
-                    @if(isset($video->view_count))
-                    <div class="flex items-center">
-                        <i class="fas fa-eye mr-1"></i>
-                        <span>{{ number_format($video->view_count) }}</span>
-                    </div>
-                    @endif
                 </div>
             </div>
         </div>

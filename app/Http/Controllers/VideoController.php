@@ -66,14 +66,14 @@ class VideoController extends Controller
             ->withCount(['videos' => function($query) {
                 $query->where('is_active', true);
             }])
-            ->orderBy('sort_order')
+            ->orderBy('videos_count', 'desc')
             ->orderBy('nama_kategori')
             ->get();
 
         // Featured videos for hero section - optimized query
         $featuredVideos = YoutubeVideo::active()
             ->featured()
-            ->select(['id', 'video_id', 'title', 'description', 'custom_description', 'thumbnail_url', 'published_at', 'view_count', 'duration_seconds', 'video_category_id'])
+            ->select(['id', 'video_id', 'title', 'description', 'thumbnail_url', 'published_at', 'view_count', 'duration_seconds', 'video_category_id'])
             ->with(['category:id,nama_kategori,color'])
             ->orderBy('published_at', 'desc')
             ->limit(5)
@@ -89,6 +89,12 @@ class VideoController extends Controller
             'to' => $videos->lastItem(),
         ];
 
+        if ($request->has('exclude')) {
+            $query->where('video_id', '!=', $request->exclude);
+        }
+         
+        $videos = $query->paginate(12);
+
         return view('videos.index', compact('videos', 'categories', 'featuredVideos', 'paginationInfo', 'sort', 'perPage'));
     }
 
@@ -101,6 +107,13 @@ class VideoController extends Controller
             ->with('category')
             ->where('video_id', $videoId)
             ->firstOrFail();
+
+        $featuredVideos = YoutubeVideo::active()
+            ->featured()
+            ->with('category')
+            ->latest('published_at')
+            ->limit(5)
+            ->get();
 
         // Related videos from same category
         $relatedVideos = YoutubeVideo::active()
@@ -121,7 +134,36 @@ class VideoController extends Controller
                 ->get();
         }
 
-        return view('videos.show', compact('video', 'relatedVideos'));
+        return view('videos.show', compact('video', 'relatedVideos', 'featuredVideos'));
+    }
+
+    public function live()
+    {
+        $videos = YoutubeVideo::active()
+            ->with('category')
+            ->latest('published_at')
+            ->paginate(12)
+            ->withQueryString();
+
+        // KOREKSI DI SINI: Ubah nama key agar sesuai dengan yang diharapkan komponen
+        $paginationInfo = [
+            'from'  => $videos->firstItem(), // Sebelumnya 'firstItem'
+            'to'    => $videos->lastItem(),  // Sebelumnya 'lastItem'
+            'total' => $videos->total(),
+        ];
+
+        $featuredVideos = YoutubeVideo::active()
+            ->featured()
+            ->with('category')
+            ->latest('published_at')
+            ->limit(5)
+            ->get();
+
+        return view('videos.live', [
+            'videos'          => $videos,
+            'featuredVideos'  => $featuredVideos,
+            'paginationInfo'  => $paginationInfo,
+        ]);
     }
 
     /**
@@ -129,7 +171,7 @@ class VideoController extends Controller
      */
     public function apiIndex(Request $request)
     {
-        $query = YoutubeVideo::active()->with('category');
+        $query = YoutubeVideo::active()->with('category')->latest('published_at');
 
         if ($request->has('category')) {
             $query->byCategory($request->category);
@@ -146,5 +188,55 @@ class VideoController extends Controller
         $videos = $query->latest()->paginate(12);
 
         return response()->json($videos);
+    }
+
+
+    public function apiRenderedGrid(Request $request)
+    {
+        try {
+            $query = YoutubeVideo::active()->with('category')->latest('published_at');
+
+            // Terapkan filter kategori jika ada
+            if ($request->filled('category') && $request->category !== 'all') {
+                $categorySlug = $request->category;
+                // Menggunakan whereHas, cara yang lebih aman dan standar
+                $query->whereHas('category', function ($q) use ($categorySlug) {
+                    $q->where('slug', $categorySlug);
+                });
+            }
+            
+            // Terapkan filter pencarian jika ada
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where('title', 'like', "%{$search}%");
+            }
+
+            $videos = $query->paginate(12)->withQueryString();
+
+            // Siapkan info pagination
+            $paginationInfo = [
+                'from'  => $videos->firstItem(),
+                'to'    => $videos->lastItem(),
+                'total' => $videos->total(),
+            ];
+
+            // Render komponen menjadi HTML
+            $html = view('videos.components.video-grid', ['videos' => $videos])->render();
+            $paginationHtml = view('videos.components.pagination', ['videos' => $videos, 'paginationInfo' => $paginationInfo])->render();
+
+            // Kembalikan JSON yang berisi HTML
+            return response()->json([
+                'html' => $html,
+                'pagination_html' => $paginationHtml,
+            ]);
+
+        } catch (\Exception $e) {
+            // Jika terjadi error, kirim respons error 500 dengan pesan
+            // Ini akan lebih mudah di-debug di console browser
+            return response()->json([
+                'error' => 'Terjadi kesalahan pada server.',
+                'message' => $e->getMessage() // Pesan error sesungguhnya
+            ], 500);
+        }
     }
 }

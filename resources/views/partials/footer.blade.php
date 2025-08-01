@@ -1,12 +1,12 @@
-<footer class="bg-gray-800 text-gray-300 pt-16 pb-8">
-    <div class="container mx-auto px-4">
+<footer class="bg-indigo-950">
+    <div class="container mx-auto lg:pt-24 px-4">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
 
             {{-- Kolom 1: Logo dan Deskripsi --}}
             <div class="space-y-4">
                 <a href="{{ route('home') }}" class="inline-block">
                     {{-- Pastikan path logo sudah benar --}}
-                    <img src="{{ asset('storage/assets/logo-efarina.webp') }}" alt="Logo Efarina TV" class="h-10">
+                    <img src="{{ asset('storage/assets/logo-efarina.webp') }}" alt="Logo Efarina TV" class="h-20">
                 </a>
                 <p class="text-sm text-gray-400">
                     Efarina TV dapat dinikmati di seluruh Indonesia dengan memilih Satelit Telkom 4 H 3978.
