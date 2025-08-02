@@ -42,9 +42,6 @@
             </div>
 
             {{-- Pagination --}}
-            <div class="mt-12">
-                {{ $vacancies->links('videos.components.pagination') }} {{-- Menggunakan komponen pagination yang sudah ada --}}
-            </div>
         @else
             <div class="text-center bg-white p-12 rounded-lg border border-gray-200">
                 <i class="fas fa-info-circle text-4xl text-gray-400 mb-4"></i>

@@ -59,6 +59,9 @@ Route::get('/about', [PageController::class, 'about'])->name('about');
 // Endpoint untuk Kiosk me-refresh daftar kehadiran (tidak perlu otentikasi)
 Route::get('/kiosk/kehadiran', [KioskController::class, 'getKehadiranJson']);
 
+Route::get('/karir', [CareerController::class, 'index'])->name('career.index');
+Route::get('/karir/{jobVacancy:slug}', [CareerController::class, 'show'])->name('career.show');
+
 
 // Rute untuk menampilkan halaman Kiosk
 Route::get('/absensi', [KioskController::class, 'tampilkanKiosk'])->name('kiosk.tampilan');
@@ -317,11 +320,4 @@ Route::middleware([HandleRedirects::class])->group(function () {
 });
 
 Route::post('/load-more-news', [App\Http\Controllers\HomeController::class, 'loadMoreNews'])->name('news.load-more');
-
-// === ROUTE BARU UNTUK HALAMAN KARIR ===
-Route::prefix('/karir')->name('career.')->group(function () {
-    Route::get('/', [CareerController::class, 'index'])->name('index');
-    Route::get('/{jobVacancy:slug}', [CareerController::class, 'show'])->name('show');
-});
-
 

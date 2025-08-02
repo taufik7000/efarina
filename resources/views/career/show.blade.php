@@ -5,7 +5,7 @@
 @section('content')
 <div class="bg-white">
     {{-- Header Lowongan --}}
-    <div class="py-16 bg-gray-50 border-b border-gray-200">
+    <div class="py-16 bg-gray-50 border-b border-gray-200 mt-[120px]">
         <div class="max-w-5xl mx-auto px-4">
             <a href="{{ route('career.index') }}" class="text-sm text-blue-600 hover:underline mb-4 inline-block"><i class="fas fa-arrow-left mr-2"></i>Kembali ke semua lowongan</a>
             <h1 class="text-4xl lg:text-5xl font-bold text-gray-900">{{ $jobVacancy->title }}</h1>

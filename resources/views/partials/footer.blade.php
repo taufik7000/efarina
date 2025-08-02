@@ -36,7 +36,7 @@
                     <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Kontak</a></li>
                     <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Pedoman Media</a></li>
                     <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Privacy</a></li>
-                    <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Karir</a></li>
+                    <li><a href="/karir" class="text-gray-400 hover:text-white transition-colors">Karir</a></li>
                 </ul>
             </div>
 
