@@ -18,6 +18,7 @@ class NewsController extends Controller
             ->where('status', 'published')
             ->latest();
 
+
         // Search functionality
         if ($request->filled('search')) {
             $search = $request->search;
@@ -44,8 +45,17 @@ class NewsController extends Controller
                 $query->where('status', 'published');
             }])
             ->get();
+        
+        $featuredVideos = YoutubeVideo::active()
+            ->featured()
+            ->with('category')
+            ->latest('published_at')
+            ->limit(5)
+            ->get();
 
-        return view('news.index', compact('news', 'categories'));
+        $popularNews = News::published()->orderBy('views_count', 'desc')->limit(5)->get();
+
+        return view('news.index', compact('news', 'categories', 'popularNews', 'featuredVideos'));
     }
 
     public function show(News $news): View
@@ -81,8 +91,14 @@ class NewsController extends Controller
             ->latest('published_at')
             ->limit(5)
             ->get();
+        
+        $latestVideos = YoutubeVideo::active()
+            ->with('category')
+            ->latest('published_at')
+            ->limit(6)
+            ->get();
 
-        return view('news.show', compact('news', 'relatedNews', 'popularNews', 'featuredVideos'));
+        return view('news.show', compact('news', 'relatedNews', 'popularNews', 'featuredVideos', 'latestVideos'));
     }
 
     public function apiRelatedNews(Request $request)
@@ -109,18 +125,40 @@ class NewsController extends Controller
 
     public function category(NewsCategory $category): View
     {
-        // Check if category is active
         if (!$category->is_active) {
             abort(404);
         }
 
+        $heroNews = News::published()
+            ->with(['category', 'author'])
+            ->where('news_category_id', $category->id)
+            ->latest('published_at')
+            ->limit(3)
+            ->get();
+
+        // Ambil ID dari berita yang sudah tampil di hero section
+        $heroNewsIds = $heroNews->pluck('id');
+
         $news = News::with(['category', 'tags', 'author'])
             ->where('status', 'published')
             ->where('news_category_id', $category->id)
-            ->latest()
-            ->paginate(12);
+            ->latest('published_at') // Pastikan diurutkan berdasarkan tanggal publish
+            ->paginate(10); // Ambil 10 berita pertama
 
-        return view('news.category', compact('news', 'category'));
+        $popularNews = News::published()
+            ->where('id', '!=', $news->pluck('id')->first()) // Jangan tampilkan berita yang sudah ada
+            ->orderBy('views_count', 'desc')
+            ->limit(5)
+            ->get();
+            
+        $featuredVideos = YoutubeVideo::active()
+            ->featured()
+            ->with('category')
+            ->latest('published_at')
+            ->limit(5)
+            ->get();
+
+        return view('news.category', compact('news', 'category', 'heroNews', 'popularNews', 'featuredVideos'));
     }
 
     public function tag(NewsTag $tag): View
@@ -148,5 +186,40 @@ class NewsController extends Controller
         }
 
         return response()->json(['success' => false], 400);
+    }
+    
+    public function apiLoadMoreIndex(Request $request)
+    {
+        // Validasi
+        $request->validate([
+            'page' => 'required|integer|min:1',
+            'category' => 'nullable|string', // category slug
+        ]);
+
+        $query = News::published()->with(['category', 'author'])->latest('published_at');
+
+        // Filter berdasarkan kategori jika ada (dan bukan 'all')
+        if ($request->filled('category') && $request->category !== 'all') {
+            $query->whereHas('category', function ($q) use ($request) {
+                $q->where('slug', $request->category);
+            });
+        }
+        
+        // Ambil data menggunakan paginate
+        $newsItems = $query->paginate(10, ['*'], 'page', $request->page);
+
+        // Jika tidak ada berita, kirim response kosong
+        if ($newsItems->isEmpty()) {
+            return response()->json(['html' => '', 'hasMorePages' => false]);
+        }
+
+        // Render komponen view partial
+        $html = view('news.components.news-list-item', ['newsItems' => $newsItems])->render();
+
+        // Kembalikan HTML dan status apakah masih ada halaman berikutnya
+        return response()->json([
+            'html' => $html,
+            'hasMorePages' => $newsItems->hasMorePages()
+        ]);
     }
 }

@@ -1,5 +1,5 @@
-<footer class="bg-indigo-950">
-    <div class="container mx-auto lg:pt-24 px-4">
+<footer class=" bg-gradient-to-b from-zinc-900 to-gray-900">
+    <div class="container max-w-5xl mx-auto lg:pt-24 px-4">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
 
             {{-- Kolom 1: Logo dan Deskripsi --}}
@@ -32,7 +32,7 @@
             <div>
                 <h3 class="text-white font-semibold text-lg mb-4">Informasi</h3>
                 <ul class="space-y-3 text-sm">
-                    <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Tentang</a></li>
+                    <li><a href="/about" class="text-gray-400 hover:text-white transition-colors">Tentang</a></li>
                     <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Kontak</a></li>
                     <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Pedoman Media</a></li>
                     <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Privacy</a></li>
@@ -67,7 +67,7 @@
         </div>
 
         {{-- Bagian Bawah Footer: Hak Cipta --}}
-        <div class="border-t border-gray-700 pt-6 mt-8">
+        <div class="border-t border-gray-700 pt-6 mt-8 pb-8">
             <p class="text-center text-sm text-gray-500">
                 Efarina TV © {{ date('Y') }} All rights Reserved.
             </p>

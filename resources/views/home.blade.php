@@ -188,7 +188,7 @@
 
 {{-- Hero Section dengan Berita Unggulan --}}
 <section class="hero-section">
-    <div class="container mx-auto px-4 mt-24">
+    <div class="container mx-auto px-4 mt-[50px] lg:mt-[190px]">
         @if($featuredNews->count() > 0)
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
             
@@ -312,7 +312,7 @@
 <section class="mt-8">
     <div class="flex items-center justify-between mb-6">
         <h2 class="text-xl lg:text-2xl font-bold text-gray-900 flex items-center">
-            <div class="w-1 h-8 bg-blue-600 rounded-full mr-3"></div>
+            <div class="w-1 h-8 bg-red-600 rounded-full mr-3"></div>
             Jangan Lewatkan
         </h2>
     </div>

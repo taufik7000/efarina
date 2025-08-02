@@ -240,10 +240,6 @@
         height: 128px;
     }
 }
-input:focus, select:focus, button:focus, a:focus {
-    outline: 2px solid #2563eb;
-    outline-offset: 2px;
-}
 * {
     transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
@@ -253,10 +249,8 @@ input:focus, select:focus, button:focus, a:focus {
 /* === [PERUBAHAN] CATEGORY TABS THEME BIRU TUA === */
 .category-tabs-wrapper {
     position: relative;
-    border-radius: 1rem;
-    padding: 0.375rem;
+    border-bottom: 1px solid #696969;
     margin-bottom: 2rem;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
     overflow: hidden;
 }
 
@@ -269,7 +263,7 @@ input:focus, select:focus, button:focus, a:focus {
     scroll-behavior: smooth;
     -ms-overflow-style: none;
     scrollbar-width: none;
-    padding: 0.25rem 3rem; /* Ruang untuk panah */
+     /* Ruang untuk panah */
 }
 
 .category-tabs::-webkit-scrollbar {
@@ -281,14 +275,11 @@ input:focus, select:focus, button:focus, a:focus {
     align-items: center;
     justify-content: center;
     white-space: nowrap;
-    padding: 0.75rem 1.5rem;
+    padding: 0.75rem 1rem;
     font-size: 0.875rem;
+    border-bottom: 3px solid transparent;
     font-weight: 600;
-    /* Diubah: Warna teks default */
-    color: #dbeafe; 
     background: transparent;
-    border: none;
-    border-radius: 1rem;
     cursor: pointer;
     transition: all 0.3s ease;
     flex-shrink: 0;
@@ -297,11 +288,6 @@ input:focus, select:focus, button:focus, a:focus {
 }
 
 /* Diubah: Hover effect dengan warna biru lebih cerah */
-.tab-item:hover {
-    color: #ffffff;
-    background: rgba(37, 99, 235, 0.5); /* Biru lebih terang saat hover */
-    transform: translateY(-1px);
-}
 
 /* Diubah: Active state sekarang hanya mengatur style teks. Warna background diatur via JS */
 .tab-item.active {
@@ -309,7 +295,6 @@ input:focus, select:focus, button:focus, a:focus {
     font-weight: 600;
    
     /* Dihapus: Properti background statis (merah) dihapus */
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 /* Diubah: Scroll arrows disesuaikan dengan tema biru */
@@ -343,8 +328,8 @@ input:focus, select:focus, button:focus, a:focus {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 /* ... (CSS lain di bawah sini tetap sama) ... */
-.scroll-arrow.left { left: 0.5rem; }
-.scroll-arrow.right { right: 0.5rem; }
+.scroll-arrow.left { left: 0.1rem; }
+.scroll-arrow.right { right: 0.1rem; }
 .scroll-arrow.hidden {
     opacity: 0;
     pointer-events: none;
@@ -356,34 +341,27 @@ input:focus, select:focus, button:focus, a:focus {
     pointer-events: none;
 }
 @media (max-width: 1024px) {
-    .category-tabs-wrapper { border-radius: 1.75rem; padding: 0.3rem; }
     .category-tabs { padding: 0.25rem 2.5rem; }
     .tab-item { padding: 0.625rem 1.25rem; font-size: 0.8rem; min-height: 2.5rem; }
     .scroll-arrow { width: 2.25rem; height: 2.25rem; }
 }
 @media (max-width: 768px) {
-    .category-tabs-wrapper {
-        background: #1e3a8a; /* Warna biru solid untuk mobile */
+    .category-tabs-wrapper { /* Warna biru solid untuk mobile */
         border-radius: 1.5rem; margin-bottom: 1.5rem; padding: 0.25rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
     .category-tabs { padding: 0.25rem 1rem; gap: 0.375rem; }
     .scroll-arrow { display: none !important; }
-    .tab-item { padding: 0.5rem 1rem; font-size: 0.75rem; min-height: 2.25rem; border-radius: 1.25rem; }
+    .tab-item { padding: 0.5rem 1rem; font-size: 0.75rem;  }
     .tab-item:hover { transform: none; }
-    .tab-item.active { transform: none; box-shadow: 0 2px 8px rgba(0,0,0, 0.25); }
+    .tab-item.active { transform: none; }
 }
 @media (max-width: 480px) {
     .category-tabs-wrapper {
-        margin-left: -1rem; margin-right: -1rem; border-radius: 0;
-        background: #1e3a8a;
+        margin-left: -1rem; margin-right: -1rem; 
     }
-    .tab-item { padding: 0.375rem 0.875rem; font-size: 0.7rem; min-height: 2rem; }
+    .tab-item { font-size: 0.7rem; color: #1f2937  }
 }
-.tab-item:focus, .scroll-arrow:focus {
-    outline: 2px solid #3b82f6;
-    outline-offset: 2px;
-}
+
 
 </style>
 @endpush
@@ -454,10 +432,10 @@ input:focus, select:focus, button:focus, a:focus {
     </section>
 
     <div class="max-w-5xl mx-auto px-4 py-8">
-        <div class="category-tabs-wrapper bg-blue-950">
+        <div class="category-tabs-wrapper">
             <div class="category-tabs" id="category-tabs">
                 {{-- Diubah: Tab "Semua" diberi data-color default --}}
-                <button class="tab-item active" data-category="all" data-color="#2563eb">Semua</button>
+                <button class="tab-item active" data-category="all" data-color="#000">Semua</button>
                 @foreach($categories as $category)
                     @if($category->videos_count > 0)
                         {{-- Diubah: Ditambahkan atribut data-color --}}
@@ -569,15 +547,16 @@ document.addEventListener('DOMContentLoaded', function() {
         // Reset semua tab terlebih dahulu
         tabsContainer.querySelectorAll('.tab-item').forEach(tab => {
             tab.classList.remove('active');
-            tab.style.backgroundColor = ''; // Hapus inline style background
-            tab.style.boxShadow = '';
+            tab.style.color = '';
+            tab.style.borderBottomColor = ''; // Hapus inline style background
         });
 
         // Terapkan style ke tab yang aktif
         tabElement.classList.add('active');
         const activeColor = tabElement.dataset.color;
         if (activeColor) {
-            tabElement.style.backgroundColor = activeColor;
+            tabElement.style.color = activeColor; // Ubah warna font
+            tabElement.style.borderBottomColor = activeColor;
             // Opsi: Tambahkan shadow yang lebih lembut berdasarkan warna
             // tabElement.style.boxShadow = `0 4px 14px 0 ${activeColor}55`;
         }

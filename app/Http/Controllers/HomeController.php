@@ -34,7 +34,7 @@ class HomeController extends Controller
         $otherNews = News::with('category')->where('status', 'published')
             ->whereNotIn('id', $excludedIds)
             ->latest('published_at')
-            ->take(5) // Ambil 5 berita
+            ->take(6) // Ambil 5 berita
             ->get();
 
         // Berita populer berdasarkan views

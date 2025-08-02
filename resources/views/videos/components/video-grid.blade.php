@@ -44,9 +44,6 @@
             </p>
             <div class="flex items-center justify-between text-xs text-gray-500">
                 <span class="flex items-center">
-                    <i class="fas fa-eye mr-1 text-blue-500"></i>{{ $video->formatted_view_count }}
-                </span>
-                <span class="flex items-center">
                     <i class="fas fa-calendar mr-1 text-gray-400"></i>{{ $video->age }}
                 </span>
             </div>

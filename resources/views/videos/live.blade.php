@@ -23,7 +23,7 @@
 @endpush
 
 @section('content')
-<main class="max-w-5xl mx-auto px-4 py-8 lg:mt-[150px]">
+<main class="max-w-5xl mx-auto px-4 py-8 mt-[50px] lg:mt-[150px]">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {{-- Kolom Konten Utama (2/3) --}}
@@ -47,13 +47,21 @@
                         <i class="fas fa-info-circle mr-2"></i>
                         Jika streaming tidak muncul, coba segarkan halaman atau pastikan koneksi internet Anda stabil.
                     </p>
+
+                    
                 </div>
+
+                            {{-- KOTAK IKLAN (Sesuai home.blade.php) --}}
+            <div class="bg-gray-200 rounded-lg text-center p-8 mt-6"><a href="/ads">
+                <p class="text-sm text-gray-600">Ads</p>
+                <h4 class="text-base font-semibold text-gray-700">Pasang Iklan Anda Disini</h4></a>
+            </div>
             </section>
             
             <hr class="border-gray-200">
 
          <section>
-                <h2 class="text-2xl font-bold text-gray-900 mb-4">Video Terbaru</h2>
+                <h2 class="text-2xl font-bold text-gray-900 mb-4">Jangan Lewatkan</h2>
                 
                 @if($videos->isNotEmpty())
                     {{-- Video Grid Component --}}
@@ -86,13 +94,6 @@
                     <p class="text-center text-gray-500">Video unggulan belum tersedia.</p>
                 </div>
             @endif
-
-            {{-- KOTAK IKLAN (Sesuai home.blade.php) --}}
-            <div class="bg-gray-200 rounded-lg text-center p-8">
-                <p class="text-sm text-gray-600">Advertisement</p>
-                <h4 class="text-base font-semibold text-gray-700">Pasang Iklan Anda Disini</h4>
-                <p class="text-sm text-gray-500">marketing@efarinatv.net</p>
-            </div>
         </aside>
 
     </div>

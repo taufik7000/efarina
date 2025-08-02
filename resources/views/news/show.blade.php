@@ -256,7 +256,7 @@ body {
 @endpush
 
 @section('content')
-<div class="container mx-auto mt-20 px-4 py-4">
+<div class="container mx-auto mt-20 px-4 py-2">
     
     {{-- Breadcrumb --}}
     <nav class="breadcrumb">
@@ -382,7 +382,7 @@ body {
     </div>
 
     {{-- Tombol Load More (tidak berubah) --}}
-    <div id="load-more-news-wrapper" class="mt-8 text-center">
+    <div id="load-more-news-wrapper" class="mt-8 text-center ">
         <button id="load-more-news-btn" 
                 class="bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-blue-700 transition-all"
                 data-page="1" 
@@ -391,6 +391,8 @@ body {
             <span id="news-btn-loader" class="hidden"><i class="fas fa-spinner fa-spin"></i> Memuat...</span>
         </button>
     </div>
+
+    @include('components.latest-videos', ['latestVideos' => $latestVideos])
 </section>
         </main>
 
@@ -474,12 +476,6 @@ function fallbackCopyToClipboard(text) {
         })
         .then(response => response.json())
         .then(data => {
-            // Untuk debugging, Anda bisa lihat hasilnya di console browser
-            if (data.success) {
-                console.log('View count incremented. Total views:', data.views);
-            } else {
-                console.error('Failed to increment view count.');
-            }
         })
         .catch(error => {
             console.error('Error:', error);
